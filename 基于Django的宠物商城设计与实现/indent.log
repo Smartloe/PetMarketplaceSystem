@@ -1,0 +1,30 @@
+INFO:  latexindent.exe version 3.20.3, 2023-02-19, a script to indent .tex files
+       latexindent.exe lives here: D:/texlive/2023/bin/windows/
+       Mon Apr  8 17:24:15 2024
+       Filename: h:/BaiduSyncdisk/±ÏÒµÉè¼Æ2024/´óËÄÏÂ/ÂÛÎÄÅÅ°æÊ¹ÓÃ£¨2023£©/»ùÓÚDjangoµÄ³èÎïÉÌ³ÇÉè¼ÆÓëÊµÏÖ/chapters/__latexindent_temp_pagetitle-chinese.tex
+INFO:  Processing switches:
+       -y|--yaml: YAML settings specified via command line
+       -c|--cruft: cruft directory
+INFO:  Directory for backup files and h:/BaiduSyncdisk/±ÏÒµÉè¼Æ2024/´óËÄÏÂ/ÂÛÎÄÅÅ°æÊ¹ÓÃ£¨2023£©/»ùÓÚDjangoµÄ³èÎïÉÌ³ÇÉè¼ÆÓëÊµÏÖ//indent.log:
+       h:/BaiduSyncdisk/±ÏÒµÉè¼Æ2024/´óËÄÏÂ/ÂÛÎÄÅÅ°æÊ¹ÓÃ£¨2023£©/»ùÓÚDjangoµÄ³èÎïÉÌ³ÇÉè¼ÆÓëÊµÏÖ/
+INFO:  YAML settings read: defaultSettings.yaml
+       Reading defaultSettings.yaml from D:/texlive/2023/bin/windows/defaultSettings.yaml
+       Reading defaultSettings.yaml (2nd attempt) from D:/texlive/2023/bin/windows/../../texmf-dist/scripts/latexindent/defaultSettings.yaml
+       and then, if necessary, D:/texlive/2023/bin/windows/LatexIndent/defaultSettings.yaml
+INFO:  YAML reading settings
+       Home directory is C:\Users\Chenxr
+       latexindent.pl didn't find indentconfig.yaml or .indentconfig.yaml
+       see all possible locations: https://latexindentpl.readthedocs.io/en/latest/sec-appendices.html#indentconfig-options)
+INFO:  YAML settings read: -y switch
+       YAML setting: defaultIndent:'\t'
+       single-quoted string found in -y switch: '\t', substitute to 	
+       Updating mainSettings with defaultIndent: 	
+INFO:  Phase 1: searching for objects
+INFO:  Phase 2: finding surrounding indentation
+INFO:  Phase 3: indenting objects
+INFO:  Phase 4: final indentation check
+INFO:  Output routine:
+       Not outputting to file; see -w and -o switches for more options.
+       --------------
+INFO:  Please direct all communication/issues to:
+        https://github.com/cmhughes/latexindent.pl
