@@ -7,6 +7,7 @@
 @Description: 用户登录
 """
 import uuid
+import pytz
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -28,9 +29,13 @@ class UserLogin(APIView):
 				{"status": status.HTTP_400_BAD_REQUEST, "message": "用户登录失败", "details": "用户名或密码错误"})
 		token = str(uuid.uuid4().hex)
 		instance.token = token
-		# 登录时间
-		login_time = datetime.now()
-		instance.last_login_time = login_time
+		# 获取当前的UTC时间
+		utc_time = datetime.now(pytz.utc)
+		# 设置北京时区
+		beijing_tz = pytz.timezone('Asia/Shanghai')
+		# 将UTC时间转换为北京时间
+		beijing_time = utc_time.astimezone(beijing_tz)
+		instance.last_login_time = beijing_time
 		instance.save()
 		return Response(
 			{
@@ -39,7 +44,8 @@ class UserLogin(APIView):
 				"details":
 					{
 						'nickname': instance.nick_name,
-						'token': instance.token
+						'token': instance.token,
+						'login_time': instance.last_login_time.strftime('%Y-%m-%d %H:%M:%S')
 					}
 			}
 		)

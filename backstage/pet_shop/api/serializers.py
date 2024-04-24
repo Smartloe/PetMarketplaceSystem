@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import UserInfo
+from .models import UserInfo, Admin
 from rest_framework import exceptions
 from .utils.encrypt import md5
 
@@ -44,7 +44,7 @@ class LoginSerializers(serializers.ModelSerializer):
 		return md5_hash
 
 
-def AdminLoginSerializers(data):
+class AdminLoginSerializers(serializers.ModelSerializer):
 	class Meta:
-		model = UserInfo
-		fields = ['email', 'password']
+		model = Admin
+		fields = ['username', 'password']
