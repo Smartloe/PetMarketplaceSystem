@@ -6,13 +6,18 @@ from django.db import models
 
 class UserInfo(models.Model):
     """用户信息表"""
-    nick_name = models.CharField(max_length=90, verbose_name='用户昵称')
-    user_intro = models.CharField(max_length=900, verbose_name='个性签名', blank=True)
-    avatar = models.CharField(max_length=1000, verbose_name='头像图片', blank=True)
-    email = models.EmailField(verbose_name='邮件地址')
-    phone = models.CharField(max_length=255, verbose_name='手机号', blank=True)
+    nick_name = models.CharField(max_length=90, verbose_name='用户昵称', help_text='用户昵称')
+    user_intro = models.CharField(max_length=900, verbose_name='个性签名', blank=True, help_text='个性签名')
+    # 本质上是数据库也是CharField,自动保存
+    avatar = models.FileField(verbose_name='头像图片', upload_to="profile_photo/", blank=True, help_text='头像图片')
+    email = models.EmailField(verbose_name='邮件地址', help_text='邮件地址')
+    phone = models.CharField(max_length=255, verbose_name='手机号', blank=True, help_text='手机号')
     user_pass = models.CharField(max_length=255, verbose_name='密码')
-    user_status = models.CharField(max_length=4, default='1', verbose_name='用户状态')
+    status_choices = (
+        (0, "冻结"),
+        (1, "正常"),
+    )
+    user_status = models.SmallIntegerField(max_length=4, default=1, verbose_name='用户状态', choices=status_choices, )
     token = models.CharField(max_length=255, verbose_name='令牌', blank=True)
     user_score = models.IntegerField(verbose_name='用户打分', null=True, blank=True, default='80')
     total_cost_amt = models.DecimalField(max_digits=24, decimal_places=6, verbose_name='累计消费金额', null=True,
@@ -24,24 +29,38 @@ class UserInfo(models.Model):
 
 class OrderInfo(models.Model):
     """订单信息表"""
-    user = models.ForeignKey(UserInfo, on_delete=models.CASCADE, verbose_name='用户')
+    user = models.ForeignKey(to='UserInfo', to_field="id", on_delete=models.CASCADE, verbose_name='用户')
+    cart = models.ForeignKey(to='Cart', to_field="id", on_delete=models.CASCADE, verbose_name='购物车')
+    address = models.ForeignKey(to='Address', to_field="id", on_delete=models.CASCADE, verbose_name='地址')
     total_price = models.DecimalField(max_digits=24, decimal_places=6, verbose_name='总金额')
     coupon_price = models.DecimalField(max_digits=24, decimal_places=6, verbose_name='优惠金额', null=True, blank=True)
     payable_price = models.DecimalField(max_digits=24, decimal_places=6, verbose_name='应付金额')
-    pay_method = models.CharField(max_length=32, verbose_name='支付方式', blank=True)
+    pay_choices = (
+        (1, "微信"),
+        (2, "支付宝"),
+        (3, "银联"),
+    )
+    pay_method = models.SmallIntegerField(choices=pay_choices, verbose_name='支付方式', blank=True)
     leave_comment = models.CharField(max_length=1000, verbose_name='订单留言备注', blank=True)
-    order_status = models.CharField(max_length=32, verbose_name='订单状态')
+    status_choices = (
+        (0, "未支付"),
+        (1, "已支付"),
+    )
+    order_status = models.SmallIntegerField(choices=status_choices, verbose_name='订单状态')
     created_by = models.CharField(max_length=32, verbose_name='创建人')
     created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
 
 
 class Cart(models.Model):
     """购物车信息表"""
-    user = models.ForeignKey(UserInfo, on_delete=models.CASCADE, verbose_name='用户')
+    user = models.ForeignKey(to='UserInfo', to_field="id", on_delete=models.CASCADE, verbose_name='用户')
     total_price = models.DecimalField(max_digits=24, decimal_places=6, verbose_name='总金额')
     payable_price = models.DecimalField(max_digits=24, decimal_places=6, verbose_name='应付金额')
-    cart_status = models.CharField(max_length=32, verbose_name='购物车状态')
-    revision = models.IntegerField(verbose_name='乐观锁')
+    status_choices = (
+        (0, "待确认"),
+        (1, "已确认"),
+    )
+    cart_status = models.SmallIntegerField(choices=status_choices, verbose_name='购物车状态')
     created_by = models.CharField(max_length=32, verbose_name='创建人')
     created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
     updated_by = models.CharField(max_length=32, verbose_name='更新人', blank=True)
@@ -49,9 +68,10 @@ class Cart(models.Model):
 
 
 class Item(models.Model):
-    """购物车明细项信息表"""
-    order = models.ForeignKey(OrderInfo, on_delete=models.CASCADE, verbose_name='订单ID')
-    item_id = models.CharField(max_length=32, verbose_name='明细项ID', unique=True)
+    """购买明细表"""
+    order = models.ForeignKey(to="OrderInfo", to_field="id", on_delete=models.CASCADE, verbose_name='订单')
+    user = models.ForeignKey(to='UserInfo', to_field="id", on_delete=models.CASCADE, verbose_name='用户')
+
     sku_id = models.CharField(max_length=32, verbose_name='商品ID', blank=True)
     sku_title = models.CharField(max_length=90, verbose_name='商品标题', blank=True)
     sku_intro = models.CharField(max_length=3000, verbose_name='商品介绍', blank=True)
@@ -106,3 +126,23 @@ class Product(models.Model):
     created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
     updated_by = models.CharField(max_length=32, verbose_name='更新人', blank=True)
     updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+
+
+class ProductCategories(models.Model):
+    """商品分类信息表"""
+    title = models.CharField(max_length=255, verbose_name='类别名称')
+    description = models.CharField(max_length=255, verbose_name='详细描述', blank=True)
+
+
+class Admin(models.Model):
+    """管理员信息表"""
+    username = models.CharField(max_length=255, verbose_name='姓名')
+    password = models.CharField(max_length=255, verbose_name='密码')
+    phone_number = models.CharField(max_length=255, verbose_name="电话")
+    status_choices = (
+        (0, "未激活"),
+        (1, "已激活"),
+    )
+    is_active = models.SmallIntegerField(choices=status_choices, verbose_name='管理员状态')
+    created_by = models.CharField(max_length=32, verbose_name='创建人')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')

@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/5.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.0/ref/settings/
 """
-
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -37,7 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
-    'api',
+    'api.apps.ApiConfig',  # 注册api
 ]
 
 MIDDLEWARE = [
@@ -166,3 +166,7 @@ CORS_ALLOW_HEADERS = (
     'x-csrftoken',
     'x-requested-with',
 )
+# 将媒体文件的存储位置设置在了项目的根目录下的一个名为 media 的文件夹内
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+# 指定了在浏览器中访问这些媒体文件的 URL 前缀
+MEDIA_URL = '/media/'

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import UserInfos
+from .models import UserInfo
 from rest_framework import exceptions
 from .utils.encrypt import md5
 
@@ -11,7 +11,7 @@ class RegisterSerializers(serializers.ModelSerializer):
     confirm_password = serializers.CharField(write_only=True)
 
     class Meta:
-        model = UserInfos
+        model = UserInfo
         fields = ['id', 'username', 'email', 'password', 'confirm_password']
         extra_kwargs = {
             'id': {
@@ -36,7 +36,7 @@ class RegisterSerializers(serializers.ModelSerializer):
 
 class LoginSerializers(serializers.ModelSerializer):
     class Meta:
-        model = UserInfos
+        model = UserInfo
         fields = ['email', 'password']
 
     def validate_password(self, value):
