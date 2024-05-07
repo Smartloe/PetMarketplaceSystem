@@ -13,7 +13,7 @@ class CommodityInfos(models.Model):
 	status = models.CharField(max_length=32, default='1', verbose_name='商品状态')
 	types = models.ForeignKey(to='CommodityCategories', on_delete=models.CASCADE, verbose_name='商品类型')
 	sold = models.IntegerField(verbose_name='已售数量')
-	likes = models.IntegerField(verbose_name='收藏数量')
+	likes = models.ForeignKey('customer_operation.UserFav', verbose_name='收藏数量')
 	stock_quantity = models.PositiveIntegerField(verbose_name='库存数量', blank=True)
 	created_by = models.ForeignKey(
 		'customer.UserInfos', related_name='created_commodities',
@@ -39,8 +39,10 @@ class CommodityInfos(models.Model):
 # 商品类型表
 class CommodityCategories(models.Model):
 	title = models.CharField('类型', max_length=100)
-	parent_category = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True,
-	                                    related_name='sub_categories', verbose_name='父级类型')
+	parent_category = models.ForeignKey(
+		'self', on_delete=models.CASCADE, null=True, blank=True,
+		related_name='sub_categories', verbose_name='父级类型'
+	)
 
 	def __str__(self):
 		# 如果有父级类型，返回 "父级类型/本类型"，否则只返回本类型

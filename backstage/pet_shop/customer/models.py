@@ -81,27 +81,3 @@ class Cart(models.Model):
 	class Meta:
 		verbose_name = '购物车'
 		verbose_name_plural = '购物车'
-
-
-# 收货地址信息表
-class Address(models.Model):
-	user = models.ForeignKey(UserInfos, related_name='addresses', on_delete=models.CASCADE, verbose_name='用户')
-	address_name = models.CharField(max_length=255, verbose_name='地址名称')
-	seq_number = models.PositiveIntegerField(verbose_name='顺序号')
-	province = models.CharField(max_length=255, verbose_name='省')
-	city = models.CharField(max_length=255, verbose_name='市')
-	county = models.CharField(max_length=255, verbose_name='区')
-	street = models.CharField(max_length=255, verbose_name='街道')
-	last_detail = models.CharField(max_length=255, verbose_name='门牌号')
-	is_default = models.BooleanField(default=False, verbose_name='是否为默认地址')
-	created_by = models.CharField(null=True, max_length=255, verbose_name='创建人')
-	created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
-	updated_by = models.CharField(null=True, max_length=255, verbose_name='更新人', blank=True)
-	updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间')
-
-	def __str__(self):
-		return f"{self.province}{self.city}{self.county}{self.street}{self.last_detail}"
-
-	class Meta:
-		verbose_name = '收货地址信息'
-		verbose_name_plural = '收货地址信息'

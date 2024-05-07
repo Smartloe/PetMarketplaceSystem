@@ -26,7 +26,7 @@ admin.site.index_title = '站点管理'  # 设置管理后台首页的标题
 
 urlpatterns = [
 	path('admin/', admin.site.urls),
-
+	path('charts', include('charts.urls')),  # 数据可视化
 	# 配置媒体资源的路由信息
 	re_path('media/(?P<path>.*)', serve, {'document_root': settings.MEDIA_ROOT}, name='media'),
 	# 定义静态资源的路由信息
