@@ -15,11 +15,20 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
+from django.views.static import serve
+from django.conf import settings
 
+# 设置管理后台的标题和头部
+admin.site.site_header = '吉祥宠物商城管理'  # 设置管理后台的头部标题
+admin.site.site_title = '吉祥宠物商城管理'  # 设置管理后台的标题
+admin.site.index_title = '站点管理'  # 设置管理后台首页的标题
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path("api/", include("api.urls")),
+	path('admin/', admin.site.urls),
 
+	# 配置媒体资源的路由信息
+	re_path('media/(?P<path>.*)', serve, {'document_root': settings.MEDIA_ROOT}, name='media'),
+	# 定义静态资源的路由信息
+	re_path('static/(?P<path>.*)', serve, {'document_root': settings.STATIC_ROOT}, name='static'),
 ]
