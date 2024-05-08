@@ -20,8 +20,8 @@ from django.views.static import serve
 from django.conf import settings
 
 # 设置管理后台的标题和头部
-admin.site.site_header = '吉祥宠物商城管理'  # 设置管理后台的头部标题
-admin.site.site_title = '吉祥宠物商城管理'  # 设置管理后台的标题
+admin.site.site_header = '吉祥宠物商城管理后台'  # 设置管理后台的头部标题
+admin.site.site_title = '吉祥宠物商城管理后台'  # 设置管理后台的标题
 admin.site.index_title = '站点管理'  # 设置管理后台首页的标题
 
 urlpatterns = [

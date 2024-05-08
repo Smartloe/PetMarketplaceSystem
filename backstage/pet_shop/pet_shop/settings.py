@@ -45,6 +45,8 @@ INSTALLED_APPS = [
 	'customer.apps.CustomerConfig',  # 注册customer
 	'merchant.apps.MerchantConfig',  # 注册merchant
 	'charts.apps.ChartsConfig',  # 注册charts
+	'customer_operation.apps.CustomerOperationConfig',  # 注册customer_operation
+	'trade.apps.TradeConfig',  # 注册trade
 	'django_echarts',
 	'django_echarts.contrib.bootstrap5'
 ]

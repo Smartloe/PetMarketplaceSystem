@@ -7,7 +7,7 @@ from phonenumber_field.modelfields import PhoneNumberField
 class UserInfos(AbstractBaseUser):
 	nick_name = models.CharField(max_length=90, verbose_name='用户昵称', help_text='用户昵称')
 	user_intro = models.CharField(max_length=900, verbose_name='个性签名', blank=True, help_text='个性签名')
-	avatar = models.ImageField(verbose_name='头像图片', upload_to="profile_photo/", blank=True, help_text='头像图片')
+	avatar = models.ImageField(verbose_name='头像图片', upload_to="profile_photos/", blank=True, help_text='头像图片')
 	email = models.EmailField(verbose_name='邮件地址', help_text='邮件地址')
 	phone = PhoneNumberField(verbose_name='手机号', blank=True, help_text='手机号')
 	user_status = models.SmallIntegerField(default=1, verbose_name='用户状态', choices=((0, "冻结"), (1, "正常")))

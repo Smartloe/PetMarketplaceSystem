@@ -41,7 +41,7 @@ class Migration(migrations.Migration):
                 ('last_login', models.DateTimeField(blank=True, null=True, verbose_name='last login')),
                 ('nick_name', models.CharField(help_text='用户昵称', max_length=90, verbose_name='用户昵称')),
                 ('user_intro', models.CharField(blank=True, help_text='个性签名', max_length=900, verbose_name='个性签名')),
-                ('avatar', models.ImageField(blank=True, help_text='头像图片', upload_to='profile_photo/', verbose_name='头像图片')),
+                ('avatar', models.ImageField(blank=True, help_text='头像图片', upload_to='profile_photos/', verbose_name='头像图片')),
                 ('email', models.EmailField(help_text='邮件地址', max_length=254, verbose_name='邮件地址')),
                 ('phone', phonenumber_field.modelfields.PhoneNumberField(blank=True, help_text='手机号', max_length=128, region=None, verbose_name='手机号')),
                 ('user_status', models.SmallIntegerField(choices=[(0, '冻结'), (1, '正常')], default=1, verbose_name='用户状态')),

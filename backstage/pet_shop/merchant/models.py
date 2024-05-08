@@ -16,7 +16,7 @@ class Advertisement(models.Model):
 	click_count = models.IntegerField(verbose_name='点击次数', default=0)
 	created_by = models.CharField(max_length=255, null=True, verbose_name='创建人')
 	created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
-	updated_by = models.CharField(max_length=255, null=True, verbose_name='创建人')
+	updated_by = models.CharField(max_length=255, null=True, verbose_name='更新人', blank=True)
 	updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间')
 
 	class Meta:

@@ -6,8 +6,11 @@ class UserFav(models.Model):
 	"""
 	用户收藏
 	"""
-	user = models.ForeignKey('customer.UserInfos', verbose_name="用户")
-	goods = models.ForeignKey('commodity.CommodityInfos', verbose_name="商品", help_text="商品id")
+	user = models.ForeignKey('customer.UserInfos', on_delete=models.CASCADE, verbose_name="用户")
+	goods = models.ForeignKey(
+		'commodity.CommodityInfos', on_delete=models.CASCADE,
+		verbose_name="商品", help_text="商品id"
+	)
 	add_time = models.DateTimeField(auto_now_add=True, verbose_name=u"添加时间")
 
 	class Meta:
@@ -30,14 +33,18 @@ class UserLeavingMessage(models.Model):
 		(4, "售后"),
 		(5, "求购")
 	)
-	user = models.ForeignKey('customer.UserInfos', verbose_name="用户")
+	user = models.ForeignKey('customer.UserInfos', on_delete=models.CASCADE, verbose_name="用户")
 	message_type = models.IntegerField(
 		default=1, choices=MESSAGE_CHOICES, verbose_name="留言类型",
 		help_text=u"留言类型: 1(留言),2(投诉),3(询问),4(售后),5(求购)"
 	)
 	subject = models.CharField(max_length=100, default="", verbose_name="主题")
 	message = models.TextField(default="", verbose_name="留言内容", help_text="留言内容")
-	file = models.FileField(upload_to="media/leaving_message_imgs/", verbose_name="上传的文件", help_text="上传的文件")
+	file = models.FileField(
+		upload_to="leaving_message_imgs/",
+		verbose_name="上传的文件", help_text="上传的文件",
+		null=True, blank=True
+	)
 	add_time = models.DateTimeField(auto_now_add=True, verbose_name="添加时间")
 
 	class Meta:
@@ -52,7 +59,7 @@ class UserAddress(models.Model):
 	"""
 	用户收货地址
 	"""
-	user = models.ForeignKey('customer.UserInfos', verbose_name="用户")
+	user = models.ForeignKey('customer.UserInfos', on_delete=models.CASCADE, verbose_name="用户")
 	province = models.CharField(max_length=100, default="", verbose_name="省")
 	city = models.CharField(max_length=100, default="", verbose_name="市")
 	county = models.CharField(max_length=100, default="", verbose_name="区/县")

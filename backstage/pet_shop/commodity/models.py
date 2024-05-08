@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 
 # Create your models here.
@@ -12,20 +13,15 @@ class CommodityInfos(models.Model):
 	price = models.DecimalField(max_digits=24, decimal_places=2, verbose_name='商品售价')
 	status = models.CharField(max_length=32, default='1', verbose_name='商品状态')
 	types = models.ForeignKey(to='CommodityCategories', on_delete=models.CASCADE, verbose_name='商品类型')
-	sold = models.IntegerField(verbose_name='已售数量')
-	likes = models.ForeignKey('customer_operation.UserFav', verbose_name='收藏数量')
+	sold = models.IntegerField(verbose_name='已售数量', default=0)
 	stock_quantity = models.PositiveIntegerField(verbose_name='库存数量', blank=True)
 	created_by = models.ForeignKey(
-		'customer.UserInfos', related_name='created_commodities',
+		User, related_name='created_commodities',
 		on_delete=models.SET_NULL, null=True,
 		verbose_name='创建人'
 	)
 	created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
-	updated_by = models.ForeignKey(
-		'customer.UserInfos', related_name='updated_commodities',
-		on_delete=models.SET_NULL, null=True,
-		verbose_name='更新人', blank=True
-	)
+	updated_by = models.CharField(null=True, verbose_name='更新人', blank=True, max_length=32)
 	updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间')
 
 	class Meta:
@@ -45,9 +41,9 @@ class CommodityCategories(models.Model):
 	)
 
 	def __str__(self):
-		# 如果有父级类型，返回 "父级类型/本类型"，否则只返回本类型
+		# 如果有父级类型，返回 "父级类型 | 本类型"，否则只返回本类型
 		if self.parent_category:
-			return f"{self.parent_category.title}/{self.title}"
+			return f"{self.parent_category.title} | {self.title}"
 		else:
 			return self.title
 
