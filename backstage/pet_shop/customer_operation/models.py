@@ -60,7 +60,7 @@ class UserAddress(models.Model):
 	用户收货地址
 	"""
 	user = models.ForeignKey('customer.UserInfos', on_delete=models.CASCADE, verbose_name="用户")
-	province = models.CharField(max_length=100, default="", verbose_name="省")
+	province = models.CharField(max_length=100, default="", verbose_name="省/直辖市")
 	city = models.CharField(max_length=100, default="", verbose_name="市")
 	county = models.CharField(max_length=100, default="", verbose_name="区/县")
 	address = models.CharField(max_length=100, default="", verbose_name="详细地址")

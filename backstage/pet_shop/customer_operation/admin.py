@@ -24,7 +24,7 @@ class UserLeavingMessageAdmin(admin.ModelAdmin):
 
 @admin.register(UserAddress)
 class UserAddressAdmin(admin.ModelAdmin):
-	list_display = ["signer_name", "signer_mobile", "province", "city", "county", "address"]
+	list_display = ["signer_name", "signer_mobile", "is_default", "province", "city", "county", "address"]
 	# 在数据列表页设置每一页显示的数据量
 	list_per_page = 10
 	# 在数据列表页设置每一页显示最大上限的数据量
