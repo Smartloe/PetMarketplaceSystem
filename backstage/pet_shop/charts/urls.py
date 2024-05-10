@@ -10,5 +10,5 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-	path('chart_data/', views.chart_data, name='chart_data'),
+	path('chart_data/', views.sold_view, name='chart_data'),
 ]

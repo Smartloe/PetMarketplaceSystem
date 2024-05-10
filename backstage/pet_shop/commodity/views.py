@@ -1,4 +1,4 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -15,14 +15,79 @@ class commodityView(APIView):
 	permission_classes = []
 
 	def get(self, request):
-		# 获取商品分类信息
-		types = CommodityCategories.objects.all()
-		# 获取商品信息
-		commodity_infos = CommodityInfos.objects.all()
-		# 序列化
-		types_serializer = TypesSerializer(types, many=True)
-		commodity_infos_serializer = CommodityInfosSerializer(commodity_infos, many=True)
-		return Response({
-			'types': types_serializer.data,
-			'commodity_infos': commodity_infos_serializer.data
-		})
+		# 获取所有商品类型
+		categories = CommodityCategories.objects.all()
+
+		# 初始化一个字典来存储商品数据
+		data = {}
+
+		# 遍历所有商品类型
+		for category in categories:
+			# 判断当前类型是否有父类型
+			if category.parent_category:
+				# 如果有父类型,将商品数据添加到父类型下
+				parent_category_title = category.parent_category.title
+				if parent_category_title not in data:
+					data[parent_category_title] = {
+						'sub_categories': [],
+						# 'commodities': []
+					}
+				data[parent_category_title]['sub_categories'].append({
+					'title': category.title,
+					'commodities': []
+				})
+			else:
+				# 如果没有父类型,将商品数据添加到顶级类型下
+				if category.title not in data:
+					data[category.title] = {
+						'sub_categories': [],
+						# 'commodities': []
+					}
+
+			# 获取该类型下的所有商品
+			commodities = CommodityInfos.objects.filter(types=category)
+
+			# 序列化商品信息
+			commodities_serializer = CommodityInfosSerializer(commodities, many=True)
+
+			# 将该类型的商品信息添加到对应的位置
+			if category.parent_category:
+				parent_category_title = category.parent_category.title
+				for sub_category in data[parent_category_title]['sub_categories']:
+					if sub_category['title'] == category.title:
+						sub_category['commodities'] = commodities_serializer.data
+						break
+			# else:
+			# 	data[category.title]['commodities'] = commodities_serializer.data
+
+		return Response(data)
+
+
+class detailView(APIView):
+	'''
+	商品详情页
+	'''
+	authentication_classes = []
+	permission_classes = []
+
+	def get(self, request, pk):
+		try:
+			# 获取商品信息
+			commodity_info = CommodityInfos.objects.get(id=pk)
+		except CommodityInfos.DoesNotExist:
+			return Response({'error': '商品不存在'}, status=status.HTTP_404_NOT_FOUND)
+
+		# 序列化商品信息
+		commodity_info_serializer = CommodityInfosSerializer(commodity_info)
+
+		# 获取该商品所属的类型信息
+		commodity_category = commodity_info.types
+		category_serializer = TypesSerializer(commodity_category)
+
+		# 构建响应数据
+		data = {
+			'category': category_serializer.data,
+			'commodity_info': commodity_info_serializer.data,
+		}
+
+		return Response(data)

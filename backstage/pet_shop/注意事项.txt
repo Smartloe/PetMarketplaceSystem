@@ -1,0 +1,3 @@
+使用 mysqldump 导出数据库的基本命令：
+mysqldump -u root -pxllzy123 pet_shop > pet_shop_backup.sql
+

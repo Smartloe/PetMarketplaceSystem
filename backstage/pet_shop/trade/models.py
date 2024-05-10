@@ -5,7 +5,7 @@ from django.db import models
 
 # 订单信息表
 class OrderInfos(models.Model):
-	user = models.ForeignKey('customer.UserInfos', related_name='orders', on_delete=models.CASCADE, verbose_name='用户')
+	user = models.ForeignKey('auth.User', related_name='order', on_delete=models.CASCADE, verbose_name='用户')
 	order_sn = models.CharField(max_length=30, null=True, blank=True, unique=True, verbose_name="订单号")
 	address = models.ForeignKey(
 		'customer_operation.UserAddress', to_field="id",
@@ -57,7 +57,7 @@ class OrderGoods(models.Model):
 
 # 购物车信息表
 class ShoppingCart(models.Model):
-	user = models.ForeignKey('customer.UserInfos', on_delete=models.CASCADE, verbose_name='用户')
+	user = models.ForeignKey('auth.User', on_delete=models.CASCADE, verbose_name='用户')
 	commodity = models.ForeignKey(
 		'commodity.CommodityInfos',
 		on_delete=models.SET_NULL,

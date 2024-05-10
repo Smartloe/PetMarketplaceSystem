@@ -26,6 +26,7 @@ SECRET_KEY = 'django-insecure-utyj1&cv+2&m(^36*4c$07u*r@+11bh!bc)1@ej1bk$^@%au8h
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
+# AUTH_USER_MODEL = 'accounts.UserProfile'
 
 # Application definition
 
@@ -42,13 +43,14 @@ INSTALLED_APPS = [
 	'phonenumber_field',
 	'index.apps.IndexConfig',  # 注册index
 	'commodity.apps.CommodityConfig',  # 注册commodity
-	'customer.apps.CustomerConfig',  # 注册customer
+	'accounts.apps.AccountsConfig',  # 注册accounts
 	'merchant.apps.MerchantConfig',  # 注册merchant
 	'charts.apps.ChartsConfig',  # 注册charts
 	'customer_operation.apps.CustomerOperationConfig',  # 注册customer_operation
 	'trade.apps.TradeConfig',  # 注册trade
 	'django_echarts',
-	'django_echarts.contrib.bootstrap5'
+	'django_echarts.contrib.bootstrap5',
+	'drf_yasg'
 ]
 
 MIDDLEWARE = [
@@ -145,6 +147,9 @@ REST_FRAMEWORK = {
 		'rest_framework.authentication.SessionAuthentication',
 		'rest_framework.authentication.BasicAuthentication',
 		'rest_framework_simplejwt.authentication.JWTAuthentication',
+		'trade.permissions.IsOwnerOrReadOnly',
+		'customer_operation.permissions.IsOwnerOrReadOnly',
+
 	),
 }
 
@@ -187,37 +192,14 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # 指定了在浏览器中访问这些媒体文件的 URL 前缀
 MEDIA_URL = 'media/'
 
-# Simple JWT的一些额外配置，例如token的有效期等
-SIMPLE_JWT = {
-	'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
-	'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-	'ROTATE_REFRESH_TOKENS': False,
-	'BLACKLIST_AFTER_ROTATION': True,
-	'UPDATE_LAST_LOGIN': False,
-
-	'ALGORITHM': 'HS256',
-	'SIGNING_KEY': SECRET_KEY,
-	'VERIFYING_KEY': None,
-	'AUDIENCE': None,
-	'ISSUER': None,
-	'JWK_URL': None,
-	'LEEWAY': 0,
-
-	'AUTH_HEADER_TYPES': ('Bearer',),
-	'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
-	'USER_ID_FIELD': 'id',
-	'USER_ID_CLAIM': 'user_id',
-	'USER_AUTHENTICATION_RULE': 'rest_framework_simplejwt.authentication.default_user_authentication_rule',
-
-	'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
-	'TOKEN_TYPE_CLAIM': 'token_type',
-
-	'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
-	'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
-	'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
-}
 # 隐藏右侧SimpleUI广告链接和使用分析
 SIMPLEUI_HOME_INFO = False
 SIMPLEUI_ANALYSIS = False
-# SIMPLEUI_LOGO = 'https://s21.ax1x.com/2024/05/06/pkEGSK0.png'
-# settings.py
+
+# 设置缓存
+CACHES = {
+	'default': {
+		'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+		'LOCATION': 'unique-snowflake',
+	}
+}

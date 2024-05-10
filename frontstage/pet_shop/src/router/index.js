@@ -1,31 +1,27 @@
+import {createRouter, createWebHistory} from 'vue-router'
+import CommodityList from '@/views/CommodityList.vue'
+import CommodityDetail from '@/views/CommodityDetail.vue'
+import Favorites from '@/views/Favorites.vue'
+import Messages from '@/views/Messages.vue'
+import Orders from '@/views/Orders.vue'
+import ShoppingCart from '@/views/ShoppingCart.vue'
+import Login from '@/views/Login.vue'
+import Register from '@/views/Register.vue'
 
-import {createRouter, createWebHashHistory} from 'vue-router'
-import Home from '../components/HomePage.vue'
-import Commodity from '../components/CommodityItem.vue'
-import Detail from '../components/CommodityDetail.vue'
-import Shopper from '../components/ShopperProfile.vue'
-import Login from '../components/LoginComponent.vue'
-import Shopcart from '../components/ShoppingCart.vue'
-import Error from '../components/ErrorPage.vue'
-
-// 定义路由
 const routes = [
-    {path: '/', component: Home, meta: {title: '首页'}},
-    {path: '/commodity', component: Commodity, meta: {title: '商品列表页'}},
-    // :id是设置路由变量
-    {path: '/commodity/detail/:id', component: Detail, meta: {title: '商品详细页'}},
-    {path: '/shopper', component: Shopper, meta: {title: '个人中心页'}},
-    {path: '/shopper/login', component: Login, meta: {title: '用户登录页'}},
-    {path: '/shopper/shopcart', component: Shopcart, meta: {title: '我的购物车'}},
-    // 路由匹配
-    {path: '/:pathMatch(.*)*', component: Error, meta: {title: '页面丢失'}},
+    {path: '/commodity/list', component: CommodityList},
+    {path: '/commodity/detail/:id', component: CommodityDetail},
+    {path: '/operation/favorites', component: Favorites},
+    {path: '/operation/messages', component: Messages},
+    {path: '/trade/orders', component: Orders},
+    {path: '/trade/shopping-carts', component: ShoppingCart},
+    {path: '/accounts/login', component: Login},
+    {path: '/accounts/register', component: Register},
 ]
 
-// 创建路由对象
 const router = createRouter({
-    // 设置历史记录模式
-    history: createWebHashHistory(),
-    // routes: routes的缩写
-    routes,
+    history: createWebHistory(process.env.BASE_URL),
+    routes
 })
+
 export default router

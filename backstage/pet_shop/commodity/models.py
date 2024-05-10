@@ -1,5 +1,4 @@
 from django.db import models
-from django.contrib.auth.models import User
 
 
 # Create your models here.
@@ -15,11 +14,7 @@ class CommodityInfos(models.Model):
 	types = models.ForeignKey(to='CommodityCategories', on_delete=models.CASCADE, verbose_name='商品类型')
 	sold = models.IntegerField(verbose_name='已售数量', default=0)
 	stock_quantity = models.PositiveIntegerField(verbose_name='库存数量', blank=True)
-	created_by = models.ForeignKey(
-		User, related_name='created_commodities',
-		on_delete=models.SET_NULL, null=True,
-		verbose_name='创建人'
-	)
+	created_by = models.CharField(null=True, verbose_name='创建人', blank=True, max_length=32)
 	created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
 	updated_by = models.CharField(null=True, verbose_name='更新人', blank=True, max_length=32)
 	updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间')
@@ -34,7 +29,7 @@ class CommodityInfos(models.Model):
 
 # 商品类型表
 class CommodityCategories(models.Model):
-	title = models.CharField('类型', max_length=100)
+	title = models.CharField('类型', max_length=100, unique=True)
 	parent_category = models.ForeignKey(
 		'self', on_delete=models.CASCADE, null=True, blank=True,
 		related_name='sub_categories', verbose_name='父级类型'

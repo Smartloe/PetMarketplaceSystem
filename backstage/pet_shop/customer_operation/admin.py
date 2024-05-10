@@ -29,3 +29,12 @@ class UserAddressAdmin(admin.ModelAdmin):
 	list_per_page = 10
 	# 在数据列表页设置每一页显示最大上限的数据量
 	list_max_show_all = 200
+
+
+@admin.register(UserComment)
+class UserCommentAdmin(admin.ModelAdmin):
+	list_display = ["user", "commodity", "rating", "is_show", "created_time"]
+	# 在数据列表页设置每一页显示的数据量
+	list_per_page = 10
+	# 在数据列表页设置每一页显示最大上限的数据量
+	list_max_show_all = 200

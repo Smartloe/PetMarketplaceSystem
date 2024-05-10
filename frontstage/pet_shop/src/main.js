@@ -4,7 +4,7 @@ import App from './App.vue';
 import router from './router';
 import store from './store';
 import axios from './axios';
-import base from './components/BaseComponent.vue';
+import base from './components/Header.vue';
 import footer from './components/Footer.vue';
 
 // 导入Element Plus库及其样式
