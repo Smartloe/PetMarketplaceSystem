@@ -88,3 +88,9 @@ export default {
 		}
 
 		const handleFileUpload = (response) => {
+			newMessage.value.file = response.data.file
+		}
+	}
+}
+
+</script>

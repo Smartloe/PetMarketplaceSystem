@@ -9,10 +9,10 @@ module.exports = {
         port: 8010,
         open: true,
         proxy: {
-            '/': {
+            '/api': {
                 target: 'http://127.0.0.1:8000/',
                 changeOrigin: true,
-                pathRewrite: {'^/': ''},
+                pathRewrite: {'^/api': ''},
             },
         },
     },
@@ -21,7 +21,7 @@ module.exports = {
         resolve: {
             alias: {
                 "~@": __dirname,
-                "@": path.resolve(__dirname, "./src")
+                "@": path.resolve(__dirname, "src")
             }
         },
         module: {
@@ -30,7 +30,8 @@ module.exports = {
                     test: /\.mjs$/,
                     include: /node_modules/,
                     type: 'javascript/auto'
-                }
+                },
+
             ]
         }
     },
