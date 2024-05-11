@@ -7,8 +7,10 @@ import Orders from '@/views/Orders.vue'
 import ShoppingCart from '@/views/ShoppingCart.vue'
 import Login from '@/views/Login.vue'
 import Register from '@/views/Register.vue'
+import Home from '@/views/Home.vue'
 
 const routes = [
+    {path: '/', component: Home, meta: {title: '首页'}},
     {path: '/commodity/list', component: CommodityList},
     {path: '/commodity/detail/:id', component: CommodityDetail},
     {path: '/operation/favorites', component: Favorites},

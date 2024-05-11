@@ -29,6 +29,8 @@ class UserAddressAdmin(admin.ModelAdmin):
 	list_per_page = 10
 	# 在数据列表页设置每一页显示最大上限的数据量
 	list_max_show_all = 200
+	# 设置可搜索的字段
+	search_fields = ['signer_name', 'signer_mobile']
 
 
 @admin.register(UserComment)

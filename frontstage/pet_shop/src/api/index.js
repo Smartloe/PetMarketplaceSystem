@@ -8,12 +8,22 @@ const instance = axios.create({
     }
 })
 
-export const loginUser = (username, password, code) => {
-    return instance.post('/accounts/login/', {username, password, code})
-}
 
-export const registerUser = (username, email, password, password2) => {
-    return instance.post('/accounts/register/', {username, email, password, password2})
-}
-
-// 添加其他 API 调用方法
+export const getCommodities = () => instance.get('/commodity/list/')
+export const getCommodityDetail = (id) => instance.get(`/commodity/detail/${id}/`)
+export const getAdvertisements = () => instance.get('/merchant/advertisements/')
+export const addToCart = (data) => instance.post('/trade/shopping-carts/', data)
+export const getCartItems = () => instance.get('/trade/shopping-carts/')
+export const updateCartItem = (id, data) => instance.put(`/trade/shopping-carts/${id}/`, data)
+export const removeCartItem = (id) => instance.delete(`/trade/shopping-carts/${id}/`)
+export const placeOrder = (data) => instance.post('/trade/orders/', data)
+export const getUserProfile = () => instance.get('/accounts/profiles/')
+export const updateUserProfile = (data) => instance.put('/accounts/profiles/me/', data)
+export const getUserFavorites = () => instance.get('/operation/favorites/')
+export const addToFavorites = (data) => instance.post('/operation/favorites/', data)
+export const removeFromFavorites = (id) => instance.delete(`/operation/favorites/${id}/`)
+export const getUserMessages = () => instance.get('/operation/messages/')
+export const createUserMessage = (data) => instance.post('/operation/messages/', data)
+export const getUserOrders = () => instance.get('/trade/orders/')
+export const login = (data) => instance.post('/accounts/login/', data)
+export const register = (data) => instance.post('/accounts/register/', data)

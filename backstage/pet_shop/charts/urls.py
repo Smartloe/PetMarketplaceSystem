@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
 @Author: Chenxr
-@Date:   2024/5/7 18:30
+@Date:   2024/5/11 10:20
 @Last Modified by:   Chenxr
-@Last Modified time: 2024/5/7 18:30
+@Last Modified time: 2024/5/11 10:20
 @Description: 
 """
 from django.urls import path
-from . import views
+from .views import *
 
 urlpatterns = [
-	path('chart_data/', views.sold_view, name='chart_data'),
+	path('sold_data/', sold_data, name='sold_data'),
 ]
