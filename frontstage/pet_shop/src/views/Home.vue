@@ -3,7 +3,7 @@
 		<div class="common-layout">
 			<el-container>
 				<el-aside>
-					<el-card style="max-width: 600px">
+					<el-card style="height: 300px">
 						<template #header>
 							<div class="card-header">
 								<span>养宠小贴士</span>
@@ -55,10 +55,10 @@
 				<el-main>
 					<!-- 广告轮播 -->
 					<div class="carousel-container"> <!-- 添加一个包裹轮播图的容器 -->
-						<el-carousel height="300px" style="width: 700px;">
+						<el-carousel style="width: 700px; height:300px">
 							<el-carousel-item v-for="ad in advertisements" :key="ad.id">
 								<a :href="ad.ad_link">
-									<img :src="ad.ad_image" alt="Advertisement" class="ad-image"
+									<img :src="getFullImageUrl(ad.ad_image)" alt="Advertisement" class="ad-image"
 										 style="width: 700px; height: 300px;"/>
 								</a>
 							</el-carousel-item>
@@ -78,27 +78,43 @@
 		<!-- 商品分类 -->
 		<el-row :gutter="20">
 			<el-col :span="24">
+
 				<div v-for="(categoryValue, categoryName) in commodities" :key="categoryName">
-					<h2>{{ categoryName }}</h2>
-					<div v-for="subCategory in categoryValue.sub_categories" :key="subCategory.title">
-						<h3>{{ subCategory.title }}</h3>
-						<!-- 商品列表 -->
-						<el-row :gutter="20">
-							<el-col v-for="commodity in subCategory.commodities" :key="commodity.id" :span="6">
-								<el-card class="commodity-card">
-									<img :src="commodity.main_image" alt="Commodity" class="commodity-image"/>
-									<div class="commodity-info">
-										<h3 class="commodity-name">{{ commodity.sku_title }}</h3>
-										<p class="commodity-description">{{ commodity.sku_description }}</p>
-										<p class="commodity-price">价格: {{ commodity.price }}</p>
-										<el-button type="primary" @click="getCommodityDetail(commodity.id)">
-											查看详情
-										</el-button>
-									</div>
-								</el-card>
-							</el-col>
-						</el-row>
+					<div class="common-layout">
+						<el-container>
+							<el-aside width="200px">
+								<h2>{{ categoryName }}</h2>
+							</el-aside>
+							<el-main width="200px">
+								<div v-for="subCategory in categoryValue.sub_categories" :key="subCategory.title">
+									<!-- 商品列表 -->
+									<el-row class="commodity-list-row">
+										<el-col v-for="commodity in subCategory.commodities" :key="commodity.id"
+												:span="6">
+											<el-card class="commodity-card">
+												<img :src="getFullImageUrl(commodity.main_image)" alt="Commodity"
+													 class="commodity-image"/>
+												<div class="commodity-info">
+													<p class="commodity-price">价格: {{ commodity.price }}</p>
+													<el-button type="primary" @click="getCommodityDetail(commodity.id)">
+														查看详情
+													</el-button>
+												</div>
+											</el-card>
+										</el-col>
+									</el-row>
+								</div>
+							</el-main>
+						</el-container>
 					</div>
+					<!-- 分割线 -->
+					<el-divider>
+						<el-icon>
+							<star-filled/>
+						</el-icon>
+					</el-divider>
+
+
 				</div>
 			</el-col>
 		</el-row>
@@ -146,6 +162,16 @@ export default {
 			advertisements,
 			commodities,
 			getCommodityDetail
+		}
+	},
+	methods: {
+		getFullImageUrl(relativeUrl) {
+			// 检查是否已经是完整的 URL
+			if (relativeUrl.startsWith('http')) {
+				return relativeUrl;
+			}
+			// 如果不是，拼接代理的基础路径
+			return `/api${relativeUrl}`;
 		}
 	}
 }
@@ -219,5 +245,16 @@ export default {
 	font-size: 16px;
 	color: #333;
 	margin-bottom: 12px;
+}
+
+.commodity-list-row {
+	display: flex;
+	flex-wrap: nowrap;
+	overflow-x: auto;
+}
+
+.commodity-card {
+	flex: 0 0 auto; /* 防止卡片伸缩，保持原始宽度 */
+	margin-right: 20px; /* 如果你想要在卡片之间有间隔 */
 }
 </style>
