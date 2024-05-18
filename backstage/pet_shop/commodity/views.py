@@ -1,7 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
+from django.db.models import Q
 from .models import *
 from .serializers import *
 
@@ -57,8 +57,8 @@ class commodityView(APIView):
 					if sub_category['title'] == category.title:
 						sub_category['commodities'] = commodities_serializer.data
 						break
-			# else:
-			# 	data[category.title]['commodities'] = commodities_serializer.data
+		# else:
+		# 	data[category.title]['commodities'] = commodities_serializer.data
 
 		return Response(data)
 
@@ -91,3 +91,26 @@ class detailView(APIView):
 		}
 
 		return Response(data)
+
+
+class CommoditySearchView(APIView):
+	'''
+	商品搜索
+	'''
+	authentication_classes = []
+	permission_classes = []
+
+	def get(self, request):
+		# 从请求参数中获取搜索关键字
+		query = request.GET.get('query', '')
+
+		# 使用Q对象进行模糊查询
+		commodities = CommodityInfos.objects.filter(
+			Q(sku_title__icontains=query) | Q(sku_description__icontains=query)
+		)
+
+		# 序列化查询结果
+		serializer = CommodityInfosSerializer(commodities, many=True)
+
+		# 返回查询结果
+		return Response(serializer.data)

@@ -7,10 +7,10 @@
 @Description: 
 """
 from django.urls import path
-
 from .views import *
 
 urlpatterns = [
 	path('list/', commodityView.as_view(), name='list'),
 	path('detail/<int:pk>/', detailView.as_view(), name='detail'),
+	path('search/', CommoditySearchView.as_view(), name='search'),
 ]

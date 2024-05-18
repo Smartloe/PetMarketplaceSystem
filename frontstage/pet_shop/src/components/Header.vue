@@ -13,49 +13,41 @@
 		</el-menu-item>
 		<div class="flex-grow"/>
 		<el-menu-item index="1">
-			<el-link type="primary" underline="false">
-				<router-link to="/">首页</router-link>
-			</el-link>
+			<el-link href="/" :underline="false">首页</el-link>
 		</el-menu-item>
 		<el-menu-item index="2">
-			<el-link type="primary" underline="false">
-				<router-link to="/commodity">所有商品</router-link>
-			</el-link>
+			<el-link href="/commodity" :underline="false">所有商品</el-link>
 		</el-menu-item>
 		<el-menu-item index="3">
-			<el-link type="primary" underline="false">
-				<router-link to="/trade/shopping-carts">购物车</router-link>
-			</el-link>
+			<el-link href="/trade/shopping-carts" :underline="false">购物车</el-link>
 		</el-menu-item>
 		<el-menu-item index="4">
-			<el-link type="primary" underline="false">
-				<router-link to="/favorites">我的收藏</router-link>
-			</el-link>
+			<el-link href="/favorites" :underline="false">我的收藏</el-link>
 		</el-menu-item>
 		<el-menu-item index="5">
-			<el-link type="primary" underline="false">
-				<router-link to="/trade/orderst">我的订单</router-link>
-			</el-link>
+			<el-link href="/trade/order" :underline="false">我的订单</el-link>
 		</el-menu-item>
 		<el-menu-item index="6">
-			<router-link to="/messages">我的留言</router-link>
+			<el-link href="/messages" :underline="false">我的留言</el-link>
 		</el-menu-item>
 		<el-sub-menu index="7">
-			<template #title>用户中心</template>
+			<template #title>
+				用户中心
+			</template>
 			<el-menu-item index="2-1">
 				<p v-if="!isLoggedIn">
-					<router-link to="/accounts/login">登录</router-link>
+					<el-link href="/accounts/login" :underline="false">登录</el-link>
 				</p>
 				<p v-if="isLoggedIn">
-					<router-link to="/accounts/user-center">个人信息</router-link>
+					<el-link href="/accounts/user-center" :underline="false">个人信息</el-link>
 				</p>
 			</el-menu-item>
 			<el-menu-item index="2-2">
 				<p v-if="!isLoggedIn">
-					<router-link to="/accounts/register">注册</router-link>
+					<el-link href="/accounts/register" :underline="false">注册</el-link>
 				</p>
 				<p v-if="isLoggedIn">
-					<a href="#" @click.prevent="logout">登出</a>
+					<el-link :underline="false" @click.prevent="logout">登出</el-link>
 				</p>
 			</el-menu-item>
 		</el-sub-menu>
@@ -66,7 +58,6 @@
 <script>
 import {computed} from 'vue'
 import {useStore} from 'vuex'
-import {StarFilled} from "@element-plus/icons-vue";
 
 export default {
 	setup() {

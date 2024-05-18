@@ -1,52 +1,83 @@
 <template>
-	<el-row :gutter="20">
-		<!-- 左侧分类栏 -->
-		<el-col :span="6">
-			<el-collapse v-model="activeNames" accordion>
-				<!-- 遍历商品大类 -->
-				<el-collapse-item
-					v-for="(categoryValue, categoryName) in commodities"
-					:key="categoryName"
-					:name="categoryName"
-				>
-					<template #title>
-						<h2>{{ categoryName }}</h2>
-					</template>
-					<!-- 遍历每个大类中的小类 -->
-					<div
-						v-for="subCategory in categoryValue.sub_categories"
-						:key="subCategory.title"
-						@click.stop="showCommodities(subCategory.commodities)"
-					>
-						<p>{{ subCategory.title }}</p>
-					</div>
-				</el-collapse-item>
-			</el-collapse>
-		</el-col>
+	<div class="home">
 
-		<!-- 右侧商品展示栏 -->
-		<el-col :span="18">
-			<el-row :gutter="20">
-				<el-col
-					v-for="commodity in selectedCommodities"
-					:key="commodity.id"
-					:span="8"
-				>
-					<el-card class="commodity-card">
-						<img
-							:src="getFullImageUrl(commodity.main_image)"
-							alt="Commodity"
-							class="commodity-image"
-						/>
-						<div class="commodity-info">
-							<h4>{{ commodity.sku_title }}</h4>
-							<p class="commodity-price">价格: {{ commodity.price }}</p>
+		<!-- 广告轮播 -->
+		<div class="carousel-container"> <!-- 添加一个包裹轮播图的容器 -->
+			<el-carousel style="width: 710px; height:300px">
+				<el-carousel-item v-for="ad in advertisements" :key="ad.id">
+					<a :href="ad.ad_link">
+						<img :src="ad.ad_image" alt="Advertisement" class="ad-image"
+							 style="width: 710px; height: 300px;"/>
+					</a>
+				</el-carousel-item>
+			</el-carousel>
+		</div>
+
+
+		<!-- 分割线 -->
+		<el-divider>
+			<el-icon>
+				<star-filled/>
+			</el-icon>
+		</el-divider>
+
+		<el-row :gutter="20">
+			<!-- 左侧分类栏 -->
+			<el-col :span="6">
+				<el-collapse v-model="activeNames" accordion>
+					<!-- 遍历商品大类 -->
+					<el-collapse-item
+						v-for="(categoryValue, categoryName) in commodities"
+						:key="categoryName"
+						:name="categoryName"
+					>
+						<template #title>
+							<h2>{{ categoryName }}</h2>
+						</template>
+						<!-- 遍历每个大类中的小类 -->
+						<div
+							v-for="subCategory in categoryValue.sub_categories"
+							:key="subCategory.title"
+							@click.stop="showCommodities(subCategory.commodities)"
+						>
+							<p>{{ subCategory.title }}</p>
 						</div>
-					</el-card>
-				</el-col>
-			</el-row>
-		</el-col>
-	</el-row>
+					</el-collapse-item>
+				</el-collapse>
+			</el-col>
+
+			<!-- 右侧商品展示栏 -->
+			<el-col :span="18">
+				<el-row :gutter="20">
+					<el-col
+						v-for="commodity in selectedCommodities"
+						:key="commodity.id"
+						:span="8"
+					>
+						<el-card class="commodity-card">
+							<img
+								:src="getFullImageUrl(commodity.main_image)"
+								alt="Commodity"
+								class="commodity-image"
+							/>
+							<div class="commodity-info">
+								<h4>{{ commodity.sku_title }}</h4>
+								<p class="commodity-price">价格: {{ commodity.price }}</p>
+							</div>
+						</el-card>
+					</el-col>
+				</el-row>
+			</el-col>
+		</el-row>
+	</div>
+	<!-- 分割线 -->
+	<el-divider>
+		<el-icon>
+			<star-filled/>
+		</el-icon>
+	</el-divider>
+
+
 </template>
 
 <script>
@@ -111,6 +142,12 @@ export default {
 </script>
 
 <style scoped>
+.ad-image {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
 .commodity-card {
 	margin-top: 20px;
 }

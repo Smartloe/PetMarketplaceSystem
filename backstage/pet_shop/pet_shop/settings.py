@@ -147,10 +147,12 @@ REST_FRAMEWORK = {
 		'rest_framework.authentication.SessionAuthentication',
 		'rest_framework.authentication.BasicAuthentication',
 		'rest_framework_simplejwt.authentication.JWTAuthentication',
+	),
+	'DEFAULT_PERMISSION_CLASSES': [
+		'rest_framework.permissions.IsAuthenticated',
 		'trade.permissions.IsOwnerOrReadOnly',
 		'customer_operation.permissions.IsOwnerOrReadOnly',
-
-	),
+	],
 }
 
 # 设置跨域访问
