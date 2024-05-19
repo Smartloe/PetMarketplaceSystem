@@ -91,3 +91,9 @@ export const partialUpdateUserComment = (id, data) => instance.patch(`/operation
 
 // 删除用户评论
 export const deleteUserComment = (id) => instance.delete(`/operation/usercomments/${id}/`)
+
+// 用户注册
+export const registerUser = (data) => instance.post('/accounts/register/', data)
+
+// 用户登录
+export const loginUser = (data) => instance.post('/accounts/login/', data)

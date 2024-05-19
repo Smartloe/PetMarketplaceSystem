@@ -24,15 +24,21 @@
 
 		<!-- 右侧商品展示栏 -->
 		<el-col :span="18">
-			<el-input
-				v-model="searchQuery"
-				placeholder="搜索商品"
-				clearable
-				@clear="fetchCommodities"
-				@keyup.enter="searchCommoditiesAction"
-			>
-				<el-button :icon="Search" circle @click="searchCommoditiesAction"></el-button>
-			</el-input>
+			<p></p>
+			<div class="search-container">
+				<el-input
+					v-model="searchQuery"
+					placeholder="搜索商品"
+					clearable
+					@clear="fetchCommodities"
+					@keyup.enter="searchCommoditiesAction"
+					class="search-input"
+				>
+					<template #append>
+						<el-button :icon="Search" @click="searchCommoditiesAction"></el-button>
+					</template>
+				</el-input>
+			</div>
 
 			<el-row :gutter="20">
 				<el-col
@@ -48,8 +54,7 @@
 						/>
 						<div class="commodity-info">
 							<h4>{{ commodity.sku_title }}</h4>
-							<p class="commodity-price">原价: ￥{{ commodity.price*1.2 }}</p>
-							<p class="commodity-price">现价: ￥{{ commodity.price }}</p>
+							<p class="commodity-price">秒杀价: ￥{{ commodity.price }}</p>
 						</div>
 					</el-card>
 				</el-col>
@@ -69,6 +74,7 @@
 import {ref, computed} from 'vue';
 import {useRouter} from 'vue-router';
 import {getCommodities, searchCommodities} from "@/api";
+import {Search} from '@element-plus/icons-vue'
 
 export default {
 	name: 'CommodityList',
@@ -124,6 +130,7 @@ export default {
 			filteredCommodities,
 			activeNames,
 			searchQuery,
+			Search,
 			currentPage,
 			pageSize,
 			paginatedCommodities,
@@ -138,6 +145,18 @@ export default {
 </script>
 
 <style scoped>
+.search-container {
+	display: flex;
+	justify-content: flex-end; /* 使搜索框靠右对齐 */
+	margin-bottom: 20px; /* 添加一些底部外边距 */
+}
+
+.search-input {
+	width: 50%; /* 调整搜索框的宽度 */
+	max-width: 300px; /* 设置搜索框的最大宽度 */
+	height: 40px; /* 调整搜索框的高度 */
+}
+
 .commodity-card {
 	margin-top: 20px;
 	max-width: 300px;
