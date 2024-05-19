@@ -2,8 +2,9 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.db.models import Q
-from .models import *
 from .serializers import *
+from rest_framework.generics import ListAPIView
+from customer_operation.models import UserComment
 
 
 # Create your views here.
@@ -114,3 +115,17 @@ class CommoditySearchView(APIView):
 
 		# 返回查询结果
 		return Response(serializer.data)
+
+
+class CommodityCommentsView(ListAPIView):
+	"""
+	商品评论列表
+	"""
+	serializer_class = GoodsCommentSerializer
+
+	def get_queryset(self):
+		"""
+		重写get_queryset方法来返回一个商品的所有评论
+		"""
+		commodity_id = self.kwargs['pk']  # 从URL捕获的商品ID
+		return UserComment.objects.filter(commodity__id=commodity_id, is_show=True)

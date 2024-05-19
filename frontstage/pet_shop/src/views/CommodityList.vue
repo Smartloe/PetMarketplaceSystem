@@ -3,18 +3,16 @@
 		<!-- 左侧分类栏 -->
 		<el-col :span="6">
 			<el-collapse v-model="activeNames" accordion>
-				<!-- 遍历商品大类 -->
 				<el-collapse-item
-					v-for="(categoryValue, categoryName) in commodities"
+					v-for="(category, categoryName) in commodities"
 					:key="categoryName"
 					:name="categoryName"
 				>
 					<template #title>
 						<h2>{{ categoryName }}</h2>
 					</template>
-					<!-- 遍历每个大类中的小类 -->
 					<div
-						v-for="subCategory in categoryValue.sub_categories"
+						v-for="subCategory in category.sub_categories"
 						:key="subCategory.title"
 						@click.stop="showCommodities(subCategory.commodities)"
 					>
@@ -26,13 +24,23 @@
 
 		<!-- 右侧商品展示栏 -->
 		<el-col :span="18">
+			<el-input
+				v-model="searchQuery"
+				placeholder="搜索商品"
+				clearable
+				@clear="fetchCommodities"
+				@keyup.enter="searchCommoditiesAction"
+			>
+				<el-button :icon="Search" circle @click="searchCommoditiesAction"></el-button>
+			</el-input>
+
 			<el-row :gutter="20">
 				<el-col
-					v-for="commodity in selectedCommodities"
+					v-for="commodity in paginatedCommodities"
 					:key="commodity.id"
 					:span="8"
 				>
-					<el-card class="commodity-card">
+					<el-card class="commodity-card" @click="getCommodityDetail(commodity.id)">
 						<img
 							:src="getFullImageUrl(commodity.main_image)"
 							alt="Commodity"
@@ -40,71 +48,90 @@
 						/>
 						<div class="commodity-info">
 							<h4>{{ commodity.sku_title }}</h4>
-							<p class="commodity-price">价格: {{ commodity.price }}</p>
+							<p class="commodity-price">原价: ￥{{ commodity.price*1.2 }}</p>
+							<p class="commodity-price">现价: ￥{{ commodity.price }}</p>
 						</div>
 					</el-card>
 				</el-col>
 			</el-row>
+			<el-pagination
+				@current-change="handleCurrentChange"
+				:current-page="currentPage"
+				:page-size="pageSize"
+				layout="prev, pager, next"
+				:total="filteredCommodities.length">
+			</el-pagination>
 		</el-col>
 	</el-row>
 </template>
 
 <script>
-import {ref} from 'vue';
+import {ref, computed} from 'vue';
 import {useRouter} from 'vue-router';
-import {getCommodities, getAdvertisements} from "@/api";
-import {StarFilled} from "@element-plus/icons-vue";
+import {getCommodities, searchCommodities} from "@/api";
 
 export default {
-	name: 'Home',
-	components: {StarFilled},
+	name: 'CommodityList',
 	setup() {
-		const advertisements = ref([]);
-		const commodities = ref([]);
-		const selectedCommodities = ref([]); // 定义用于显示选中商品的响应式引用
-		const activeNames = ref([]); // 初始化为一个空数组
+		const commodities = ref({});
+		const filteredCommodities = ref([]);
+		const activeNames = ref([]);
+		const searchQuery = ref("");
+		const currentPage = ref(1);
+		const pageSize = ref(6);
 		const router = useRouter();
 
-		// 获取广告信息
-		getAdvertisements().then(response => {
-			advertisements.value = response.data.results;
-		}).catch(error => {
-			console.error('Error fetching advertisements:', error);
-		});
+		const fetchCommodities = () => {
+			getCommodities().then(response => {
+				commodities.value = response.data;
+				filteredCommodities.value = Object.values(response.data).flatMap(category =>
+					category.sub_categories.flatMap(subCategory => subCategory.commodities)
+				);
+			});
+		};
 
-		// 获取商品列表
-		getCommodities().then(response => {
-			commodities.value = response.data;
-		}).catch(error => {
-			console.error('Error fetching commodities:', error);
-		});
-
-		// 显示选中的商品
 		const showCommodities = (commoditiesToShow) => {
-			selectedCommodities.value = commoditiesToShow;
+			filteredCommodities.value = commoditiesToShow;
+			currentPage.value = 1; // 重置到第一页
 		};
 
-		// 查看商品详情
+		const searchCommoditiesAction = () => {
+			searchQuery.value ? searchCommodities(searchQuery.value).then(response => {
+				filteredCommodities.value = response.data;
+				currentPage.value = 1; // 重置到第一页
+			}) : fetchCommodities();
+		};
+
 		const getCommodityDetail = (commodityId) => {
-			router.push({name: 'CommodityDetails', params: {id: commodityId}});
+			router.push({name: 'CommodityDetail', params: {id: commodityId}});
 		};
 
-		// 获取完整的图片URL
-		const getFullImageUrl = (relativeUrl) => {
-			if (relativeUrl.startsWith('http')) {
-				return relativeUrl;
-			}
-			return `/api${relativeUrl}`;
+		const getFullImageUrl = (relativeUrl) => relativeUrl.startsWith('http') ? relativeUrl : `/api${relativeUrl}`;
+
+		const paginatedCommodities = computed(() => {
+			const start = (currentPage.value - 1) * pageSize.value;
+			return filteredCommodities.value.slice(start, start + pageSize.value);
+		});
+
+		const handleCurrentChange = val => {
+			currentPage.value = val;
 		};
+
+		fetchCommodities();
 
 		return {
-			advertisements,
 			commodities,
-			selectedCommodities,
+			filteredCommodities,
 			activeNames,
+			searchQuery,
+			currentPage,
+			pageSize,
+			paginatedCommodities,
 			showCommodities,
+			searchCommoditiesAction,
 			getCommodityDetail,
 			getFullImageUrl,
+			handleCurrentChange,
 		};
 	},
 };
@@ -113,6 +140,11 @@ export default {
 <style scoped>
 .commodity-card {
 	margin-top: 20px;
+	max-width: 300px;
+	height: 400px;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
 }
 
 .commodity-image {
@@ -124,6 +156,16 @@ export default {
 .commodity-info {
 	text-align: center;
 	margin-top: 10px;
+	flex-grow: 1;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+}
+
+.commodity-name, .commodity-price {
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
 }
 
 .commodity-name {
@@ -135,53 +177,5 @@ export default {
 	font-size: 14px;
 	color: #909399;
 	margin-bottom: 10px;
-}
-
-.carousel-container {
-	display: flex;
-	justify-content: center; /* 水平居中 */
-}
-
-.commodity-card {
-	max-width: 300px;
-	margin-bottom: 20px;
-}
-
-.commodity-image {
-	width: 100%;
-	height: auto;
-	object-fit: cover;
-}
-
-.commodity-info {
-	padding: 10px;
-}
-
-.commodity-name {
-	font-size: 18px;
-	margin-bottom: 8px;
-}
-
-.commodity-description {
-	font-size: 14px;
-	color: #666;
-	margin-bottom: 8px;
-}
-
-.commodity-price {
-	font-size: 16px;
-	color: #333;
-	margin-bottom: 12px;
-}
-
-.commodity-list-row {
-	display: flex;
-	flex-wrap: nowrap;
-	overflow-x: auto;
-}
-
-.commodity-card {
-	flex: 0 0 auto; /* 防止卡片伸缩，保持原始宽度 */
-	margin-right: 20px; /* 如果你想要在卡片之间有间隔 */
 }
 </style>

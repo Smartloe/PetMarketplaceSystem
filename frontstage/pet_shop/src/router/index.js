@@ -15,7 +15,7 @@ const routes = [
     {path: '/', component: Home, meta: {title: '首页'}},
     {path: '/commodity', component: CommodityList, meta: {title: '商品列表'}},
     // :id 是一个动态参数，可以匹配任意值,用来设置路由变量
-    {path: '/commodity/detail/:id', component: CommodityDetail, meta: {title: '商品详情'}},
+    {path: '/commodity/detail/:id', component: CommodityDetail, name: 'CommodityDetail', meta: {title: '商品详情'}},
     {path: '/favorites', component: Favorites, meta: {title: '我的收藏'}},
     {path: '/messages', component: Messages, meta: {title: '我的留言'}},
     {path: '/trade/orders', component: Orders, meta: {title: '我的订单'}},

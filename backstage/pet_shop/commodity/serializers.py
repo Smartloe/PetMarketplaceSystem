@@ -8,6 +8,7 @@
 """
 from rest_framework import serializers
 from .models import *
+from customer_operation.models import UserComment as CommodityUserComment
 
 
 # 定义ModelSerializer类
@@ -21,3 +22,9 @@ class CommodityInfosSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = CommodityInfos
 		fields = '__all__'
+
+
+class GoodsCommentSerializer(serializers.ModelSerializer):
+	class Meta:
+		model = CommodityUserComment
+		fields = '__all__'  # 或者指定需要序列化的字段列表

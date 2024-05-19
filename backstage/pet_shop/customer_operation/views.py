@@ -52,8 +52,17 @@ class UserCommentViewSet(viewsets.ModelViewSet):
 	"""
 	queryset = UserComment.objects.all()
 	serializer_class = UserCommentSerializer
-	# 仅允许登录用户
-	permission_classes = [permissions.IsAuthenticated]
+
+	def get_permissions(self):
+		"""
+		实例化并返回此视图所需的权限列表。
+		"""
+		# 对于安全的方法（如读取操作），允许任何用户访问
+		if self.action in ['list', 'retrieve']:
+			permission_classes = [permissions.AllowAny]
+		else:  # 对于写入操作，仅允许已认证的用户访问
+			permission_classes = [permissions.IsAuthenticated]
+		return [permission() for permission in permission_classes]
 
 	def perform_create(self, serializer):
 		# 自动设置评论的用户为当前登录用户
