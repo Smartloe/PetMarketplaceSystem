@@ -95,5 +95,7 @@ export const deleteUserComment = (id) => instance.delete(`/operation/usercomment
 // 用户注册
 export const registerUser = (data) => instance.post('/accounts/register/', data)
 
+// 获取验证码
+export const getCaptcha = (username) => instance.get('/accounts/captcha/', {params: {username}});
 // 用户登录
 export const loginUser = (data) => instance.post('/accounts/login/', data)

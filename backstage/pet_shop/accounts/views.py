@@ -62,7 +62,7 @@ class LoginView(APIView):
 			code = serializer.validated_data['code']
 			# 从缓存中获取验证码
 			cached_code = cache.get(f'verify_code_{username}')
-			if cached_code and cached_code == code:
+			if cached_code and cached_code.lower() == code.lower():
 				user = authenticate(request, username=username, password=password)
 				if user is not None:
 					# 使用django自带的login函数进行登录

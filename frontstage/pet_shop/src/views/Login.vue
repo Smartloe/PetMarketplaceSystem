@@ -1,137 +1,129 @@
 <template>
-	<div class="login-container">
-		<el-form ref="loginForm" :model="loginForm" :rules="loginRules" class="login-form" auto-complete="on" label-position="left">
-			<h3 class="title">用户登录</h3>
-			<el-form-item prop="username">
-				<el-input v-model="loginForm.username" type="text" auto-complete="on" placeholder="用户名"/>
-			</el-form-item>
-			<el-form-item prop="password">
-				<el-input
-					v-model="loginForm.password"
-					:type="passwordType"
-					auto-complete="on"
-					placeholder="密码" @keyup="handleLogin"
-				/>
-				<span class="show-pwd" @click="showPwd">
-          <i :class="passwordType === 'password' ? 'el-icon-eye-open' : 'el-icon-eye-close'"/>
-        </span>
-			</el-form-item>
-			<el-form-item prop="captcha">
-				<el-row :gutter="20">
-					<el-col :span="14">
-						<el-input v-model="loginForm.captcha" placeholder="验证码"/>
-					</el-col>
-					<el-col :span="10">
-						<img :src="`data:image/jpeg;base64,${captchaData}`" alt="验证码" class="captcha-image" @click="getCaptcha"/>
-					</el-col>
-				</el-row>
-			</el-form-item>
-			<el-button :loading="loading" type="primary" style="width: 100%; margin-bottom: 30px" @click="handleLogin">
-				登录
-			</el-button>
-		</el-form>
+	<div class="login-container" style="background-image: url('/img/注册.png');">
+		<el-card class="login-card">
+			<h2 class="login-title">用户登录</h2>
+			<el-form ref="loginFormRef" :model="loginForm" @submit.prevent="handleLogin">
+				<el-form-item label="用户名" prop="username">
+					<el-input v-model="loginForm.username" autocomplete="off"/>
+				</el-form-item>
+				<el-form-item label="密   码" prop="password">
+					<el-input type="password" v-model="loginForm.password" autocomplete="off"/>
+				</el-form-item>
+				<el-form-item label="验证码" prop="code">
+					<el-input v-model="loginForm.code" autocomplete="off"/>
+				</el-form-item>
+				<div class="captcha-container">
+					<img :src="captchaSrc" @click="fetchCaptcha" alt="验证码"/>
+				</div>
+				<el-form-item class="form-item-button">
+					<el-button type="primary" native-type="submit">登录</el-button>
+				</el-form-item>
+			</el-form>
+		</el-card>
 	</div>
 </template>
 
 <script>
-import {login, getCaptcha} from '@/api'
+import {ref, watch} from 'vue';
+import {useRouter} from 'vue-router';
+import {ElMessage} from 'element-plus';
+import {getCaptcha, loginUser} from '@/api'; // 确保路径正确
 
 export default {
-	// eslint-disable-next-line vue/multi-word-component-names
 	name: 'Login',
-	data() {
-		return {
-			loginForm: {
-				username: '',
-				password: '',
-				captcha: ''
-			},
-			loginRules: {
-				username: [{required: true, trigger: 'blur', message: '请输入用户名'}],
-				password: [{required: true, trigger: 'blur', message: '请输入密码'}],
-				captcha: [{required: true, trigger: 'blur', message: '请输入验证码'}]
-			},
-			passwordType: 'password',
-			captchaData: '',
-			loading: false
-		}
-	},
-	created() {
-		this.getCaptcha()
-	},
-	methods: {
-		getCaptcha() {
-			getCaptcha().then(response => {
-				this.captchaData = response.img
-			})
-		},
-		showPwd() {
-			this.passwordType === 'password' ? (this.passwordType = 'text') : (this.passwordType = 'password')
-		},
-		handleLogin() {
-			this.$refs.loginForm.validate(valid => {
-				if (valid) {
-					this.loading = true
-					login(this.loginForm)
-						.then(response => {
-							// 登录成功后的处理逻辑
-							console.log(response)
-							this.$message.success('登录成功')
-							// 跳转到其他页面
-							this.$router.push('/')
-						})
-						.catch(error => {
-							this.$message.error(error.message)
-							this.getCaptcha()
-						})
-						.finally(() => {
-							this.loading = false
-						})
-				} else {
-					return false
+	setup() {
+		const loginFormRef = ref(null);
+		const router = useRouter();
+		const loginForm = ref({
+			username: '',
+			password: '',
+			code: '',
+		});
+		const captchaSrc = ref('');
+
+		const fetchCaptcha = () => {
+			if (loginForm.value.username) {
+				getCaptcha(loginForm.value.username).then(response => {
+					captchaSrc.value = 'data:image/png;base64,' + response.data.img;
+					console.log(response.data.code)
+				}).catch(error => {
+					ElMessage.error('获取验证码失败');
+					console.error(error);
+				});
+			}
+		};
+
+		watch(() => loginForm.value.username, (newVal) => {
+			if (newVal) {
+				fetchCaptcha();
+			}
+		});
+
+		const handleLogin = () => {
+			loginUser(loginForm.value).then(response => {
+				if (response.data.status === 200) {
+					ElMessage.success(response.data.message);
+					router.push('/'); // 登录成功后的跳转，根据需要调整
 				}
-			})
-		}
+			}).catch(error => {
+				if (error.response && error.response.data) {
+					ElMessage.error(error.response.data.error);
+				} else {
+					ElMessage.error('登录失败，请稍后再试');
+				}
+				fetchCaptcha(); // 无论登录成功或失败都重新获取验证码
+			});
+		};
+
+		// 当组件挂载时获取验证码
+		fetchCaptcha();
+
+		return {
+			loginFormRef,
+			loginForm,
+			captchaSrc,
+			fetchCaptcha,
+			handleLogin,
+		};
 	}
-}
+};
 </script>
 
-
-<style lang="scss">
+<style scoped>
 .login-container {
-	.login-form {
-		position: absolute;
-		left: 0;
-		right: 0;
-		width: 520px;
-		max-width: 100%;
-		padding: 35px 35px 15px 35px;
-		margin: 120px auto;
-		background: #fff;
-		border-radius: 4px;
-		box-shadow: 0 0 25px #cac6c6;
-	}
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	height: 100vh;
+	background-size: cover;
+	background-position: center;
+}
 
-	.title {
-		margin: 0 auto 30px auto;
-		text-align: center;
-		color: #707070;
-	}
+.login-card {
+	width: 400px;
+	padding: 25px;
+	box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+	border-radius: 10px;
+}
 
-	.show-pwd {
-		position: absolute;
-		right: 10px;
-		top: 7px;
-		font-size: 16px;
-		color: #a0a0a0;
-		cursor: pointer;
-		user-select: none;
-	}
+.login-title {
+	text-align: center;
+	margin-bottom: 20px;
+}
 
-	.captcha-image {
-		width: 100%;
-		height: 40px;
-		cursor: pointer;
-	}
+.form-item-button {
+	display: flex;
+	justify-content: center;
+}
+
+.captcha-container {
+	display: flex;
+	justify-content: center;
+	margin-bottom: 20px;
+}
+
+.captcha-container img {
+	cursor: pointer;
+	height: 50px;
 }
 </style>
