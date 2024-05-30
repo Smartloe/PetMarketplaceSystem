@@ -66,13 +66,28 @@ export const addToFavorites = (data) => instance.post('/operation/favorites/', d
 export const removeFromFavorites = (id) => instance.delete(`/operation/favorites/${id}/`)
 
 // 获取用户留言列表
-export const getUserMessages = () => instance.get('/operation/messages/')
+export const getUserMessages = () => instance.get('/operation/messages/');
 
 // 创建用户留言
-export const createUserMessage = (data) => instance.post('/operation/messages/', data)
+export const createUserMessage = (data) => instance.post('/operation/messages/', data);
 
-// 获取用户订单列表
-export const getUserOrders = () => instance.get('/trade/orders/')
+// 更新用户留言
+export const updateUserMessage = (id, data) => instance.put(`/operation/messages/${id}/`, data);
+
+// 删除用户留言
+export const deleteUserMessage = (id) => instance.delete(`/operation/messages/${id}/`);
+
+// 获取单个用户留言详情
+export const getUserMessageDetail = (id) => instance.get(`/operation/messages/${id}/`);
+
+// 获取订单列表
+export const getUserOrders = () => axios.get('/trade/orders/');
+
+// 获取订单详情
+export const getOrderDetail = (id) => axios.get(`/trade/orders/${id}/`);
+
+// 获取订单商品列表
+export const getOrderGoods = (orderId) => axios.get(`/trade/order-goods/`, {params: {order: orderId}});
 
 // 获取用户评论列表
 export const getUserComments = () => instance.get('/operation/usercomments/')
@@ -97,5 +112,6 @@ export const registerUser = (data) => instance.post('/accounts/register/', data)
 
 // 获取验证码
 export const getCaptcha = (username) => instance.get('/accounts/captcha/', {params: {username}});
+
 // 用户登录
 export const loginUser = (data) => instance.post('/accounts/login/', data)

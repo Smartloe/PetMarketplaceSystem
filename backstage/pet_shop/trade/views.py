@@ -3,6 +3,8 @@ from .models import OrderInfos, OrderGoods, ShoppingCart
 from .serializers import OrderInfosSerializer, OrderGoodsSerializer, ShoppingCartSerializer
 from .permissions import IsOwnerOrReadOnly
 from rest_framework.permissions import IsAuthenticated
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 
 
 class OrderInfosViewSet(viewsets.ModelViewSet):
@@ -29,6 +31,7 @@ class OrderGoodsViewSet(viewsets.ModelViewSet):
 		return OrderGoods.objects.filter(order__user=self.request.user)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class ShoppingCartViewSet(viewsets.ModelViewSet):
 	queryset = ShoppingCart.objects.all()
 	serializer_class = ShoppingCartSerializer

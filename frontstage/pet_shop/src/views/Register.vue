@@ -3,13 +3,13 @@
 		<el-card class="register-card">
 			<h2 class="register-title">用户注册</h2>
 			<el-form ref="registerFormRef" :model="registerForm" :rules="rules" @submit.prevent="handleRegister">
-				<el-form-item label="用户名" prop="username">
+				<el-form-item label="&emsp;用户名" prop="username">
 					<el-input v-model="registerForm.username" placeholder="请输入用户名"></el-input>
 				</el-form-item>
 				<el-form-item label="电子邮件" prop="email">
 					<el-input v-model="registerForm.email" placeholder="请输入电子邮件"></el-input>
 				</el-form-item>
-				<el-form-item label="密码" prop="password">
+				<el-form-item label="密&emsp;&emsp;码" prop="password">
 					<el-input type="password" v-model="registerForm.password" placeholder="请输入密码"
 							  autocomplete="off"></el-input>
 				</el-form-item>

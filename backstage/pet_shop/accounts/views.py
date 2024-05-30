@@ -1,4 +1,3 @@
-# accounts/views.py
 from django.contrib.auth import authenticate, login, logout
 from rest_framework import status, viewsets
 from rest_framework.permissions import IsAdminUser
@@ -67,11 +66,14 @@ class LoginView(APIView):
 				if user is not None:
 					# 使用django自带的login函数进行登录
 					login(request, user)
-					print("登录后的", request.user)
 					return Response(
 						{
 							"status": status.HTTP_200_OK,
 							"message": "用户登录成功",
+							"id": user.id,
+							"username": user.username,
+							"email": user.email,
+							"last_login": user.last_login,
 						},
 						status=status.HTTP_200_OK
 					)

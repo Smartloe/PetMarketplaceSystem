@@ -15,6 +15,9 @@
 		<el-menu-item index="1">
 			<el-link href="/" :underline="false">首页</el-link>
 		</el-menu-item>
+		<el-menu-item index="1">
+			<el-link href="/ai-pet-expert" :underline="false">AI宠物顾问</el-link>
+		</el-menu-item>
 		<el-menu-item index="2">
 			<el-link href="/commodity" :underline="false">所有商品</el-link>
 		</el-menu-item>
@@ -25,7 +28,7 @@
 			<el-link href="/favorites" :underline="false">我的收藏</el-link>
 		</el-menu-item>
 		<el-menu-item index="5">
-			<el-link href="/trade/order" :underline="false">我的订单</el-link>
+			<el-link href="/trade/orders" :underline="false">我的订单</el-link>
 		</el-menu-item>
 		<el-menu-item index="6">
 			<el-link href="/messages" :underline="false">我的留言</el-link>

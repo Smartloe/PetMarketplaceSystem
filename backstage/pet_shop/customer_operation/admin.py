@@ -15,7 +15,7 @@ class UserFavAdmin(admin.ModelAdmin):
 
 @admin.register(UserLeavingMessage)
 class UserLeavingMessageAdmin(admin.ModelAdmin):
-	list_display = ['user', 'message_type', "subject", "add_time"]
+	list_display = ['user', 'message_type', "subject", "is_replied", "add_time"]
 	# 在数据列表页设置每一页显示的数据量
 	list_per_page = 10
 	# 在数据列表页设置每一页显示最大上限的数据量

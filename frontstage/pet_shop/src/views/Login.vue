@@ -6,7 +6,7 @@
 				<el-form-item label="用户名" prop="username">
 					<el-input v-model="loginForm.username" autocomplete="off"/>
 				</el-form-item>
-				<el-form-item label="密   码" prop="password">
+				<el-form-item label="密&emsp;码" prop="password">
 					<el-input type="password" v-model="loginForm.password" autocomplete="off"/>
 				</el-form-item>
 				<el-form-item label="验证码" prop="code">
@@ -16,9 +16,12 @@
 					<img :src="captchaSrc" @click="fetchCaptcha" alt="验证码"/>
 				</div>
 				<el-form-item class="form-item-button">
-					<el-button type="primary" native-type="submit">登录</el-button>
+					<el-button type="primary" native-type="submit" class="login-btn">登录</el-button>
 				</el-form-item>
 			</el-form>
+			<div class="card-footer">
+				<el-link class="register-link" type="primary" @click="goToLogin">没有账号？注册</el-link>
+			</div>
 		</el-card>
 	</div>
 </template>
@@ -27,7 +30,8 @@
 import {ref, watch} from 'vue';
 import {useRouter} from 'vue-router';
 import {ElMessage} from 'element-plus';
-import {getCaptcha, loginUser} from '@/api'; // 确保路径正确
+import {getCaptcha, loginUser} from '@/api';
+import store from "@/store"; // 确保路径正确
 
 export default {
 	name: 'Login',
@@ -63,6 +67,10 @@ export default {
 			loginUser(loginForm.value).then(response => {
 				if (response.data.status === 200) {
 					ElMessage.success(response.data.message);
+					store.commit('setUserId', response.data.id); // 假设您有一个 mutation 是 setUserId
+					store.commit('setUserName', response.data.username);
+					store.commit('setLastLogin', response.data.last_login);
+					store.commit('setIsLoggedIn', true); // 更新用户登录状态
 					router.push('/'); // 登录成功后的跳转，根据需要调整
 				}
 			}).catch(error => {
@@ -74,6 +82,10 @@ export default {
 				fetchCaptcha(); // 无论登录成功或失败都重新获取验证码
 			});
 		};
+		const goToRegister = () => {
+			router.push('/register');
+		};
+
 
 		// 当组件挂载时获取验证码
 		fetchCaptcha();
@@ -84,6 +96,7 @@ export default {
 			captchaSrc,
 			fetchCaptcha,
 			handleLogin,
+			goToRegister
 		};
 	}
 };
@@ -114,6 +127,10 @@ export default {
 .form-item-button {
 	display: flex;
 	justify-content: center;
+}
+
+.login-btn {
+	width: 100%; /* 按钮宽度填满容器 */
 }
 
 .captcha-container {

@@ -9,7 +9,7 @@ import Login from '@/views/Login.vue'
 import Register from '@/views/Register.vue'
 import Home from '@/views/Home.vue'
 import UserCenter from '@/views/UserCenter.vue'
-
+import AIPetExpert from '@/views/AIPetExpert.vue';
 //定义路由
 const routes = [
     {path: '/', component: Home, meta: {title: '首页'}},
@@ -23,6 +23,11 @@ const routes = [
     {path: '/accounts/user-center', component: UserCenter, meta: {title: '个人中心'}},
     {path: '/accounts/login', component: Login, meta: {title: '登录'}},
     {path: '/accounts/register', component: Register, meta: {title: '注册'}},
+    {
+        path: '/ai-pet-expert',
+        name: 'AIPetExpert',
+        component: AIPetExpert
+    }
 ]
 // 创建路由对象
 const router = createRouter({

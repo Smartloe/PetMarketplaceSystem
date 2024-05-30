@@ -40,12 +40,15 @@ class UserLeavingMessage(models.Model):
 	)
 	subject = models.CharField(max_length=100, default="", verbose_name="主题")
 	message = models.TextField(default="", verbose_name="留言内容", help_text="留言内容")
-	file = models.FileField(
+	file = models.ImageField(
 		upload_to="leaving_message_imgs/",
-		verbose_name="上传的文件", help_text="上传的文件",
+		verbose_name="上传的图片", help_text="上传的图片件",
 		null=True, blank=True
 	)
 	add_time = models.DateTimeField(auto_now_add=True, verbose_name="添加时间")
+	is_replied = models.BooleanField(default=False, verbose_name="是否已回复")
+	reply_content = models.TextField(default="", verbose_name="回复内容", help_text="回复内容", blank=True, null=True)
+	reply_time = models.DateTimeField(null=True, blank=True, verbose_name="回复时间")
 
 	class Meta:
 		verbose_name = "用户留言"

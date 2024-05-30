@@ -1,80 +1,92 @@
 <template>
-	<div class="shopping-cart">
-		<h1>购物车</h1>
-		<div class="cart-items">
-			<div class="cart-item" v-for="item in cartItems" :key="item.id">
-				<img :src="item.commodity.image" :alt="item.commodity.name" class="cart-item-image"/>
-				<div class="cart-item-info">
-					<h3 class="cart-item-name">{{ item.commodity.name }}</h3>
-					<p class="cart-item-price">¥{{ item.commodity.price }}</p>
-					<el-input-number v-model="item.quantity" @change="updateCartItem(item)"/>
-				</div>
-				<div class="cart-item-actions">
-					<el-button type="danger" @click="removeFromCart(item)">移除</el-button>
-				</div>
-			</div>
-		</div>
-		<div class="cart-summary">
-			<p>总金额: ¥{{ totalPrice }}</p>
-			<el-button type="primary" @click="checkout">去结算</el-button>
-		</div>
+	<div class="shopping-cart-container">
+		<el-card class="shopping-cart-card">
+			<h2 class="shopping-cart-title">购物车</h2>
+			<el-table :data="cartItems" style="width: 100%">
+				<el-table-column prop="commodity_info.sku_title" label="商品名称"></el-table-column>
+				<el-table-column prop="quantity" label="数量">
+					<template #default="{ row }">
+						<el-input-number v-model="row.quantity" @change="updateQuantity(row)"
+										 :min="1"></el-input-number>
+					</template>
+				</el-table-column>
+				<el-table-column prop="commodity_info.price" label="单价"></el-table-column>
+				<el-table-column label="操作">
+					<template #default="{ row }">
+						<el-button size="mini" type="danger" @click="removeItem(row.id)">移除</el-button>
+					</template>
+				</el-table-column>
+			</el-table>
+		</el-card>
 	</div>
 </template>
 
 <script>
-import {ref, computed} from 'vue'
-import {useRouter} from 'vue-router'
-import {getCartItems, updateCartItem, removeCartItem} from '@/api'
+import {ref, onMounted} from 'vue';
+import {ElMessage} from 'element-plus';
+import {getCartItems, updateCartItem, removeCartItem} from '@/api'; // 确保路径正确
 
 export default {
+	name: 'ShoppingCart',
 	setup() {
-		const cartItems = ref([])
-		const router = useRouter()
-
-		onMounted(() => {
-			fetchCartItems()
-		})
+		const cartItems = ref([]);
 
 		const fetchCartItems = () => {
 			getCartItems().then(response => {
-				cartItems.value = response.data.results
-			})
-		}
+				cartItems.value = response.data.results;
+			}).catch(error => {
+				ElMessage.error('获取购物车数据失败');
+				console.error(error);
+			});
+		};
 
-		const updateCartItem = (item) => {
-			updateCartItem(item.id, item).then(() => {
-				// 更新成功
-			})
-		}
+		const updateQuantity = (item) => {
+			updateCartItem(item.id, {quantity: item.quantity})
+				.then(() => {
+					ElMessage.success('商品数量更新成功');
+				})
+				.catch(error => {
+					ElMessage.error('更新失败，请稍后再试');
+					console.error(error);
+				});
+		};
 
-		const removeFromCart = (item) => {
-			removeCartItem(item.id).then(() => {
-				// 从本地购物车列表中移除
-				cartItems.value = cartItems.value.filter(i => i.id !== item.id)
-			})
-		}
+		const removeItem = (itemId) => {
+			removeCartItem(itemId)
+				.then(() => {
+					ElMessage.success('商品已从购物车移除');
+					fetchCartItems(); // 重新获取购物车数据以更新视图
+				})
+				.catch(error => {
+					ElMessage.error('移除失败，请稍后再试');
+					console.error(error);
+				});
+		};
 
-		const totalPrice = computed(() => {
-			return cartItems.value.reduce((total, item) => {
-				return total + (item.commodity.price * item.quantity)
-			}, 0)
-		})
-
-		const checkout = () => {
-			router.push('/checkout')
-		}
+		onMounted(fetchCartItems);
 
 		return {
 			cartItems,
-			updateCartItem,
-			removeFromCart,
-			totalPrice,
-			checkout
-		}
+			updateQuantity,
+			removeItem
+		};
 	}
-}
+};
 </script>
 
 <style scoped>
-/* 购物车页样式 */
+.shopping-cart-container {
+	display: flex;
+	justify-content: center;
+	padding: 20px;
+}
+
+.shopping-cart-card {
+	width: 800px;
+}
+
+.shopping-cart-title {
+	text-align: center;
+	margin-bottom: 20px;
+}
 </style>

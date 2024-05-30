@@ -20,7 +20,7 @@ class UserFavSerializer(serializers.ModelSerializer):
 
 	class Meta:
 		model = UserFav
-		fields = ('id', 'user', 'goods', 'add_time')
+		fields = "__all__"
 
 
 class UserLeavingMessageSerializer(serializers.ModelSerializer):
@@ -31,7 +31,7 @@ class UserLeavingMessageSerializer(serializers.ModelSerializer):
 
 	class Meta:
 		model = UserLeavingMessage
-		fields = ('id', 'user', 'message_type', 'subject', 'message', 'file', 'add_time')
+		fields = "__all__"
 
 
 class UserAddressSerializer(serializers.ModelSerializer):
@@ -42,11 +42,7 @@ class UserAddressSerializer(serializers.ModelSerializer):
 
 	class Meta:
 		model = UserAddress
-		fields = (
-			'id', 'user', 'province', 'city', 'county', 'address',
-			'is_default', 'signer_name', 'signer_mobile',
-			'created_by', 'created_time', 'updated_by', 'updated_time'
-		)
+		fields = "__all__"
 
 
 class UserCommentSerializer(serializers.ModelSerializer):
@@ -56,4 +52,4 @@ class UserCommentSerializer(serializers.ModelSerializer):
 
 	class Meta:
 		model = UserComment
-		fields = '__all__'  #
+		fields = '__all__'

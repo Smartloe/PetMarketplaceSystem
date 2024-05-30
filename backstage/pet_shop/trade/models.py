@@ -37,6 +37,9 @@ class OrderInfos(models.Model):
 		verbose_name = '订单信息'
 		verbose_name_plural = '订单信息'
 
+	def __str__(self):
+		return f"订单号: {self.order_sn}, 用户: {self.user.username}"
+
 
 class OrderGoods(models.Model):
 	"""
@@ -44,7 +47,7 @@ class OrderGoods(models.Model):
 	"""
 	order = models.ForeignKey(OrderInfos, on_delete=models.CASCADE, verbose_name="订单信息", related_name="goods")
 	goods = models.ForeignKey('commodity.CommodityInfos', on_delete=models.CASCADE, verbose_name="商品")
-	goods_num = models.IntegerField(default=0, verbose_name="商品数量")
+	goods_num = models.IntegerField(default=1, verbose_name="商品数量")
 	add_time = models.DateTimeField(auto_now_add=True, verbose_name="添加时间")
 
 	class Meta:
@@ -52,7 +55,7 @@ class OrderGoods(models.Model):
 		verbose_name_plural = verbose_name
 
 	def __str__(self):
-		return str(self.order.order_sn)
+		return f"订单号: {self.order.order_sn}, 商品: {self.goods.sku_title}"
 
 
 # 购物车信息表
