@@ -43,7 +43,7 @@
 
 		<!-- 创建或编辑留言对话框 -->
 		<el-dialog :title="isEditing ? '编辑' : '新增'" v-model="dialogVisible">
-			<el-form :model="currentMessage" @submit.native.prevent="submitMessage">
+			<el-form :model="currentMessage" @submit.prevent="submitMessage">
 				<el-form-item label="主题">
 					<el-input v-model="currentMessage.subject"></el-input>
 				</el-form-item>

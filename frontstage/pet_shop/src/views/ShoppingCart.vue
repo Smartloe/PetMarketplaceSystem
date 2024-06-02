@@ -6,8 +6,7 @@
 				<el-table-column prop="commodity_info.sku_title" label="商品名称"></el-table-column>
 				<el-table-column prop="quantity" label="数量">
 					<template #default="{ row }">
-						<el-input-number v-model="row.quantity" @change="updateQuantity(row)"
-										 :min="1"></el-input-number>
+						<el-input-number v-model="row.quantity" @change="updateQuantity(row)" :min="1"></el-input-number>
 					</template>
 				</el-table-column>
 				<el-table-column prop="commodity_info.price" label="单价"></el-table-column>

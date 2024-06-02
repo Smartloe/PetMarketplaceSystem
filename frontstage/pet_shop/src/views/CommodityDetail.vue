@@ -85,10 +85,12 @@ export default {
 
 		const addToCart = (commodityId) => {
 			// 实现加入购物车逻辑
+			commodityId
 		};
 
 		const addToFavorites = (commodityId) => {
 			// 实现加入收藏逻辑
+			commodityId
 		};
 
 		onMounted(fetchCommodityDetail);

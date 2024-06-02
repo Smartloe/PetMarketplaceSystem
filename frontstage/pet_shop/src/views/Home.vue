@@ -3,7 +3,7 @@
 		<div v-if="loading" class="loading-message">
 			<div class="loading-content">
 				<img src="/img/logo.png" alt="吉祥宠物商城" class="loading-logo">
-				<p class="loading-text">欢迎来到宠物商城！</p>
+				<p class="loading-text">欢迎来到吉祥宠物商城！</p>
 			</div>
 		</div>
 

@@ -137,7 +137,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 	用户信息视图集
 	"""
 	serializer_class = UserProfileSerializer
-	permission_classes = [IsOwnerOrReadOnly, IsAdminUser]
+	permission_classes = [IsOwnerOrReadOnly]
 
 	def get_queryset(self):
 		"""

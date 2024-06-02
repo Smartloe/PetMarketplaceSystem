@@ -10,12 +10,10 @@
 					<el-input v-model="registerForm.email" placeholder="请输入电子邮件"></el-input>
 				</el-form-item>
 				<el-form-item label="密&emsp;&emsp;码" prop="password">
-					<el-input type="password" v-model="registerForm.password" placeholder="请输入密码"
-							  autocomplete="off"></el-input>
+					<el-input type="password" v-model="registerForm.password" placeholder="请输入密码" autocomplete="off"></el-input>
 				</el-form-item>
 				<el-form-item label="确认密码" prop="password2">
-					<el-input type="password" v-model="registerForm.password2" placeholder="请再次输入密码"
-							  autocomplete="off"></el-input>
+					<el-input type="password" v-model="registerForm.password2" placeholder="请再次输入密码" autocomplete="off"></el-input>
 				</el-form-item>
 				<el-form-item class="form-item-button">
 					<el-button type="primary" native-type="submit" class="register-btn">注册</el-button>

@@ -1,60 +1,172 @@
 <template>
-	<div class="favorites">
-		<h1>我的收藏</h1>
-		<div class="favorite-grid">
-			<div class="favorite-card" v-for="favorite in favorites" :key="favorite.id">
-				<img :src="favorite.goods.image" :alt="favorite.goods.name" class="favorite-image"/>
-				<h3 class="favorite-name">{{ favorite.goods.name }}</h3>
-				<p class="favorite-price">¥{{ favorite.goods.price }}</p>
-				<div class="favorite-actions">
-					<el-button type="primary" @click="viewDetails(favorite.goods.id)">查看详情</el-button>
-					<el-button type="danger" @click="removeFromFavorites(favorite.id)">移除收藏</el-button>
-				</div>
+	<div class="favorites-container">
+		<el-card class="favorites-list-card">
+			<div class="table-header">
+				<h2>我的收藏</h2>
 			</div>
-		</div>
+			<el-table :data="favorites" style="width: 100%">
+				<el-table-column label="商品名称">
+					<template #default="{ row }">
+						<a :href="`http://localhost:8010/commodity/detail/${row.goods}`" target="_blank" class="no-underline">{{ row.sku_title }}</a>
+					</template>
+				</el-table-column>
+				<el-table-column prop="price" label="价格"></el-table-column>
+				<el-table-column prop="add_time" label="收藏时间">
+					<template #default="{ row }">
+						{{ formatDate(row.add_time) }}
+					</template>
+				</el-table-column>
+				<el-table-column label="操作">
+					<template #default="{ row }">
+						<el-button size="mini" type="primary" @click="viewCommodityDetail(row.goods)">查看详情
+						</el-button>
+						<el-button size="mini" type="danger" @click="removeMyFromFavorites(row.id)">移除收藏</el-button>
+					</template>
+				</el-table-column>
+			</el-table>
+		</el-card>
+
+		<!-- 商品详情对话框 -->
+		<el-dialog title="商品详情" v-model="commodityDetailDialogVisible">
+			<el-form label-position="top">
+				<el-form-item label="商品名称">
+					<el-input :value="currentCommodity.sku_title" disabled></el-input>
+				</el-form-item>
+				<el-form-item label="价格">
+					<el-input :value="currentCommodity.price" disabled></el-input>
+				</el-form-item>
+				<el-form-item label="描述">
+					<el-input :value="currentCommodity.sku_description" disabled></el-input>
+				</el-form-item>
+				<el-form-item label="库存">
+					<el-input :value="currentCommodity.stock_quantity" disabled></el-input>
+				</el-form-item>
+				<el-form-item label="销量">
+					<el-input :value="currentCommodity.sold" disabled></el-input>
+				</el-form-item>
+				<el-form-item label="主图">
+					<img :src="getFullImageUrl(currentCommodity.main_image)" alt="商品主图" style="width: 100px; height: 100px;">
+				</el-form-item>
+				<el-form-item>
+					<el-button @click="closeCommodityDetailDialog">关闭</el-button>
+				</el-form-item>
+			</el-form>
+		</el-dialog>
 	</div>
 </template>
 
 <script>
-import {ref, onMounted} from 'vue'
-import {useRouter} from 'vue-router'
-import {getUserFavorites, removeFromFavorites} from '@/api'
+import {ref, onMounted} from 'vue';
+import {ElMessage} from 'element-plus';
+import {getUserFavorites, getCommodityDetail, removeFromFavorites} from '@/api';
 
 export default {
+	name: 'Favorites',
 	setup() {
-		const favorites = ref([])
-		const router = useRouter()
-
-		onMounted(() => {
-			fetchFavorites()
-		})
+		const favorites = ref([]);
+		const currentCommodity = ref({});
+		const commodityDetailDialogVisible = ref(false);
 
 		const fetchFavorites = () => {
 			getUserFavorites().then(response => {
-				favorites.value = response.data.results
-			})
-		}
+				const favoriteItems = response.data.results;
+				const promises = favoriteItems.map(item => getCommodityDetail(item.goods).then(res => ({
+					...item,
+					...res.data.commodity_info
+				})));
+				Promise.all(promises).then(results => {
+					favorites.value = results;
+				});
+			}).catch(error => {
+				ElMessage.error('获取收藏列表失败');
+				console.error(error);
+			});
+		};
 
-		const viewDetails = (id) => {
-			router.push(`/commodity/${id}`)
-		}
+		const viewCommodityDetail = async (commodityId) => {
+			try {
+				const response = await getCommodityDetail(commodityId);
+				currentCommodity.value = response.data.commodity_info;
+				commodityDetailDialogVisible.value = true;
+			} catch (error) {
+				ElMessage.error('获取商品详情失败');
+				console.error(error);
+			}
+		};
 
-		const removeFromFavorites = (id) => {
-			removeFromFavorites(id).then(() => {
-				// 从本地收藏列表中移除
-				favorites.value = favorites.value.filter(f => f.id !== id)
-			})
-		}
+		const closeCommodityDetailDialog = () => {
+			commodityDetailDialogVisible.value = false;
+		};
+
+		const getFullImageUrl = (relativeUrl) => relativeUrl.startsWith('http') ? relativeUrl : `/api${relativeUrl}`;
+
+		const removeMyFromFavorites = async (favoriteId) => {
+			try {
+				await removeFromFavorites(favoriteId);
+				ElMessage.success('移除收藏成功');
+				fetchFavorites();
+			} catch (error) {
+				ElMessage.error('移除收藏失败');
+				console.error(error);
+			}
+		};
+
+		const formatDate = (date) => {
+			const options = {
+				year: 'numeric',
+				month: '2-digit',
+				day: '2-digit',
+				hour: '2-digit',
+				minute: '2-digit',
+				second: '2-digit'
+			};
+			return new Date(date).toLocaleDateString('zh-CN', options);
+		};
+
+		onMounted(() => {
+			fetchFavorites();
+		});
 
 		return {
 			favorites,
-			viewDetails,
-			removeFromFavorites
-		}
+			currentCommodity,
+			commodityDetailDialogVisible,
+			removeMyFromFavorites,
+			viewCommodityDetail,
+			closeCommodityDetailDialog,
+			getFullImageUrl,
+			formatDate
+		};
 	}
-}
+};
 </script>
 
 <style scoped>
-/* 收藏页样式 */
+.favorites-container {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: 20px;
+}
+
+.table-header {
+	display: flex;
+	justify-content: flex-start;
+	margin-bottom: 10px;
+}
+
+.favorites-list-card {
+	width: 100%;
+	max-width: 1200px;
+	margin-bottom: 20px;
+}
+
+.no-underline {
+	text-decoration: none;
+	color: #409EFF;
+}
+
+.no-underline:hover {
+	text-decoration: underline;
+}
 </style>
