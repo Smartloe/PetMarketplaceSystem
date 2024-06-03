@@ -3,6 +3,7 @@
 		<!-- 订单列表 -->
 		<el-card class="orders-list-card">
 			<div class="table-header">
+				<h2>我的订单</h2>
 			</div>
 			<el-table :data="orders" style="width: 100%">
 				<el-table-column prop="order_sn" label="订单号"></el-table-column>
@@ -69,9 +70,9 @@
 					<el-table-column prop="goods_name" label="商品名称"></el-table-column>
 					<el-table-column prop="goods_num" label="商品数量"></el-table-column>
 				</el-table>
-				<el-form-item>
+				<div class="dialog-footer">
 					<el-button @click="closeOrderDetailDialog">关闭</el-button>
-				</el-form-item>
+				</div>
 			</el-form>
 		</el-dialog>
 
@@ -79,13 +80,19 @@
 		<el-dialog title="选择支付方式" v-model="payDialogVisible">
 			<el-form label-position="top">
 				<el-form-item>
-					<el-button type="primary" @click="mockPay('微信')">微信</el-button>
-					<el-button type="primary" @click="mockPay('支付宝')">支付宝</el-button>
-					<el-button type="primary" @click="mockPay('银联')">银联</el-button>
+					<el-button type="primary" @click="mockPay('微信')" class="pay-button">
+						<img src="/img/微信.png" alt="微信" class="pay-icon"/> 微信
+					</el-button>
+					<el-button type="primary" @click="mockPay('支付宝')" class="pay-button">
+						<img src="/img/支付宝.png" alt="支付宝" class="pay-icon"/> 支付宝
+					</el-button>
+					<el-button type="primary" @click="mockPay('银联')" class="pay-button">
+						<img src="/img/银联.png" alt="银联" class="pay-icon"/> 银联
+					</el-button>
 				</el-form-item>
-				<el-form-item>
+				<div class="dialog-footer">
 					<el-button @click="closePayDialog">关闭</el-button>
-				</el-form-item>
+				</div>
 			</el-form>
 		</el-dialog>
 
@@ -96,9 +103,9 @@
 					<el-button type="warning" @click="mockRefund('仅退款')">仅退款</el-button>
 					<el-button type="warning" @click="mockRefund('退货退款')">退货退款</el-button>
 				</el-form-item>
-				<el-form-item>
+				<div class="dialog-footer">
 					<el-button @click="closeRefundDialog">关闭</el-button>
-				</el-form-item>
+				</div>
 			</el-form>
 		</el-dialog>
 	</div>
@@ -146,7 +153,7 @@ export default {
 				// 获取订单收件地址详情
 				const addressResponse = await getUserAddress(currentOrder.value.address);
 				const addr = addressResponse.data;
-				address.value = `${addr.province}省${addr.city}市${addr.county}区${addr.address}}`;
+				address.value = `${addr.province}省${addr.city}市${addr.county}区${addr.address}`;
 
 				// 获取每个商品的详细信息
 				for (const item of currentOrder.value.goods) {
@@ -306,5 +313,28 @@ export default {
 	width: 100%;
 	max-width: 1200px;
 	margin-bottom: 20px;
+}
+
+.dialog-footer {
+	text-align: right;
+	margin-top: 20px;
+}
+
+.pay-icon {
+	width: 20px;
+	height: 20px;
+	margin-right: 5px;
+}
+
+.pay-button {
+	background-color: #f5f5f5;
+	border: 1px solid #dcdcdc;
+	color: #606266;
+	margin-right: 10px;
+}
+
+.pay-button:hover {
+	background-color: #e0e0e0;
+	border-color: #c0c0c0;
 }
 </style>

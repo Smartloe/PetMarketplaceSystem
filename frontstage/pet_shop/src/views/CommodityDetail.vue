@@ -5,7 +5,7 @@
 				<img :src="getImageUrl(commodityDetail.main_image)" alt="商品主图" class="main-image"/>
 			</div>
 			<div class="commodity-info">
-				<h2>{{ commodityDetail.sku_title }}</h2>
+				<h2 class="title">{{ commodityDetail.sku_title }}</h2>
 				<p class="description">{{ commodityDetail.sku_description }}</p>
 				<p class="price">价格：￥{{ commodityDetail.price }}</p>
 				<div class="tags">
@@ -49,24 +49,24 @@
 <script>
 import {ref, onMounted} from 'vue';
 import {useRoute} from 'vue-router';
-import {getCommodityDetail, getCommodityComments} from '@/api';
+import {ElMessage} from 'element-plus';
+import {getCommodityDetail, getCommodityComments, addToCart, addToFavorites} from '@/api';
 
 export default {
 	setup() {
 		const route = useRoute();
 		const commodityDetail = ref({});
 		const activeTab = ref('details');
+		const reviews = ref([]);
 
 		const fetchCommodityDetail = async () => {
 			const response = await getCommodityDetail(route.params.id);
 			commodityDetail.value = response.data.commodity_info;
 		};
-		const reviews = ref([]);
 
 		const fetchCommodityReviews = async (commodityId) => {
 			const response = await getCommodityComments(commodityId);
 			reviews.value = response.data.results;
-			console.log(response.data.results);
 		};
 
 		const formatDate = (dateString) => {
@@ -74,26 +74,33 @@ export default {
 			return new Date(dateString).toLocaleDateString(undefined, options);
 		};
 
-		onMounted(() => {
-			const commodityId = route.params.id;
-			fetchCommodityReviews(commodityId);
-		});
-
 		const getImageUrl = (path) => {
 			return `api/${path}`;
 		};
 
-		const addToCart = (commodityId) => {
-			// 实现加入购物车逻辑
-			commodityId
+		const handleAddToCart = (commodityId) => {
+			addToCart({commodity: commodityId, quantity: 1}).then(() => {
+				ElMessage.success('商品已加入购物车');
+			}).catch(error => {
+				ElMessage.error('加入购物车失败');
+				console.error(error);
+			});
 		};
 
-		const addToFavorites = (commodityId) => {
-			// 实现加入收藏逻辑
-			commodityId
+		const handleAddToFavorites = (commodityId) => {
+			addToFavorites({goods: commodityId}).then(() => {
+				ElMessage.success('商品已加入收藏');
+			}).catch(error => {
+				ElMessage.error('加入收藏失败');
+				console.error(error);
+			});
 		};
 
-		onMounted(fetchCommodityDetail);
+		onMounted(() => {
+			const commodityId = route.params.id;
+			fetchCommodityDetail();
+			fetchCommodityReviews(commodityId);
+		});
 
 		return {
 			commodityDetail,
@@ -101,8 +108,8 @@ export default {
 			reviews,
 			getImageUrl,
 			formatDate,
-			addToCart,
-			addToFavorites,
+			addToCart: handleAddToCart,
+			addToFavorites: handleAddToFavorites,
 		};
 	},
 };
@@ -118,6 +125,7 @@ export default {
 .commodity-main {
 	display: flex;
 	margin-bottom: 20px;
+	gap: 20px; /* 增加主图和商品信息之间的间隔 */
 }
 
 .image-container {
@@ -141,13 +149,21 @@ export default {
 	flex-grow: 1;
 }
 
+.title {
+	word-wrap: break-word; /* 自动换行 */
+	word-break: break-word; /* 防止单词太长导致布局破坏 */
+	margin-bottom: 10px; /* 增加标题和其他信息之间的间隔 */
+}
+
 .description {
 	color: red;
+	margin-bottom: 10px; /* 增加描述和价格之间的间隔 */
 }
 
 .price {
 	color: #e44d26;
 	font-weight: bold;
+	margin-bottom: 10px; /* 增加价格和标签之间的间隔 */
 }
 
 .tags {
