@@ -42,8 +42,28 @@
 			<div class="total-price">
 				总价: {{ totalPrice.toFixed(2) }} 元
 			</div>
-			<el-button type="primary" @click="placeOrders">下单</el-button>
+			<el-button type="primary" @click="openPayDialog">去下单</el-button>
 		</el-card>
+
+		<!-- 支付对话框 -->
+		<el-dialog title="选择支付方式" v-model="payDialogVisible">
+			<el-form label-position="top">
+				<el-form-item>
+					<el-button type="primary" @click="mockPay('微信')" class="pay-button">
+						<img src="/img/微信.png" alt="微信" class="pay-icon"/> 微信
+					</el-button>
+					<el-button type="primary" @click="mockPay('支付宝')" class="pay-button">
+						<img src="/img/支付宝.png" alt="支付宝" class="pay-icon"/> 支付宝
+					</el-button>
+					<el-button type="primary" @click="mockPay('银联')" class="pay-button">
+						<img src="/img/银联.png" alt="银联" class="pay-icon"/> 银联
+					</el-button>
+				</el-form-item>
+				<div class="dialog-footer">
+					<el-button @click="closePayDialog">关闭</el-button>
+				</div>
+			</el-form>
+		</el-dialog>
 	</div>
 </template>
 
@@ -58,6 +78,7 @@ export default {
 		const cartItems = ref([]);
 		const selectedItems = ref([]);
 		const totalPrice = ref(0);
+		const payDialogVisible = ref(false);
 
 		const fetchCartItems = () => {
 			getCartItems().then(response => {
@@ -104,6 +125,7 @@ export default {
 			placeOrder({items: orderItems}).then(() => {
 				ElMessage.success('下单成功');
 				fetchCartItems();
+				closePayDialog();
 			}).catch(error => {
 				ElMessage.error('下单失败');
 				console.error(error);
@@ -121,6 +143,23 @@ export default {
 			calculateTotalPrice();
 		};
 
+		const openPayDialog = () => {
+			if (selectedItems.value.length === 0) {
+				ElMessage.warning('请选择要下单的商品');
+				return;
+			}
+			payDialogVisible.value = true;
+		};
+
+		const closePayDialog = () => {
+			payDialogVisible.value = false;
+		};
+
+		const mockPay = (method) => {
+			ElMessage.success(`选择了${method}支付`);
+			placeOrders();
+		};
+
 		onMounted(() => {
 			fetchCartItems();
 		});
@@ -135,7 +174,11 @@ export default {
 			updateQuantity,
 			removeFromCart,
 			calculateTotalPrice,
-			handleSelectionChange
+			handleSelectionChange,
+			payDialogVisible,
+			openPayDialog,
+			closePayDialog,
+			mockPay
 		};
 	}
 };
@@ -166,5 +209,28 @@ export default {
 	margin-top: 20px;
 	font-size: 18px;
 	font-weight: bold;
+}
+
+.dialog-footer {
+	text-align: right;
+	margin-top: 20px;
+}
+
+.pay-icon {
+	width: 20px;
+	height: 20px;
+	margin-right: 5px;
+}
+
+.pay-button {
+	background-color: #f5f5f5;
+	border: 1px solid #dcdcdc;
+	color: #606266;
+	margin-right: 10px;
+}
+
+.pay-button:hover {
+	background-color: #e0e0e0;
+	border-color: #c0c0c0;
 }
 </style>
