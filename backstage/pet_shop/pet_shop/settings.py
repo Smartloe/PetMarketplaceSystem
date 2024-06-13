@@ -50,7 +50,8 @@ INSTALLED_APPS = [
 	'trade.apps.TradeConfig',  # 注册trade
 	'django_echarts',
 	'django_echarts.contrib.bootstrap5',
-	'drf_yasg'
+	'drf_yasg',
+	'import_export'
 ]
 
 MIDDLEWARE = [

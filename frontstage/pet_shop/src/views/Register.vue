@@ -110,7 +110,7 @@ export default {
 		};
 
 		const goToLogin = () => {
-			router.push('/login');
+			router.push('login');
 		};
 
 		return {

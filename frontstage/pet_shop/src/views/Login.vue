@@ -20,7 +20,7 @@
 				</el-form-item>
 			</el-form>
 			<div class="card-footer">
-				<el-link class="register-link" type="primary" @click="goToLogin">没有账号？注册</el-link>
+				<el-link class="register-link" type="primary" @click="goToRegister">没有账号？注册</el-link>
 			</div>
 		</el-card>
 	</div>
@@ -83,7 +83,7 @@ export default {
 			});
 		};
 		const goToRegister = () => {
-			router.push('/register');
+			router.push('register');
 		};
 
 

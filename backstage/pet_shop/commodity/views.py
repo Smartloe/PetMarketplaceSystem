@@ -5,6 +5,7 @@ from django.db.models import Q
 from .serializers import *
 from rest_framework.generics import ListAPIView
 from customer_operation.models import UserComment
+from django.views.decorators.csrf import csrf_exempt  # 免除csrf认证
 
 
 # Create your views here.
@@ -15,6 +16,7 @@ class commodityView(APIView):
 	authentication_classes = []
 	permission_classes = []
 
+	@csrf_exempt
 	def get(self, request):
 		# 获取所有商品类型
 		categories = CommodityCategories.objects.all()
@@ -71,6 +73,7 @@ class detailView(APIView):
 	authentication_classes = []
 	permission_classes = []
 
+	@csrf_exempt
 	def get(self, request, pk):
 		try:
 			# 获取商品信息
@@ -101,6 +104,7 @@ class CommoditySearchView(APIView):
 	authentication_classes = []
 	permission_classes = []
 
+	@csrf_exempt
 	def get(self, request):
 		# 从请求参数中获取搜索关键字
 		query = request.GET.get('query', '')
@@ -123,6 +127,7 @@ class CommodityCommentsView(ListAPIView):
 	"""
 	serializer_class = GoodsCommentSerializer
 
+	@csrf_exempt
 	def get_queryset(self):
 		"""
 		重写get_queryset方法来返回一个商品的所有评论

@@ -1,42 +1,57 @@
 from django.contrib import admin
-from .models import *
+from import_export import resources
+from import_export.admin import ImportExportModelAdmin
+from .models import UserFav, UserLeavingMessage, UserAddress, UserComment
 
 
-# Register your models here.
+class UserFavResource(resources.ModelResource):
+	class Meta:
+		model = UserFav
+
+
+class UserLeavingMessageResource(resources.ModelResource):
+	class Meta:
+		model = UserLeavingMessage
+
+
+class UserAddressResource(resources.ModelResource):
+	class Meta:
+		model = UserAddress
+
+
+class UserCommentResource(resources.ModelResource):
+	class Meta:
+		model = UserComment
+
 
 @admin.register(UserFav)
-class UserFavAdmin(admin.ModelAdmin):
+class UserFavAdmin(ImportExportModelAdmin):
+	resource_class = UserFavResource
 	list_display = ['user', 'goods', "add_time"]
-	# 在数据列表页设置每一页显示的数据量
 	list_per_page = 10
-	# 在数据列表页设置每一页显示最大上限的数据量
 	list_max_show_all = 200
 
 
 @admin.register(UserLeavingMessage)
-class UserLeavingMessageAdmin(admin.ModelAdmin):
+class UserLeavingMessageAdmin(ImportExportModelAdmin):
+	resource_class = UserLeavingMessageResource
 	list_display = ['user', 'message_type', "subject", "is_replied", "add_time"]
-	# 在数据列表页设置每一页显示的数据量
 	list_per_page = 10
-	# 在数据列表页设置每一页显示最大上限的数据量
 	list_max_show_all = 200
 
 
 @admin.register(UserAddress)
-class UserAddressAdmin(admin.ModelAdmin):
+class UserAddressAdmin(ImportExportModelAdmin):
+	resource_class = UserAddressResource
 	list_display = ["signer_name", "signer_mobile", "is_default", "province", "city", "county", "address"]
-	# 在数据列表页设置每一页显示的数据量
 	list_per_page = 10
-	# 在数据列表页设置每一页显示最大上限的数据量
 	list_max_show_all = 200
-	# 设置可搜索的字段
 	search_fields = ['signer_name', 'signer_mobile']
 
 
 @admin.register(UserComment)
-class UserCommentAdmin(admin.ModelAdmin):
+class UserCommentAdmin(ImportExportModelAdmin):
+	resource_class = UserCommentResource
 	list_display = ["user", "commodity", "rating", "is_show", "created_time"]
-	# 在数据列表页设置每一页显示的数据量
 	list_per_page = 10
-	# 在数据列表页设置每一页显示最大上限的数据量
 	list_max_show_all = 200

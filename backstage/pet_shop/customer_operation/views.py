@@ -2,6 +2,7 @@ from rest_framework import viewsets, permissions
 from .serializers import *
 from .models import *
 from .permissions import IsOwnerOrReadOnly
+from django.views.decorators.csrf import csrf_exempt  # 免除csrf认证
 
 
 class UserFavViewSet(viewsets.ModelViewSet):
@@ -11,6 +12,7 @@ class UserFavViewSet(viewsets.ModelViewSet):
 	serializer_class = UserFavSerializer
 	permission_classes = [permissions.IsAuthenticated]
 
+	@csrf_exempt
 	def get_queryset(self):
 		"""
 		只返回当前登录用户的收藏记录
@@ -25,6 +27,7 @@ class UserLeavingMessageViewSet(viewsets.ModelViewSet):
 	serializer_class = UserLeavingMessageSerializer
 	permission_classes = [permissions.IsAuthenticated]
 
+	@csrf_exempt
 	def get_queryset(self):
 		"""
 		只返回当前登录用户的留言记录
@@ -39,6 +42,7 @@ class UserAddressViewSet(viewsets.ModelViewSet):
 	serializer_class = UserAddressSerializer
 	permission_classes = [permissions.IsAuthenticated, IsOwnerOrReadOnly]
 
+	@csrf_exempt
 	def get_queryset(self):
 		"""
 		只返回当前登录用户的地址记录
@@ -53,6 +57,7 @@ class UserCommentViewSet(viewsets.ModelViewSet):
 	queryset = UserComment.objects.all()
 	serializer_class = UserCommentSerializer
 
+	@csrf_exempt
 	def get_permissions(self):
 		"""
 		实例化并返回此视图所需的权限列表。
@@ -64,6 +69,7 @@ class UserCommentViewSet(viewsets.ModelViewSet):
 			permission_classes = [permissions.IsAuthenticated]
 		return [permission() for permission in permission_classes]
 
+	@csrf_exempt
 	def perform_create(self, serializer):
 		# 自动设置评论的用户为当前登录用户
 		serializer.save(user=self.request.user)
