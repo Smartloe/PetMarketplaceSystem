@@ -47,6 +47,7 @@ urlpatterns = [
 	path('merchant/', include('merchant.urls')),  # 商家模块
 	path('trade/', include('trade.urls')),  # 交易模块
 	path('charts', include('charts.urls')),  # 数据可视化
+	path('', include('index.urls')),  # 其他展示/工具模块
 	# 配置媒体资源的路由信息
 	re_path('media/(?P<path>.*)', serve, {'document_root': settings.MEDIA_ROOT}, name='media'),
 	# 定义静态资源的路由信息

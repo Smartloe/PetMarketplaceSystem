@@ -1,8 +1,11 @@
 from rest_framework import viewsets, permissions
+from rest_framework.views import APIView
+from rest_framework.response import Response
 from .serializers import *
 from .models import *
 from .permissions import IsOwnerOrReadOnly
 from django.views.decorators.csrf import csrf_exempt  # 免除csrf认证
+from pet_shop.regions import get_region_helper
 
 
 class UserFavViewSet(viewsets.ModelViewSet):
@@ -73,3 +76,12 @@ class UserCommentViewSet(viewsets.ModelViewSet):
 	def perform_create(self, serializer):
 		# 自动设置评论的用户为当前登录用户
 		serializer.save(user=self.request.user)
+
+
+class RegionListView(APIView):
+	permission_classes = [permissions.AllowAny]
+	authentication_classes = []
+
+	def get(self, request):
+		options = get_region_helper().get_cascader()
+		return Response(options)

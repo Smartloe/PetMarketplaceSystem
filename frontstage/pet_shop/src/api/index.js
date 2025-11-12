@@ -4,9 +4,9 @@ import axios from 'axios';
 const instance = axios.create({
     baseURL: 'http://localhost:8010/api',
     headers: {
-        'Content-Type': 'application/json',
-        'Authorization': getBasicAuthHeader()
-    }
+        'Content-Type': 'application/json'
+    },
+    withCredentials: true
 });
 
 // 获取 Basic Auth 头部的工具函数
@@ -16,6 +16,16 @@ export function getBasicAuthHeader() {
     // 注意：确保username和password存在，否则btoa将抛出异常
     return username && password ? 'Basic ' + btoa(`${username}:${password}`) : null;
 }
+
+instance.interceptors.request.use((config) => {
+    const authHeader = getBasicAuthHeader();
+    if (authHeader) {
+        config.headers.Authorization = authHeader;
+    } else {
+        delete config.headers.Authorization;
+    }
+    return config;
+});
 
 // 获取商品列表
 export const getCommodities = () => instance.get('/commodity/list/');
@@ -145,3 +155,16 @@ export const partialUpdateUserAddress = (id, data) => instance.patch(`/operation
 
 // 删除用户地址
 export const deleteUserAddress = (id) => instance.delete(`/operation/addresses/${id}/`);
+export const getRegions = () => instance.get('/operation/regions/');
+export const uploadAvatar = (formData) => instance.post('/accounts/profiles/upload-avatar/', formData, {
+    headers: {'Content-Type': 'multipart/form-data'}
+});
+
+// AI 宠物顾问
+export const consultPetAdvisor = (payload) => instance.post('/ai/consult/', payload);
+
+// 结算下单（伪支付）
+export const checkoutOrder = (payload) => instance.post('/trade/checkout/', payload);
+export const requestOrderRefund = (orderId, payload) => instance.post(`/trade/orders/${orderId}/refund/`, payload);
+export const confirmOrder = (orderId) => instance.post(`/trade/orders/${orderId}/confirm/`);
+export const commentOrderGoods = (orderId, orderGoodsId, payload) => instance.post(`/trade/orders/${orderId}/goods/${orderGoodsId}/comment/`, payload);

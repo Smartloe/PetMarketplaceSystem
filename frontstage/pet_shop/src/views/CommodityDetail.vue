@@ -47,17 +47,21 @@
 </template>
 
 <script>
-import {ref, onMounted} from 'vue';
-import {useRoute} from 'vue-router';
+import {ref, onMounted, computed} from 'vue';
+import {useRoute, useRouter} from 'vue-router';
+import {useStore} from 'vuex';
 import {ElMessage} from 'element-plus';
 import {getCommodityDetail, getCommodityComments, addToCart, addToFavorites} from '@/api';
 
 export default {
 	setup() {
 		const route = useRoute();
+		const router = useRouter();
+		const store = useStore();
 		const commodityDetail = ref({});
 		const activeTab = ref('details');
 		const reviews = ref([]);
+		const isLoggedIn = computed(() => store.state.isLoggedIn);
 
 		const fetchCommodityDetail = async () => {
 			const response = await getCommodityDetail(route.params.id);
@@ -74,24 +78,48 @@ export default {
 			return new Date(dateString).toLocaleDateString(undefined, options);
 		};
 
-		const getImageUrl = (path) => {
-			return `api/${path}`;
+		const getImageUrl = (path = '') => {
+			if (!path) return '';
+			return path.startsWith('http') ? path : `/api${path.startsWith('/') ? path : `/${path}`}`;
+		};
+
+		const ensureLoggedIn = () => {
+			if (isLoggedIn.value) {
+				return true;
+			}
+			ElMessage.warning('请先登录后再进行此操作');
+			router.push('/accounts/login');
+			return false;
 		};
 
 		const handleAddToCart = (commodityId) => {
+			if (!ensureLoggedIn()) return;
 			addToCart({commodity: commodityId, quantity: 1}).then(() => {
 				ElMessage.success('商品已加入购物车');
 			}).catch(error => {
-				ElMessage.error('加入购物车失败');
+				if (error?.response?.status === 401) {
+					ElMessage.warning('登录已过期，请重新登录');
+					router.push('/accounts/login');
+				} else {
+					ElMessage.error('加入购物车失败');
+				}
 				console.error(error);
 			});
 		};
 
 		const handleAddToFavorites = (commodityId) => {
+			if (!ensureLoggedIn()) return;
 			addToFavorites({goods: commodityId}).then(() => {
 				ElMessage.success('商品已加入收藏');
 			}).catch(error => {
-				ElMessage.error('加入收藏失败');
+				if (error?.response?.status === 401) {
+					ElMessage.warning('登录已过期，请重新登录');
+					router.push('/accounts/login');
+				} else if (error?.response?.status === 400) {
+					ElMessage.info('已在收藏夹中');
+				} else {
+					ElMessage.error('加入收藏失败');
+				}
 				console.error(error);
 			});
 		};

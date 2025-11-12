@@ -31,7 +31,14 @@
 							<br>
 							<el-button size="mini" type="danger" @click="deleteOrders(row.id)">取消订单</el-button>
 						</div>
-						<div v-else-if="row.order_status === 1 || row.order_status === 2 || row.order_status === 3">
+						<div v-else-if="row.order_status === 1">
+							<el-button size="mini" type="warning" @click="requestRefund(row.id)">申请退货</el-button>
+						</div>
+						<div v-else-if="row.order_status === 2">
+							<el-button size="mini" type="success" @click="confirmReceipt(row.id)">确认收货</el-button>
+							<el-button size="mini" type="warning" @click="requestRefund(row.id)" style="margin-left:8px">申请退货</el-button>
+						</div>
+						<div v-else-if="row.order_status === 3">
 							<el-button size="mini" type="warning" @click="requestRefund(row.id)">申请退货</el-button>
 						</div>
 						<div v-else-if="row.order_status === 4">
@@ -68,7 +75,19 @@
 				</el-form-item>
 				<el-table :data="currentOrder.goods" style="width: 100%">
 					<el-table-column prop="goods_name" label="商品名称"></el-table-column>
-					<el-table-column prop="goods_num" label="商品数量"></el-table-column>
+					<el-table-column prop="goods_num" label="数量"></el-table-column>
+					<el-table-column label="操作" width="120">
+						<template #default="{ row }">
+							<el-button
+								v-if="Number(currentOrder.order_status) >= 3 && !row.commented"
+								type="primary"
+								size="mini"
+								@click="openCommentDialog(row)"
+							>评价</el-button>
+							<span v-else-if="row.commented">已评价</span>
+							<span v-else>-</span>
+						</template>
+					</el-table-column>
 				</el-table>
 				<div class="dialog-footer">
 					<el-button @click="closeOrderDetailDialog">关闭</el-button>
@@ -97,14 +116,45 @@
 		</el-dialog>
 
 		<!-- 退货对话框 -->
-		<el-dialog title="选择退货模式" v-model="refundDialogVisible">
+		<el-dialog title="申请退款" v-model="refundDialogVisible">
 			<el-form label-position="top">
-				<el-form-item>
-					<el-button type="warning" @click="mockRefund('仅退款')">仅退款</el-button>
-					<el-button type="warning" @click="mockRefund('退货退款')">退货退款</el-button>
+				<el-form-item label="退款类型">
+					<el-select v-model="refundForm.type" placeholder="请选择退款类型">
+						<el-option label="仅退款" value="仅退款"/>
+						<el-option label="退货退款" value="退货退款"/>
+					</el-select>
+				</el-form-item>
+				<el-form-item label="退款原因">
+					<el-input
+						type="textarea"
+						v-model="refundForm.reason"
+						:autosize="{minRows: 3, maxRows: 5}"
+						placeholder="请描述退款原因，便于管理员审核"
+					/>
 				</el-form-item>
 				<div class="dialog-footer">
-					<el-button @click="closeRefundDialog">关闭</el-button>
+					<el-button type="primary" @click="submitRefund">提交申请</el-button>
+					<el-button @click="closeRefundDialog">取消</el-button>
+				</div>
+			</el-form>
+		</el-dialog>
+
+		<el-dialog title="发布评价" v-model="commentDialogVisible">
+			<el-form label-position="top">
+				<el-form-item label="评分">
+					<el-rate v-model="commentForm.rating" :max="5"></el-rate>
+				</el-form-item>
+				<el-form-item label="评价内容">
+					<el-input
+						type="textarea"
+						v-model="commentForm.content"
+						:autosize="{minRows:3,maxRows:5}"
+						placeholder="请填写本次购买体验"
+					/>
+				</el-form-item>
+				<div class="dialog-footer">
+					<el-button type="primary" @click="submitComment">提交</el-button>
+					<el-button @click="commentDialogVisible = false">取消</el-button>
 				</div>
 			</el-form>
 		</el-dialog>
@@ -114,7 +164,17 @@
 <script>
 import {ref, onMounted} from 'vue';
 import {ElMessage} from 'element-plus';
-import {getUserOrders, getOrderDetail, getUserAddress, getCommodityDetail, deleteOrder, updateOrder} from '@/api';
+import {
+	getUserOrders,
+	getOrderDetail,
+	getUserAddress,
+	getCommodityDetail,
+	deleteOrder,
+	updateOrder,
+	requestOrderRefund,
+	confirmOrder,
+	commentOrderGoods
+} from '@/api';
 
 export default {
 	name: 'Orders',
@@ -125,14 +185,17 @@ export default {
 		const orderDetailDialogVisible = ref(false);
 		const payDialogVisible = ref(false);
 		const refundDialogVisible = ref(false);
+		const commentDialogVisible = ref(false);
 		const selectedOrderId = ref(null);
+		const commentForm = ref({orderGoodsId: null, content: '', rating: 5});
+		const refundForm = ref({type: '仅退款', reason: ''});
 
 		const orderStatusMap = {
 			0: '未支付',
 			1: '已支付',
 			2: '发货中',
 			3: '已签收',
-			4: '退货中',
+			4: '退款审核中',
 			5: '已退货'
 		};
 
@@ -150,12 +213,10 @@ export default {
 				const orderResponse = await getOrderDetail(orderId);
 				currentOrder.value = orderResponse.data;
 
-				// 获取订单收件地址详情
 				const addressResponse = await getUserAddress(currentOrder.value.address);
 				const addr = addressResponse.data;
-				address.value = `${addr.province}省${addr.city}市${addr.county}区${addr.address}`;
+				address.value = `${addr.province}${addr.city}${addr.county}${addr.address}`;
 
-				// 获取每个商品的详细信息
 				for (const item of currentOrder.value.goods) {
 					const goodsResponse = await getCommodityDetail(item.goods);
 					item.goods_name = goodsResponse.data.commodity_info.sku_title;
@@ -204,8 +265,20 @@ export default {
 			}
 		};
 
+		const confirmReceipt = (orderId) => {
+			confirmOrder(orderId).then(() => {
+				ElMessage.success('确认收货成功');
+				fetchOrders();
+			}).catch(error => {
+				const detail = error?.response?.data?.detail;
+				ElMessage.error(detail || '确认收货失败');
+				console.error(error);
+			});
+		};
+
 		const requestRefund = (orderId) => {
 			selectedOrderId.value = orderId;
+			refundForm.value = {type: '仅退款', reason: ''};
 			refundDialogVisible.value = true;
 		};
 
@@ -213,27 +286,64 @@ export default {
 			refundDialogVisible.value = false;
 		};
 
-		const mockRefund = async (type) => {
+		const submitRefund = async () => {
+			if (!refundForm.value.reason) {
+				ElMessage.warning('请填写退款原因');
+				return;
+			}
 			try {
-				await updateOrder(selectedOrderId.value, {order_status: 4});
-				ElMessage.success(`${type}成功`);
+				await requestOrderRefund(selectedOrderId.value, {
+					refund_type: refundForm.value.type,
+					reason: refundForm.value.reason
+				});
+				ElMessage.success('退款申请已提交，等待管理员审核');
 				closeRefundDialog();
 				fetchOrders();
 			} catch (error) {
-				ElMessage.error(`${type}失败`);
+				const detail = error?.response?.data?.detail;
+				ElMessage.error(detail || '退款申请失败');
 				console.error(error);
 			}
 		};
 
 		const cancelRefund = async (orderId) => {
 			try {
-				await updateOrder(orderId, {order_status: 2});
-				ElMessage.success('退货已撤销');
+				await updateOrder(orderId, {refund_status: 0, order_status: 2});
+				ElMessage.success('已撤销退款申请');
 				fetchOrders();
 			} catch (error) {
-				ElMessage.error('撤销退货失败');
+				ElMessage.error('撤销退款失败');
 				console.error(error);
 			}
+		};
+
+		const openCommentDialog = (orderGoods) => {
+			selectedOrderId.value = currentOrder.value.id;
+			commentForm.value = {
+				orderGoodsId: orderGoods.id,
+				content: '',
+				rating: 5
+			};
+			commentDialogVisible.value = true;
+		};
+
+		const submitComment = () => {
+			const {orderGoodsId, content, rating} = commentForm.value;
+			if (!content) {
+				ElMessage.warning('请填写评价内容');
+				return;
+			}
+			commentOrderGoods(selectedOrderId.value, orderGoodsId, {content, rating}).then(() => {
+				ElMessage.success('评价成功');
+				currentOrder.value.goods = currentOrder.value.goods.map(item =>
+					item.id === orderGoodsId ? {...item, commented: true} : item
+				);
+				commentDialogVisible.value = false;
+			}).catch(error => {
+				const detail = error?.response?.data?.detail;
+				ElMessage.error(detail || '评价失败');
+				console.error(error);
+			});
 		};
 
 		const formatDate = (date) => {
@@ -248,26 +358,7 @@ export default {
 			return new Date(date).toLocaleDateString('zh-CN', options);
 		};
 
-		onMounted(() => {
-			fetchOrders();
-
-			// 使用 ResizeObserver 监听元素的大小变化
-			const resizeObserver = new ResizeObserver(entries => {
-				// 使用 setTimeout 来避免 ResizeObserver loop 错误
-				setTimeout(() => {
-					for (let entry of entries) {
-						// 处理元素大小变化的逻辑
-						console.log(entry.target);
-					}
-				}, 0);
-			});
-
-			// 监听目标元素
-			const targetElement = document.querySelector('.orders-container');
-			if (targetElement) {
-				resizeObserver.observe(targetElement);
-			}
-		});
+		onMounted(fetchOrders);
 
 		return {
 			orders,
@@ -276,19 +367,24 @@ export default {
 			orderDetailDialogVisible,
 			payDialogVisible,
 			refundDialogVisible,
+			commentDialogVisible,
 			selectedOrderId,
 			orderStatusMap,
+			refundForm,
+			commentForm,
 			deleteOrders,
 			viewOrderDetail,
 			closeOrderDetailDialog,
 			payOrder,
 			closePayDialog,
 			mockPay,
-			deleteOrder,
 			requestRefund,
 			closeRefundDialog,
-			mockRefund,
+			submitRefund,
 			cancelRefund,
+			confirmReceipt,
+			openCommentDialog,
+			submitComment,
 			formatDate
 		};
 	}

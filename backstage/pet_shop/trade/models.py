@@ -28,6 +28,13 @@ class OrderInfos(models.Model):
 		choices=((0, "未支付"), (1, "已支付"), (2, '发货中'), (3, '已签收'), (4, '退货中'), (5, '已退货')),
 		verbose_name='订单状态'
 	)
+	confirmed_time = models.DateTimeField(null=True, blank=True, verbose_name='确认收货时间')
+	refund_status = models.SmallIntegerField(
+		default=0,
+		choices=((0, '无'), (1, '待审核'), (2, '已通过'), (3, '已拒绝')),
+		verbose_name='退款状态'
+	)
+	refund_reason = models.CharField(max_length=255, blank=True, verbose_name='退款原因')
 	created_by = models.CharField(max_length=255, verbose_name='创建人')
 	created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
 	update_by = models.CharField(max_length=255, verbose_name='更新人', blank=True)
@@ -49,6 +56,7 @@ class OrderGoods(models.Model):
 	goods = models.ForeignKey('commodity.CommodityInfos', on_delete=models.CASCADE, verbose_name="商品")
 	goods_num = models.IntegerField(default=1, verbose_name="商品数量")
 	add_time = models.DateTimeField(auto_now_add=True, verbose_name="添加时间")
+	commented = models.BooleanField(default=False, verbose_name='已评论')
 
 	class Meta:
 		verbose_name = "订单商品"

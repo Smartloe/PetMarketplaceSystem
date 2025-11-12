@@ -10,6 +10,8 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 import os
+import ipaddress
+import platform
 from pathlib import Path
 from datetime import timedelta
 
@@ -86,17 +88,66 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'pet_shop.wsgi.application'
 
+def _windows_host_from_resolv() -> str | None:
+	"""
+	The first nameserver inside /etc/resolv.conf usually points to the Windows
+	host when running under WSL2. Use it if it looks like an IPv4 address.
+	"""
+	try:
+		resolv = Path('/etc/resolv.conf')
+		if not resolv.exists():
+			return None
+
+		for line in resolv.read_text().splitlines():
+			line = line.strip()
+			if not line or line.startswith('#'):
+				continue
+			if line.startswith('nameserver'):
+				parts = line.split()
+				if len(parts) >= 2:
+					ip_candidate = parts[1]
+					try:
+						ipaddress.IPv4Address(ip_candidate)
+						return ip_candidate
+					except ipaddress.AddressValueError:
+						continue
+	except (OSError, UnicodeDecodeError):
+		return None
+	return None
+
+
+def detect_mysql_host() -> str:
+	"""
+	Use Windows host mapping automatically when running under WSL2 so the
+	backend can connect to the MySQL server running on Windows.
+	"""
+	custom_host = os.environ.get('MYSQL_HOST')
+	if custom_host:
+		return custom_host
+
+	release = platform.uname().release.lower()
+	if 'microsoft' in release or 'wsl' in release:
+		nameserver_host = _windows_host_from_resolv()
+		if nameserver_host:
+			return nameserver_host
+		return 'host.docker.internal'
+	return '127.0.0.1'
+
+
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
 DATABASES = {
 	'default': {
-		'ENGINE': 'django.db.backends.mysql',  # 引擎
-		'NAME': 'pet_shop',  # 数据库名
-		'USER': 'root',  # 主机名
-		'PASSWORD': 'xllzy123',
-		'HOST': '127.0.0.1',  # 本机
-		'PORT': 3306,
+		'ENGINE': 'django.db.backends.mysql',
+		'NAME': os.environ.get('MYSQL_DATABASE', 'pet_shop'),
+		'USER': os.environ.get('MYSQL_USER', 'root'),
+		'PASSWORD': os.environ.get('MYSQL_PASSWORD', 'xllzy123'),
+		'HOST': detect_mysql_host(),
+		'PORT': int(os.environ.get('MYSQL_PORT', 3306)),
+		'OPTIONS': {
+			'charset': 'utf8mb4'
+		}
 	}
 }
 
@@ -146,7 +197,7 @@ REST_FRAMEWORK = {
 	'PAGE_SIZE': 6,
 	# 用户认证方式
 	'DEFAULT_AUTHENTICATION_CLASSES': (
-		'rest_framework.authentication.SessionAuthentication',
+		'pet_shop.authentication.CsrfExemptSessionAuthentication',
 		'rest_framework.authentication.BasicAuthentication',
 		'rest_framework_simplejwt.authentication.JWTAuthentication',
 	),
@@ -197,6 +248,9 @@ CORS_ALLOW_HEADERS = (
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # 指定了在浏览器中访问这些媒体文件的 URL 前缀
 MEDIA_URL = 'media/'
+
+# 商品预览限制（未登录用户）
+COMMODITY_PREVIEW_LIMIT = int(os.environ.get('COMMODITY_PREVIEW_LIMIT', 6))
 
 # 隐藏右侧SimpleUI广告链接和使用分析
 SIMPLEUI_HOME_INFO = False

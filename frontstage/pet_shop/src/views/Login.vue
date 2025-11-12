@@ -67,6 +67,8 @@ export default {
 			loginUser(loginForm.value).then(response => {
 				if (response.data.status === 200) {
 					ElMessage.success(response.data.message);
+					localStorage.setItem('username', loginForm.value.username);
+					localStorage.setItem('password', loginForm.value.password);
 					store.commit('setUserId', response.data.id); // 假设您有一个 mutation 是 setUserId
 					store.commit('setUserName', response.data.username);
 					store.commit('setLastLogin', response.data.last_login);

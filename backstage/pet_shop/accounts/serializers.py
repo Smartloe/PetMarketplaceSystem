@@ -10,6 +10,8 @@ from django.contrib.auth.models import User
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
 from .models import *
+import phonenumbers
+from phonenumbers import NumberParseException, PhoneNumberFormat
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -59,9 +61,30 @@ class UserProfileSerializer(serializers.ModelSerializer):
 	用户信息序列化器
 	"""
 	username = serializers.CharField(source='username.username', read_only=True)
+	birthday = serializers.DateField(required=False, allow_null=True, input_formats=[
+		'%Y-%m-%d',
+		'%Y-%m-%dT%H:%M:%S',
+		'%Y-%m-%dT%H:%M:%S.%f',
+		'%Y-%m-%dT%H:%M:%S%z',
+		'%Y-%m-%dT%H:%M:%S.%f%z',
+		'%Y-%m-%dT%H:%M:%S.%fZ'
+	])
 
 	class Meta:
 		model = UserProfile
 		fields = (
 			'id', 'username', 'birthday', 'gender', 'user_intro', 'avatar', 'mobile', 'user_score', 'total_cost_amt',
 			'updated_time')
+		read_only_fields = ('username', 'avatar', 'user_score', 'total_cost_amt', 'updated_time')
+
+	def validate_mobile(self, value):
+		if not value:
+			return value
+		number = str(value).strip()
+		try:
+			parsed = phonenumbers.parse(number, 'CN')
+			if not phonenumbers.is_possible_number(parsed):
+				raise serializers.ValidationError('手机号格式不正确')
+			return phonenumbers.format_number(parsed, PhoneNumberFormat.E164)
+		except NumberParseException:
+			raise serializers.ValidationError('手机号格式不正确')

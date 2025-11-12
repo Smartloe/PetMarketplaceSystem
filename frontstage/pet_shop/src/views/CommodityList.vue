@@ -24,7 +24,14 @@
 
 		<!-- 右侧商品展示栏 -->
 		<el-col :span="18">
-			<p></p>
+			<el-alert
+				v-if="!isLoggedIn"
+				type="warning"
+				show-icon
+				class="login-alert"
+				title="请登录后查看全部商品"
+				description="为了保护商家权益，未登录用户仅可浏览部分精选商品。登录后即可解锁完整列表。"
+			/>
 			<div class="search-container">
 				<el-input
 					v-model="searchQuery"
@@ -64,15 +71,16 @@
 				:current-page="currentPage"
 				:page-size="pageSize"
 				layout="prev, pager, next"
-				:total="filteredCommodities.length">
+				:total="totalCommodities">
 			</el-pagination>
 		</el-col>
 	</el-row>
 </template>
 
 <script>
-import {ref, computed} from 'vue';
+import {ref, computed, watch} from 'vue';
 import {useRouter} from 'vue-router';
+import {useStore} from 'vuex';
 import {getCommodities, searchCommodities} from "@/api";
 import {Search} from '@element-plus/icons-vue'
 
@@ -85,14 +93,29 @@ export default {
 		const searchQuery = ref("");
 		const currentPage = ref(1);
 		const pageSize = ref(6);
+		const guestPreviewLimit = ref(6);
 		const router = useRouter();
+		const store = useStore();
+		const isLoggedIn = computed(() => store.state.isLoggedIn);
+
+		const flattenCommodities = (data) => {
+			return Object.values(data || {}).flatMap(category =>
+				category.sub_categories.flatMap(subCategory => subCategory.commodities)
+			);
+		};
+
+		const updateLimitMeta = (payload = {}) => {
+			if (typeof payload.preview_limit === 'number') {
+				guestPreviewLimit.value = payload.preview_limit;
+			}
+		};
 
 		const fetchCommodities = () => {
 			getCommodities().then(response => {
-				commodities.value = response.data;
-				filteredCommodities.value = Object.values(response.data).flatMap(category =>
-					category.sub_categories.flatMap(subCategory => subCategory.commodities)
-				);
+				updateLimitMeta(response.data);
+				const categoryData = response.data.categories || response.data;
+				commodities.value = categoryData;
+				filteredCommodities.value = flattenCommodities(categoryData);
 			});
 		};
 
@@ -102,10 +125,15 @@ export default {
 		};
 
 		const searchCommoditiesAction = () => {
-			searchQuery.value ? searchCommodities(searchQuery.value).then(response => {
-				filteredCommodities.value = response.data;
+			if (!searchQuery.value) {
+				fetchCommodities();
+				return;
+			}
+			searchCommodities(searchQuery.value).then(response => {
+				updateLimitMeta(response.data);
+				filteredCommodities.value = response.data.results || response.data;
 				currentPage.value = 1; // 重置到第一页
-			}) : fetchCommodities();
+			});
 		};
 
 		const getCommodityDetail = (commodityId) => {
@@ -114,14 +142,30 @@ export default {
 
 		const getFullImageUrl = (relativeUrl) => relativeUrl.startsWith('http') ? relativeUrl : `/api${relativeUrl}`;
 
+		const effectiveCommodities = computed(() => {
+			const base = filteredCommodities.value || [];
+			if (isLoggedIn.value) {
+				return base;
+			}
+			return base.slice(0, guestPreviewLimit.value);
+		});
+
 		const paginatedCommodities = computed(() => {
 			const start = (currentPage.value - 1) * pageSize.value;
-			return filteredCommodities.value.slice(start, start + pageSize.value);
+			return effectiveCommodities.value.slice(start, start + pageSize.value);
 		});
+
+		const totalCommodities = computed(() => effectiveCommodities.value.length);
 
 		const handleCurrentChange = val => {
 			currentPage.value = val;
 		};
+
+		watch(isLoggedIn, (loggedIn) => {
+			if (loggedIn) {
+				fetchCommodities();
+			}
+		});
 
 		fetchCommodities();
 
@@ -134,6 +178,8 @@ export default {
 			currentPage,
 			pageSize,
 			paginatedCommodities,
+			totalCommodities,
+			isLoggedIn,
 			showCommodities,
 			searchCommoditiesAction,
 			getCommodityDetail,
@@ -145,6 +191,10 @@ export default {
 </script>
 
 <style scoped>
+.login-alert {
+	margin-bottom: 16px;
+}
+
 .search-container {
 	display: flex;
 	justify-content: flex-end; /* 使搜索框靠右对齐 */

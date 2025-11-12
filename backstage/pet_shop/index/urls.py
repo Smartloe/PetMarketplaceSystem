@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-@Author: Chenxr
-@Date:   2024/5/6 13:15
-@Last Modified by:   Chenxr
-@Last Modified time: 2024/5/6 13:15
-@Description: 
+Index app URL configuration.
 """
+from django.urls import path
+
+from .views import AIPetConsultView
+
+urlpatterns = [
+	path('ai/consult/', AIPetConsultView.as_view(), name='ai-pet-consult'),
+]

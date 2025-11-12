@@ -10,6 +10,7 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
 from .models import *
+from pet_shop.regions import get_region_helper
 
 
 class UserFavSerializer(serializers.ModelSerializer):
@@ -43,6 +44,16 @@ class UserAddressSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = UserAddress
 		fields = "__all__"
+
+	def validate(self, attrs):
+		province = attrs.get('province')
+		city = attrs.get('city')
+		county = attrs.get('county')
+		try:
+			get_region_helper().validate(province, city, county)
+		except ValueError as exc:
+			raise serializers.ValidationError({'region': str(exc)})
+		return super().validate(attrs)
 
 
 class UserCommentSerializer(serializers.ModelSerializer):

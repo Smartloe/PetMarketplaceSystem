@@ -14,6 +14,7 @@ router = DefaultRouter()
 router.register(r'profiles', UserProfileViewSet, basename='profile')
 urlpatterns = [
 	path('', include(router.urls)),
+	path('profiles/upload-avatar/', AvatarUploadView.as_view(), name='upload-avatar'),
 	# 顾客注册
 	path('register/', RegisterView.as_view(), name='register'),
 

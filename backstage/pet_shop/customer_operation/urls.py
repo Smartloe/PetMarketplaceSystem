@@ -18,4 +18,5 @@ router.register(r'usercomments', UserCommentViewSet, basename='user-comments')
 
 urlpatterns = [
 	path('', include(router.urls)),
+	path('regions/', RegionListView.as_view(), name='region-list'),
 ]

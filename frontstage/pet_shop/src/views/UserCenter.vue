@@ -6,7 +6,17 @@
 			</div>
 			<el-form :model="userProfile" label-width="120px" class="user-profile-form">
 				<el-form-item label="头像">
-					<img :src="userProfile.avatar" alt="用户头像" style="width: 100px; height: 100px;">
+					<div class="avatar-wrapper">
+						<img :src="userProfile.avatar || defaultAvatar" alt="用户头像" class="avatar-image">
+						<el-upload
+							class="avatar-uploader"
+							:show-file-list="false"
+							accept="image/*"
+							:http-request="handleAvatarUpload"
+						>
+							<el-button size="small" type="primary" :loading="uploadingAvatar">上传头像</el-button>
+						</el-upload>
+					</div>
 				</el-form-item>
 				<el-form-item label="用户名">
 					<el-input v-model="userProfile.username" disabled></el-input>
@@ -53,7 +63,7 @@
 				<el-table-column prop="signer_mobile" label="电话"></el-table-column>
 				<el-table-column label="操作">
 					<template #default="{ row }">
-						<el-button size="mini" type="primary" @click="editAddress(row.id)">编辑</el-button>
+						<el-button size="mini" type="primary" @click="editAddress(row)">编辑</el-button>
 						<el-button size="mini" type="danger" @click="deleteAddress(row.id)">删除</el-button>
 					</template>
 				</el-table-column>
@@ -63,11 +73,15 @@
 		<!-- 地址对话框 -->
 		<el-dialog title="地址信息" v-model="addressDialogVisible">
 			<el-form :model="currentAddress" label-width="120px">
-				<el-form-item label="省/直辖市">
-					<el-input v-model="currentAddress.province"></el-input>
-				</el-form-item>
-				<el-form-item label="市">
-					<el-input v-model="currentAddress.city"></el-input>
+				<el-form-item label="省 / 市">
+					<el-cascader
+						v-model="regionSelection"
+						:options="regionOptions"
+						:props="{ expandTrigger: 'hover' }"
+						placeholder="请选择省市"
+						@change="handleRegionChange"
+						clearable
+					/>
 				</el-form-item>
 				<el-form-item label="区/县">
 					<el-input v-model="currentAddress.county"></el-input>
@@ -99,7 +113,9 @@ import {
 	createUserAddress,
 	getUserAddresses,
 	updateUserAddress,
-	deleteUserAddress
+	deleteUserAddress,
+	getRegions,
+	uploadAvatar
 } from '@/api';
 
 export default {
@@ -110,10 +126,24 @@ export default {
 		const addressDialogVisible = ref(false);
 		const currentAddress = ref({});
 		const isEditing = ref(false);
+		const regionOptions = ref([]);
+		const regionSelection = ref([]);
+		const uploadingAvatar = ref(false);
+		const defaultAvatar = '/img/default-avatar.png';
 
 		const fetchUserProfile = () => {
 			getUserProfile().then(response => {
-				userProfile.value = response.data.results[0];
+				const results = response.data.results || response.data || [];
+				const profile = results[0] || {};
+				userProfile.value = {
+					id: profile.id || profile.username_id || profile.username?.id,
+					username: profile.username?.username || profile.username,
+					birthday: profile.birthday ? profile.birthday.slice(0, 10) : '',
+					gender: profile.gender || '',
+					user_intro: profile.user_intro || '',
+					avatar: profile.avatar || '',
+					mobile: profile.mobile ? String(profile.mobile).replace(/^\+86/, '') : '',
+				};
 			}).catch(error => {
 				ElMessage.error('获取用户信息失败');
 				console.error(error);
@@ -129,52 +159,120 @@ export default {
 			});
 		};
 
-		const updateMyProfile = () => {
-			updateUserProfile(userProfile.value.id, userProfile.value).then(() => {
-				ElMessage.success('用户信息更新成功');
+		const fetchRegions = () => {
+			getRegions().then(response => {
+				regionOptions.value = response.data || [];
 			}).catch(error => {
-				ElMessage.error('用户信息更新失败');
+				console.error('获取省市数据失败', error);
+			});
+		};
+
+		const buildProfilePayload = () => ({
+			birthday: userProfile.value.birthday || null,
+			gender: userProfile.value.gender || null,
+			user_intro: userProfile.value.user_intro || '',
+			mobile: userProfile.value.mobile ? userProfile.value.mobile.trim() : null
+		});
+
+		const updateMyProfile = () => {
+			const targetId = userProfile.value.id;
+			if (!targetId) {
+				ElMessage.warning('暂无可更新的用户资料');
+				return;
+			}
+			updateUserProfile(targetId, buildProfilePayload()).then(() => {
+				ElMessage.success('用户信息更新成功');
+				fetchUserProfile();
+			}).catch(error => {
+				const detail = extractErrorMessage(error);
+				ElMessage.error(detail || '用户信息更新失败');
 				console.error(error);
+			});
+		};
+
+		const extractErrorMessage = (error) => {
+			const data = error?.response?.data;
+			if (!data) return '';
+			if (typeof data === 'string') return data;
+			if (Array.isArray(data)) return data.join('；');
+			const firstKey = Object.keys(data)[0];
+			if (!firstKey) return '';
+			const val = data[firstKey];
+			if (Array.isArray(val)) return val.join('；');
+			return val;
+		};
+
+		const handleAvatarUpload = (option) => {
+			const file = option.file;
+			if (!file) {
+				option.onError();
+				return;
+			}
+			const formData = new FormData();
+			formData.append('avatar', file);
+			uploadingAvatar.value = true;
+			uploadAvatar(formData).then(res => {
+				userProfile.value.avatar = res.data.avatar;
+				ElMessage.success('头像上传成功');
+				option.onSuccess();
+			}).catch(error => {
+				const detail = extractErrorMessage(error);
+				ElMessage.error(detail || '头像上传失败');
+				option.onError(error);
+			}).finally(() => {
+				uploadingAvatar.value = false;
 			});
 		};
 
 		const showAddressDialog = () => {
-			currentAddress.value = {};
+			currentAddress.value = {
+				province: '',
+				city: '',
+				county: '',
+				address: '',
+				signer_name: '',
+				signer_mobile: ''
+			};
+			regionSelection.value = [];
 			isEditing.value = false;
 			addressDialogVisible.value = true;
 		};
 
-		const editAddress = () => {
-			getUserAddresses().then(response => {
-				currentAddress.value = response.data;
-				isEditing.value = true;
-				addressDialogVisible.value = true;
-			}).catch(error => {
-				ElMessage.error('获取地址详情失败');
-				console.error(error);
-			});
+		const editAddress = (address) => {
+			currentAddress.value = {...address};
+			regionSelection.value = [address.province, address.city].filter(Boolean);
+			isEditing.value = true;
+			addressDialogVisible.value = true;
+		};
+
+		const handleRegionChange = (value) => {
+			currentAddress.value.province = value[0] || '';
+			currentAddress.value.city = value[1] || '';
 		};
 
 		const saveAddress = () => {
-			if (isEditing.value) {
-				updateUserAddress(currentAddress.value.id, currentAddress.value).then(() => {
-					ElMessage.success('地址更新成功');
-					fetchUserAddresses();
-					closeAddressDialog();
-				}).catch(error => {
-					ElMessage.error('地址更新失败');
-					console.error(error);
-				});
-			} else {
-				createUserAddress(currentAddress.value).then(() => {
-					ElMessage.success('地址创建成功');
-					fetchUserAddresses();
-					closeAddressDialog();
-				}).catch(error => {
-					ElMessage.error('地址创建失败');
-					console.error(error);
-				});
+			if (!currentAddress.value.province || !currentAddress.value.city) {
+				ElMessage.warning('请选择省市信息');
+				return;
 			}
+			if (!currentAddress.value.county) {
+				ElMessage.warning('请填写区/县信息');
+				return;
+			}
+			const payload = {...currentAddress.value};
+			const action = isEditing.value
+				? updateUserAddress(payload.id, payload)
+				: createUserAddress(payload);
+
+			action.then(() => {
+				ElMessage.success(isEditing.value ? '地址更新成功' : '地址创建成功');
+				fetchUserAddresses();
+				closeAddressDialog();
+			}).catch(error => {
+				const detail = error?.response?.data?.region || '地址保存失败';
+				ElMessage.error(detail);
+				console.error(error);
+			});
 		};
 
 		const deleteAddress = (id) => {
@@ -189,11 +287,13 @@ export default {
 
 		const closeAddressDialog = () => {
 			addressDialogVisible.value = false;
+			regionSelection.value = [];
 		};
 
 		onMounted(() => {
 			fetchUserProfile();
 			fetchUserAddresses();
+			fetchRegions();
 		});
 
 		return {
@@ -202,15 +302,20 @@ export default {
 			addressDialogVisible,
 			currentAddress,
 			isEditing,
+			regionOptions,
+			regionSelection,
+			uploadingAvatar,
+			defaultAvatar,
 			updateMyProfile,
 			fetchUserProfile,
 			fetchUserAddresses,
-			updateUserProfile,
 			showAddressDialog,
 			editAddress,
 			saveAddress,
 			deleteAddress,
-			closeAddressDialog
+			closeAddressDialog,
+			handleRegionChange,
+			handleAvatarUpload
 		};
 	}
 };
@@ -234,5 +339,19 @@ export default {
 	width: 100%;
 	max-width: 1200px;
 	margin-bottom: 20px;
+}
+
+.avatar-wrapper {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+}
+
+.avatar-image {
+	width: 100px;
+	height: 100px;
+	border-radius: 50%;
+	object-fit: cover;
+	border: 1px solid #eee;
 }
 </style>

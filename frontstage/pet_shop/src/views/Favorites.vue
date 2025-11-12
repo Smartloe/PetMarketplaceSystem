@@ -7,7 +7,7 @@
 			<el-table :data="favorites" style="width: 100%">
 				<el-table-column label="商品名称">
 					<template #default="{ row }">
-						<a :href="`http://localhost:8010/commodity/detail/${row.goods}`" target="_blank" class="no-underline">{{ row.sku_title }}</a>
+						<a :href="`http://localhost:8010/commodity/detail/${row.goodsId}`" target="_blank" class="no-underline">{{ row.sku_title }}</a>
 					</template>
 				</el-table-column>
 				<el-table-column prop="price" label="价格"></el-table-column>
@@ -18,9 +18,9 @@
 				</el-table-column>
 				<el-table-column label="操作">
 					<template #default="{ row }">
-						<el-button size="mini" type="primary" @click="viewCommodityDetail(row.goods)">查看详情
+						<el-button size="mini" type="primary" @click="viewCommodityDetail(row.goodsId)">查看详情
 						</el-button>
-						<el-button size="mini" type="danger" @click="removeMyFromFavorites(row.id)">移除收藏</el-button>
+						<el-button size="mini" type="danger" @click="removeMyFromFavorites(row.favoriteId)">移除收藏</el-button>
 					</template>
 				</el-table-column>
 			</el-table>
@@ -67,16 +67,34 @@ export default {
 		const currentCommodity = ref({});
 		const commodityDetailDialogVisible = ref(false);
 
+		const normalizeFavorite = async (item) => {
+			try {
+				const res = await getCommodityDetail(item.goods);
+				const commodityInfo = res.data.commodity_info || {};
+				return {
+					favoriteId: item.id,
+					goodsId: item.goods,
+					add_time: item.add_time,
+					...commodityInfo
+				};
+			} catch (error) {
+				console.error('获取收藏商品详情失败', error);
+				return {
+					favoriteId: item.id,
+					goodsId: item.goods,
+					add_time: item.add_time,
+					sku_title: '未知商品',
+					price: 0
+				};
+			}
+		};
+
 		const fetchFavorites = () => {
 			getUserFavorites().then(response => {
-				const favoriteItems = response.data.results;
-				const promises = favoriteItems.map(item => getCommodityDetail(item.goods).then(res => ({
-					...item,
-					...res.data.commodity_info
-				})));
-				Promise.all(promises).then(results => {
-					favorites.value = results;
-				});
+				const favoriteItems = response.data.results || response.data;
+				return Promise.all((favoriteItems || []).map(normalizeFavorite));
+			}).then(results => {
+				favorites.value = results;
 			}).catch(error => {
 				ElMessage.error('获取收藏列表失败');
 				console.error(error);
@@ -98,7 +116,7 @@ export default {
 			commodityDetailDialogVisible.value = false;
 		};
 
-		const getFullImageUrl = (relativeUrl) => relativeUrl.startsWith('http') ? relativeUrl : `/api${relativeUrl}`;
+		const getFullImageUrl = (relativeUrl = '') => relativeUrl.startsWith('http') ? relativeUrl : `/api${relativeUrl.startsWith('/') ? relativeUrl : `/${relativeUrl}`}`;
 
 		const removeMyFromFavorites = async (favoriteId) => {
 			try {

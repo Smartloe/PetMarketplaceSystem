@@ -1,5 +1,5 @@
 from django.contrib.auth import authenticate, login, logout
-from rest_framework import status, viewsets
+from rest_framework import status, viewsets, permissions
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -143,10 +143,31 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 		"""
 		只返回当前登录用户的用户信息
 		"""
-		return UserProfile.objects.filter(username=self.request.user)
+		user = self.request.user
+		if not user or not user.is_authenticated:
+			return UserProfile.objects.none()
+		UserProfile.objects.get_or_create(username=user)
+		return UserProfile.objects.filter(username=user)
 
 	def perform_create(self, serializer):
 		"""
 		创建用户信息时,设置当前登录用户为关联的用户
 		"""
 		serializer.save(username=self.request.user)
+
+
+class AvatarUploadView(APIView):
+	permission_classes = [permissions.IsAuthenticated]
+
+	def post(self, request):
+		file_obj = request.FILES.get('avatar')
+		if not file_obj:
+			return Response({'detail': '请上传头像文件'}, status=status.HTTP_400_BAD_REQUEST)
+
+		profile, _ = UserProfile.objects.get_or_create(username=request.user)
+		profile.avatar = file_obj
+		profile.save(update_fields=['avatar'])
+
+		return Response({
+			'avatar': request.build_absolute_uri(profile.avatar.url) if profile.avatar else ''
+		}, status=status.HTTP_200_OK)

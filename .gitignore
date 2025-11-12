@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+.venv/
+.uv-cache/
+backstage/pet_shop/.venv/
+
+# Django / misc
+*.log
+.env
+db.sqlite3
+
+# Node / frontend
+node_modules/
+frontstage/pet_shop/node_modules/
+frontstage/pet_shop/dist/

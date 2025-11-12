@@ -1,11 +1,13 @@
-from rest_framework import viewsets, status
+from django.conf import settings
+from django.db.models import Q
+from django.views.decorators.csrf import csrf_exempt  # 免除csrf认证
+from rest_framework import status
+from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from django.db.models import Q
-from .serializers import *
-from rest_framework.generics import ListAPIView
+
 from customer_operation.models import UserComment
-from django.views.decorators.csrf import csrf_exempt  # 免除csrf认证
+from .serializers import *
 
 
 # Create your views here.
@@ -13,11 +15,12 @@ class commodityView(APIView):
 	'''
 	商品列表页
 	'''
-	authentication_classes = []
 	permission_classes = []
 
 	@csrf_exempt
 	def get(self, request):
+		is_guest = not request.user.is_authenticated
+		preview_limit = getattr(settings, 'COMMODITY_PREVIEW_LIMIT', 6)
 		# 获取所有商品类型
 		categories = CommodityCategories.objects.all()
 
@@ -48,7 +51,9 @@ class commodityView(APIView):
 					}
 
 			# 获取该类型下的所有商品
-			commodities = CommodityInfos.objects.filter(types=category)
+			commodities = CommodityInfos.objects.filter(types=category).order_by('-id')
+			if is_guest:
+				commodities = commodities[:preview_limit]
 
 			# 序列化商品信息
 			commodities_serializer = CommodityInfosSerializer(commodities, many=True)
@@ -63,14 +68,17 @@ class commodityView(APIView):
 		# else:
 		# 	data[category.title]['commodities'] = commodities_serializer.data
 
-		return Response(data)
+		return Response({
+			'categories': data,
+			'limited': is_guest,
+			'preview_limit': preview_limit
+		})
 
 
 class detailView(APIView):
 	'''
 	商品详情页
 	'''
-	authentication_classes = []
 	permission_classes = []
 
 	@csrf_exempt
@@ -101,24 +109,32 @@ class CommoditySearchView(APIView):
 	'''
 	商品搜索
 	'''
-	authentication_classes = []
 	permission_classes = []
 
 	@csrf_exempt
 	def get(self, request):
+		preview_limit = getattr(settings, 'COMMODITY_PREVIEW_LIMIT', 6)
+		is_guest = not request.user.is_authenticated
 		# 从请求参数中获取搜索关键字
 		query = request.GET.get('query', '')
 
 		# 使用Q对象进行模糊查询
 		commodities = CommodityInfos.objects.filter(
 			Q(sku_title__icontains=query) | Q(sku_description__icontains=query)
-		)
+		).order_by('-id')
+
+		if is_guest:
+			commodities = commodities[:preview_limit]
 
 		# 序列化查询结果
 		serializer = CommodityInfosSerializer(commodities, many=True)
 
 		# 返回查询结果
-		return Response(serializer.data)
+		return Response({
+			'results': serializer.data,
+			'limited': is_guest,
+			'preview_limit': preview_limit
+		})
 
 
 class CommodityCommentsView(ListAPIView):

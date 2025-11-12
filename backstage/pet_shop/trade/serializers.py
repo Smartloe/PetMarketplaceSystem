@@ -25,6 +25,8 @@ class OrderInfosSerializer(serializers.ModelSerializer):
 
 
 class ShoppingCartSerializer(serializers.ModelSerializer):
+	user = serializers.HiddenField(default=serializers.CurrentUserDefault())
+
 	class Meta:
 		model = ShoppingCart
 		fields = '__all__'

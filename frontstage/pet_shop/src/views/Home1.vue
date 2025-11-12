@@ -105,7 +105,8 @@ export default {
 
 		// 获取商品列表
 		getCommodities().then(response => {
-			commodities.value = response.data;
+			const categoryData = response.data.categories || response.data;
+			commodities.value = categoryData;
 		}).catch(error => {
 			console.error('Error fetching commodities:', error);
 		});
