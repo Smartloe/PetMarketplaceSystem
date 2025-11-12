@@ -101,10 +101,14 @@ class OrderRefundView(APIView):
 		except OrderInfos.DoesNotExist:
 			return Response({'detail': '订单不存在'}, status=status.HTTP_404_NOT_FOUND)
 
-		if order.order_status < 3:
-			return Response({'detail': '请确认收货后再申请退款'}, status=status.HTTP_400_BAD_REQUEST)
+		if order.order_status < 2:
+			return Response({'detail': '订单尚未发货，无法申请退款'}, status=status.HTTP_400_BAD_REQUEST)
+		
+		if order.order_status == 5:
+			return Response({'detail': '订单已退货，无法重复申请'}, status=status.HTTP_400_BAD_REQUEST)
 
-		if order.confirmed_time:
+		# 只有已签收的订单才检查7天退货期限
+		if order.order_status == 3 and order.confirmed_time:
 			if timezone.now() - order.confirmed_time > timedelta(days=7):
 				return Response({'detail': '确认收货超过7天，暂不支持退款'}, status=status.HTTP_400_BAD_REQUEST)
 

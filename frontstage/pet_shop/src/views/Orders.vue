@@ -25,30 +25,34 @@
 					</template>
 				</el-table-column>
 				<el-table-column label="操作">
-					<template #default="{ row }">
-						<div v-if="row.order_status === 0">
-							<el-button size="mini" type="primary" @click="payOrder(row.id)">马上支付</el-button>
-							<br>
-							<el-button size="mini" type="danger" @click="deleteOrders(row.id)">取消订单</el-button>
-						</div>
-						<div v-else-if="row.order_status === 1">
-							<el-button size="mini" type="warning" @click="requestRefund(row.id)">申请退货</el-button>
-						</div>
-						<div v-else-if="row.order_status === 2">
-							<el-button size="mini" type="success" @click="confirmReceipt(row.id)">确认收货</el-button>
-							<el-button size="mini" type="warning" @click="requestRefund(row.id)" style="margin-left:8px">申请退货</el-button>
-						</div>
-						<div v-else-if="row.order_status === 3">
-							<el-button size="mini" type="warning" @click="requestRefund(row.id)">申请退货</el-button>
-						</div>
-						<div v-else-if="row.order_status === 4">
-							<el-button size="mini" type="danger" @click="cancelRefund(row.id)">撤销退货</el-button>
-						</div>
-						<div v-else>
-							无操作
-						</div>
-					</template>
-				</el-table-column>
+						<template #default="{ row }">
+							<div v-if="row.order_status === 0">
+								<el-button size="mini" type="primary" @click="payOrder(row.id)">马上支付</el-button>
+								<br>
+								<el-button size="mini" type="danger" @click="deleteOrders(row.id)">取消订单</el-button>
+							</div>
+							<div v-else-if="row.order_status === 1">
+								<span style="color: #909399;">等待发货</span>
+							</div>
+							<div v-else-if="row.order_status === 2">
+								<el-button size="mini" type="success" @click="confirmReceipt(row.id)">确认收货</el-button>
+								<br style="margin: 4px 0;">
+								<el-button size="mini" type="warning" @click="requestRefund(row.id)">申请退货</el-button>
+							</div>
+							<div v-else-if="row.order_status === 3">
+								<el-button size="mini" type="warning" @click="requestRefund(row.id)">申请退货</el-button>
+							</div>
+							<div v-else-if="row.order_status === 4">
+								<el-button size="mini" type="danger" @click="cancelRefund(row.id)">撤销退货</el-button>
+							</div>
+							<div v-else-if="row.order_status === 5">
+								<span style="color: #67C23A;">已退货</span>
+							</div>
+							<div v-else>
+								无操作
+							</div>
+						</template>
+					</el-table-column>
 			</el-table>
 		</el-card>
 
@@ -191,13 +195,13 @@ export default {
 		const refundForm = ref({type: '仅退款', reason: ''});
 
 		const orderStatusMap = {
-			0: '未支付',
-			1: '已支付',
-			2: '发货中',
-			3: '已签收',
-			4: '退款审核中',
-			5: '已退货'
-		};
+				0: '未支付',
+				1: '已支付',
+				2: '发货中',
+				3: '已签收',
+				4: '退货中',
+				5: '已退货'
+			};
 
 		const fetchOrders = () => {
 			getUserOrders().then(response => {

@@ -6,9 +6,9 @@
 			<el-carousel style="width: 710px; height:300px">
 				<el-carousel-item v-for="ad in advertisements" :key="ad.id">
 					<a :href="ad.ad_link">
-						<img :src="ad.ad_image" alt="Advertisement" class="ad-image"
-							 style="width: 710px; height: 300px;"/>
-					</a>
+							<img :src="ad.ad_image" alt="Advertisement" class="ad-image"
+								style="width: 710px; height: 300px;"/>
+						</a>
 				</el-carousel-item>
 			</el-carousel>
 		</div>

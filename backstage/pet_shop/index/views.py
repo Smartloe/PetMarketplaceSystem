@@ -44,7 +44,7 @@ class AIPetConsultView(APIView):
 	"""
 	Simple proxy endpoint that hides the third-party API key from the frontend.
 	"""
-	permission_classes = (permissions.IsAuthenticated,)
+	permission_classes = (permissions.AllowAny,)
 
 	def post(self, request):
 		payload = request.data if isinstance(request.data, dict) else {}

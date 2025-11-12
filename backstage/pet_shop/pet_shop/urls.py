@@ -41,13 +41,13 @@ schema_view = get_schema_view(
 )
 urlpatterns = [
 	path('admin/', admin.site.urls),  # 后台管理
-	path('accounts/', include('accounts.urls')),  # 账户模块
-	path('operation/', include('customer_operation.urls')),  # 用户操作模块
-	path('commodity/', include('commodity.urls')),  # 商品模块
-	path('merchant/', include('merchant.urls')),  # 商家模块
-	path('trade/', include('trade.urls')),  # 交易模块
-	path('charts', include('charts.urls')),  # 数据可视化
-	path('', include('index.urls')),  # 其他展示/工具模块
+	path('api/accounts/', include('accounts.urls')),  # 账户模块
+	path('api/operation/', include('customer_operation.urls')),  # 用户操作模块
+	path('api/commodity/', include('commodity.urls')),  # 商品模块
+	path('api/merchant/', include('merchant.urls')),  # 商家模块
+	path('api/trade/', include('trade.urls')),  # 交易模块
+	path('api/charts', include('charts.urls')),  # 数据可视化
+	path('api/', include('index.urls')),  # 其他展示/工具模块
 	# 配置媒体资源的路由信息
 	re_path('media/(?P<path>.*)', serve, {'document_root': settings.MEDIA_ROOT}, name='media'),
 	# 定义静态资源的路由信息

@@ -1,0 +1,24 @@
+{
+    "include": ["."],
+    "exclude": ["**/node_modules", "**/__pycache__", "**/migrations"],
+    "pythonVersion": "3.11",
+    "pythonPlatform": "Windows",
+    "extraPaths": [
+        "D:/GitHub/PetMarketplaceSystem/backstage/pet_shop",
+        "D:/GitHub/PetMarketplaceSystem/backstage/pet_shop/.venv/Lib/site-packages"
+    ],
+    "venvPath": "D:/GitHub/PetMarketplaceSystem/backstage/pet_shop",
+    "venv": ".venv",
+    "reportMissingImports": false,
+    "reportMissingModuleSource": false,
+    "reportOptionalMemberAccess": false,
+    "reportOptionalSubscript": false,
+    "reportOptionalIterable": false,
+    "reportOptionalContextManager": false,
+    "reportOptionalOperand": false,
+    "reportGeneralTypeIssues": false,
+    "reportUndefinedVariable": false,
+    "reportUnusedImport": false,
+    "reportUnusedVariable": false,
+    "typeCheckingMode": "off"
+}

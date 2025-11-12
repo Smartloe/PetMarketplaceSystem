@@ -528,6 +528,7 @@ dependencies = [
     { name = "pymysql" },
     { name = "pyopenssl" },
     { name = "python-alipay-sdk" },
+    { name = "python-dotenv" },
     { name = "pytz" },
     { name = "pyyaml" },
     { name = "requests" },
@@ -582,6 +583,7 @@ requires-dist = [
     { name = "pymysql", specifier = "==1.1.0" },
     { name = "pyopenssl", specifier = "==24.1.0" },
     { name = "python-alipay-sdk", specifier = "==3.3.0" },
+    { name = "python-dotenv", specifier = "==1.0.0" },
     { name = "pytz", specifier = "==2024.1" },
     { name = "pyyaml", specifier = "==6.0.1" },
     { name = "requests", specifier = "==2.32.3" },
@@ -780,6 +782,15 @@ dependencies = [
     { name = "pyopenssl" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/c8/72/429d6fc158fb56573bf7197375d9d3220e6a63c532d337e891658e91e1f9/python-alipay-sdk-3.3.0.tar.gz", hash = "sha256:5d66f8e9b159a2d989fa573e91f19f848ac748002fdc6ce24b40fe5d767218aa", size = 10269, upload-time = "2023-06-10T06:12:49.83Z" }
+
+[[package]]
+name = "python-dotenv"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/31/06/1ef763af20d0572c032fa22882cfbfb005fba6e7300715a37840858c919e/python-dotenv-1.0.0.tar.gz", hash = "sha256:a8df96034aae6d2d50a4ebe8216326c61c3eb64836776504fcca410e5937a3ba", size = 37399, upload-time = "2023-02-24T06:46:37.282Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/44/2f/62ea1c8b593f4e093cc1a7768f0d46112107e790c3e478532329e434f00b/python_dotenv-1.0.0-py3-none-any.whl", hash = "sha256:f5971a9226b701070a4bf2c38c89e5a3f0d64de8debda981d1db98583009122a", size = 19482, upload-time = "2023-02-24T06:46:36.009Z" },
+]
 
 [[package]]
 name = "pytz"
