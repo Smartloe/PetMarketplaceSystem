@@ -11,6 +11,9 @@ import footer from './components/Footer.vue';
 import ElementPlus from 'element-plus';
 import 'element-plus/dist/index.css';
 
+// 导入统一设计系统样式
+import './assets/design-system.css';
+
 // 防抖函数
 const debounce = (fn, delay) => {
     let timer = null;

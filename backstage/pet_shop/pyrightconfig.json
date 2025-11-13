@@ -4,10 +4,11 @@
     "pythonVersion": "3.11",
     "pythonPlatform": "Windows",
     "extraPaths": [
-        "D:/GitHub/PetMarketplaceSystem/backstage/pet_shop",
-        "D:/GitHub/PetMarketplaceSystem/backstage/pet_shop/.venv/Lib/site-packages"
+        ".",
+        ".venv/Lib/site-packages",
+        ".venv/lib/python3.11/site-packages"
     ],
-    "venvPath": "D:/GitHub/PetMarketplaceSystem/backstage/pet_shop",
+    "venvPath": ".",
     "venv": ".venv",
     "reportMissingImports": false,
     "reportMissingModuleSource": false,
@@ -20,5 +21,7 @@
     "reportUndefinedVariable": false,
     "reportUnusedImport": false,
     "reportUnusedVariable": false,
-    "typeCheckingMode": "off"
+    "typeCheckingMode": "off",
+    "stubPath": ".venv/Lib/site-packages",
+    "useLibraryCodeForTypes": true
 }

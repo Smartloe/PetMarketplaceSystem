@@ -12,6 +12,7 @@
     "axios": "^1.6.8",
     "core-js": "^3.8.3",
     "element-plus": "^2.7.2",
+    "marked": "^17.0.0",
     "vue": "^3.4.26",
     "vue-axios": "^3.5.2",
     "vue-router": "^4.3.2",
@@ -45,7 +46,9 @@
       "parser": "@babel/eslint-parser",
       "requireConfigFile": false
     },
-    "rules": {"vue/multi-word-component-names": "off"}
+    "rules": {
+      "vue/multi-word-component-names": "off"
+    }
   },
   "browserslist": [
     "> 1%",
