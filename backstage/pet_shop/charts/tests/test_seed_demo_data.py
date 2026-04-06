@@ -1,8 +1,10 @@
 from tempfile import TemporaryDirectory
 
+from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.test import TestCase, override_settings
 
+from charts.constants import DEMO_USER_PREFIX
 from commodity.models import CommodityInfos
 from trade.models import OrderInfos
 
@@ -21,3 +23,14 @@ class SeedDemoBusinessDataCommandTests(TestCase):
         self.assertTrue(product.detail_images.name.startswith("product_photos_details/"))
         self.assertGreater(OrderInfos.objects.filter(created_by="demo_seed").count(), 0)
         self.assertGreater(products.count(), 24)
+
+        users = get_user_model().objects.filter(
+            username__startswith=f"{DEMO_USER_PREFIX}_"
+        ).order_by("date_joined")
+        self.assertGreater(users.count(), 24)
+        self.assertIsNotNone(users.first())
+        self.assertIsNotNone(users.last())
+        self.assertGreaterEqual(
+            (users.last().date_joined - users.first().date_joined).days,
+            20,
+        )

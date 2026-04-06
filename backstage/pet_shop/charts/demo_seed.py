@@ -122,6 +122,7 @@ def _seed_users_and_addresses(batch_id: str) -> tuple[list, list]:
         )
 
         created_at = now - timedelta(days=index % 30, hours=index % 24)
+        user_model.objects.filter(pk=user.pk).update(date_joined=created_at)
         UserAddress.objects.filter(pk=address.pk).update(
             created_time=created_at,
             updated_time=created_at,
