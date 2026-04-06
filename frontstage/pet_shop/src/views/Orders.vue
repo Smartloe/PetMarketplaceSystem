@@ -12,6 +12,7 @@
 				<p>你还没有订单记录，去商城挑选心仪宠物用品吧。</p>
 			</div>
 			<div v-else class="table-scroll-wrap">
+				<p class="table-scroll-hint">左右滑动查看更多列和操作</p>
 				<el-table :data="orders">
 					<el-table-column prop="order_sn" label="订单号" min-width="180"></el-table-column>
 					<el-table-column prop="total_price" label="总金额" min-width="120"></el-table-column>
@@ -465,9 +466,26 @@ export default {
 }
 
 .table-scroll-wrap {
+	position: relative;
 	width: 100%;
 	overflow-x: auto;
 	padding-bottom: var(--space-2);
+}
+
+.table-scroll-hint {
+	display: none;
+	margin: 0 0 var(--space-2);
+	color: var(--text-subtle);
+	font-size: var(--font-size-xs);
+	line-height: 1.4;
+	font-weight: 600;
+}
+
+.table-scroll-hint::before {
+	content: "↔";
+	display: inline-block;
+	margin-right: var(--space-1);
+	color: var(--brand-accent-strong);
 }
 
 .table-scroll-wrap :deep(.el-table) {
@@ -534,6 +552,21 @@ export default {
 @media (max-width: 768px) {
 	.orders-panel {
 		gap: var(--space-4);
+	}
+
+	.table-scroll-hint {
+		display: block;
+	}
+
+	.table-scroll-wrap::after {
+		content: "";
+		position: absolute;
+		top: 0;
+		right: 0;
+		width: 28px;
+		height: calc(100% - var(--space-2));
+		pointer-events: none;
+		background: linear-gradient(270deg, rgba(247, 243, 237, 0.95) 0%, rgba(247, 243, 237, 0) 100%);
 	}
 
 	.table-scroll-wrap :deep(.el-table) {

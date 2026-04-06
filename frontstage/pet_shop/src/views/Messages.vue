@@ -14,6 +14,7 @@
 				<el-button type="primary" @click="openCreateDialog">立即留言</el-button>
 			</div>
 			<div v-else class="table-scroll-wrap">
+				<p class="table-scroll-hint">左右滑动查看更多列和操作</p>
 				<el-table :data="messages">
 					<el-table-column prop="subject" label="主题" min-width="180" />
 					<el-table-column prop="message" label="内容" min-width="260" show-overflow-tooltip />
@@ -315,9 +316,25 @@ export default {
 }
 
 .table-scroll-wrap {
+	position: relative;
 	width: 100%;
 	overflow-x: auto;
 	padding-bottom: var(--space-2);
+}
+
+.table-scroll-hint {
+	display: none;
+	margin: 0 0 var(--space-2);
+	color: var(--text-subtle);
+	font-size: var(--font-size-xs);
+	line-height: 1.4;
+}
+
+.table-scroll-hint::before {
+	content: "↔";
+	display: inline-block;
+	margin-right: var(--space-1);
+	color: var(--brand-accent-strong);
 }
 
 .table-scroll-wrap :deep(.el-table) {
@@ -352,6 +369,21 @@ export default {
 
 	.section-header {
 		flex-wrap: wrap;
+	}
+
+	.table-scroll-hint {
+		display: block;
+	}
+
+	.table-scroll-wrap::after {
+		content: "";
+		position: absolute;
+		top: 0;
+		right: 0;
+		width: 28px;
+		height: calc(100% - var(--space-2));
+		pointer-events: none;
+		background: linear-gradient(270deg, rgba(247, 243, 237, 0.95) 0%, rgba(247, 243, 237, 0) 100%);
 	}
 
 	.table-scroll-wrap :deep(.el-table) {
