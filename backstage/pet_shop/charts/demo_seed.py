@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 from dataclasses import dataclass
 from datetime import timedelta
 from decimal import Decimal
@@ -29,6 +30,9 @@ from trade.models import OrderGoods, OrderInfos
 DEMO_USER_COUNT = 24
 DEMO_PRODUCT_COUNT = 30
 DEMO_ORDERS_PER_USER = 4
+FALLBACK_PNG_BYTES = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII="
+)
 
 
 @dataclass
@@ -46,7 +50,7 @@ def _save_demo_media_file(target: str, source: Path | None) -> str:
     if source and source.exists():
         with source.open("rb") as source_file:
             return default_storage.save(target, File(source_file))
-    return default_storage.save(target, ContentFile(b"demo-image"))
+    return default_storage.save(target, ContentFile(FALLBACK_PNG_BYTES))
 
 
 def _prepare_demo_images(batch_id: str) -> list[tuple[str, str]]:
@@ -97,10 +101,9 @@ def _seed_users_and_addresses(batch_id: str) -> tuple[list, list]:
 
     for index in range(DEMO_USER_COUNT):
         username = f"{DEMO_USER_PREFIX}_{batch_id}_{index:02d}"
-        user = user_model.objects.create_user(
-            username=username,
-            password="DemoPass123!",
-        )
+        user = user_model.objects.create(username=username)
+        user.set_unusable_password()
+        user.save(update_fields=["password"])
         UserProfile.objects.create(
             username=user,
             gender="M" if index % 2 == 0 else "F",
@@ -200,7 +203,7 @@ def _seed_orders_and_comments(
             refund_status = 0
             refund_reason = ""
             if order_status in (4, 5):
-                refund_status = (sequence % 3) + 1
+                refund_status = ((sequence // len(order_statuses)) % 3) + 1
                 refund_reason = "演示订单售后退款"
 
             order = OrderInfos.objects.create(
