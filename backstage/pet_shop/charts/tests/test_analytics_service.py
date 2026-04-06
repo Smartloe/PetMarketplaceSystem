@@ -137,7 +137,7 @@ class AnalyticsServiceTests(TestCase):
         self.assertEqual(province_distribution["浙江省"], 2)
         self.assertEqual(province_distribution["广东省"], 1)
 
-    def test_refund_distribution_uses_order_status_precedence(self):
+    def test_refund_distribution_follows_task2_contract(self):
         seed_minimal_order_scenario()
         now = timezone.now()
 
@@ -187,8 +187,27 @@ class AnalyticsServiceTests(TestCase):
             created_by="test_seed",
             update_by="test_seed",
         )
+        approved_refund_order = OrderInfos.objects.create(
+            user=base_user,
+            order_sn="TEST-APPROVED-REFUND-001",
+            address=base_address,
+            total_price="55.00",
+            coupon_price="0.00",
+            payable_price="55.00",
+            pay_method=1,
+            leave_comment="测试订单：已签收但退款已通过",
+            order_status=3,
+            refund_status=2,
+            created_by="test_seed",
+            update_by="test_seed",
+        )
         OrderInfos.objects.filter(
-            pk__in=[returned_order.pk, in_refund_order.pk, overlap_order.pk]
+            pk__in=[
+                returned_order.pk,
+                in_refund_order.pk,
+                overlap_order.pk,
+                approved_refund_order.pk,
+            ]
         ).update(
             created_time=now - timedelta(days=1),
             update_time=now - timedelta(days=1),
@@ -200,13 +219,13 @@ class AnalyticsServiceTests(TestCase):
             for item in dashboard["sections"]["orders"]["refund_distribution"]
         }
         self.assertSetEqual(set(refund_distribution.keys()), {"退款中", "已退货"})
-        self.assertEqual(refund_distribution["退款中"], 4)
-        self.assertEqual(refund_distribution["已退货"], 1)
+        self.assertEqual(refund_distribution["退款中"], 2)
+        self.assertEqual(refund_distribution["已退货"], 4)
         self.assertEqual(
             refund_distribution["退款中"] + refund_distribution["已退货"],
-            5,
+            6,
         )
-        self.assertGreater(refund_distribution["退款中"], refund_distribution["已退货"])
+        self.assertGreater(refund_distribution["已退货"], refund_distribution["退款中"])
 
     def test_dashboard_distributions_and_top_lists_use_30d_window(self):
         seed_minimal_order_scenario()
@@ -308,8 +327,8 @@ class AnalyticsServiceTests(TestCase):
         self.assertEqual(payment_distribution["支付宝"], 1)
         self.assertEqual(payment_distribution["银联"], 1)
         self.assertEqual(status_distribution["已退货"], 0)
-        self.assertEqual(refund_distribution["退款中"], 2)
-        self.assertEqual(refund_distribution["已退货"], 0)
+        self.assertEqual(refund_distribution["退款中"], 1)
+        self.assertEqual(refund_distribution["已退货"], 1)
 
     def test_rolling_window_metrics_exclude_future_orders_and_users(self):
         seed_minimal_order_scenario()

@@ -432,9 +432,13 @@ def _build_refund_distribution(
     time_context: _AnalyticsTimeContext | None = None,
 ):
     """
-    Refund bucket precedence:
-    1) `order_status=5` is canonical completion and must map to "已退货".
-    2) Everything still in the workflow (including `refund_status` 1/2) maps to "退款中".
+    Task 2 refund contract:
+    - "退款中" = `refund_status=1` OR `order_status=4`
+    - "已退货" = `refund_status=2` OR `order_status=5`
+
+    When an order satisfies both predicates (for example `order_status=4` with
+    `refund_status=2`), map it to "已退货" to keep approved refunds out of the
+    "退款中" bucket.
     """
     rows = (
         _order_queryset(
@@ -445,11 +449,11 @@ def _build_refund_distribution(
         .annotate(
             refund_bucket=Case(
                 When(
-                    Q(order_status=5),
+                    Q(refund_status=2) | Q(order_status=5),
                     then=Value(REFUND_BUCKET_RETURNED),
                 ),
                 When(
-                    Q(order_status=4) | Q(refund_status__in=(1, 2)),
+                    Q(refund_status=1) | Q(order_status=4),
                     then=Value(REFUND_BUCKET_IN_PROGRESS),
                 ),
                 default=Value(None),
