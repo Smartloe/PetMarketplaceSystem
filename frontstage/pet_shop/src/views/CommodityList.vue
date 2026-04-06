@@ -221,6 +221,16 @@ export default {
       }, 4200);
     };
 
+    const isPostLoginRedirectVisit = () => {
+      if (!isLoggedIn.value || typeof window === 'undefined') {
+        return false;
+      }
+      const historyState = window.history?.state || {};
+      const backPath = typeof historyState.back === 'string' ? historyState.back : '';
+      const currentPath = typeof historyState.current === 'string' ? historyState.current : '';
+      return backPath.includes('/accounts/login') && currentPath.includes('/commodity');
+    };
+
     const updateLimitMeta = (payload = {}) => {
       if (typeof payload.preview_limit === 'number') {
         guestPreviewLimit.value = payload.preview_limit;
@@ -406,7 +416,7 @@ export default {
     });
 
     onMounted(() => {
-      fetchCommodities();
+      fetchCommodities({ showUnlockState: isPostLoginRedirectVisit() });
     });
 
     onBeforeUnmount(() => {
