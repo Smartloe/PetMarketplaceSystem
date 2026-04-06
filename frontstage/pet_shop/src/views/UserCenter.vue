@@ -34,7 +34,7 @@
         <div class="overview-tags">
           <el-tag effect="plain" type="success">账户状态：{{ accountStatusLabel }}</el-tag>
           <el-tag effect="plain">用户评分 {{ formattedUserScore }}</el-tag>
-          <el-tag effect="plain" type="warning">累计消费 ¥{{ formattedTotalCost }}</el-tag>
+          <el-tag effect="plain" type="warning">累计消费 {{ formattedTotalCost }}</el-tag>
         </div>
       </div>
 
@@ -58,15 +58,11 @@
       </div>
 
       <div v-if="profileLoading" class="app-loading-state">正在加载账户资料...</div>
+      <div v-else-if="profileFetchState === 'error'" class="app-notice-state">
+        <p>{{ profileLoadError || '资料读取失败，请稍后重试。' }}</p>
+        <el-button type="primary" plain @click="fetchUserProfile">重新获取</el-button>
+      </div>
       <template v-else>
-        <el-alert
-          v-if="profileLoadError"
-          :title="profileLoadError"
-          type="warning"
-          :closable="false"
-          show-icon
-          class="section-alert"
-        />
         <el-alert
           v-if="profileActionMessage"
           :title="profileActionMessage"
@@ -121,26 +117,17 @@
       <div class="address-summary">
         <article class="summary-card">
           <p>地址总数</p>
-          <strong>{{ userAddresses.length }}</strong>
+          <strong>{{ addressCountDisplay }}</strong>
         </article>
         <article class="summary-card">
           <p>默认地址</p>
           <strong>{{ defaultAddressCount }}</strong>
         </article>
         <article class="summary-card">
-          <p>最近收件人</p>
-          <strong>{{ latestSignerName }}</strong>
+          <p>收件人示例</p>
+          <strong>{{ representativeSignerName }}</strong>
         </article>
       </div>
-
-      <el-alert
-        v-if="addressLoadError"
-        :title="addressLoadError"
-        type="warning"
-        :closable="false"
-        show-icon
-        class="section-alert"
-      />
       <el-alert
         v-if="addressActionMessage"
         :title="addressActionMessage"
@@ -151,6 +138,10 @@
       />
 
       <div v-if="addressLoading" class="app-loading-state">正在加载地址信息...</div>
+      <div v-else-if="addressFetchState === 'error'" class="app-notice-state">
+        <p>{{ addressLoadError || '地址列表暂未获取，请稍后重试。' }}</p>
+        <el-button type="primary" plain @click="fetchUserAddresses">重新获取</el-button>
+      </div>
       <div v-else-if="userAddresses.length === 0" class="app-empty-state">
         <p>你还没有收货地址，建议先添加一个常用地址，结算会更顺畅。</p>
         <el-button type="primary" @click="showAddressDialog">添加第一个地址</el-button>
@@ -185,7 +176,11 @@
     <el-dialog
       v-model="addressDialogVisible"
       :title="isEditing ? '编辑地址' : '新增地址'"
-      width="560px"
+      :width="addressDialogWidth"
+      :close-on-click-modal="!savingAddress"
+      :close-on-press-escape="!savingAddress"
+      :show-close="!savingAddress"
+      :before-close="handleAddressDialogBeforeClose"
       @closed="resetAddressDraft"
     >
       <el-form :model="currentAddress" label-position="top">
@@ -216,7 +211,7 @@
         <div class="dialog-footer">
           <span v-if="addressFormError" class="dialog-error">{{ addressFormError }}</span>
           <div class="dialog-buttons">
-            <el-button @click="closeAddressDialog">取消</el-button>
+            <el-button :disabled="savingAddress" @click="closeAddressDialog">取消</el-button>
             <el-button type="primary" :loading="savingAddress" @click="saveAddress">
               {{ isEditing ? '保存修改' : '保存地址' }}
             </el-button>
@@ -255,14 +250,12 @@ const createEmptyProfile = () => ({
 });
 
 const createEmptyAddress = () => ({
-  id: null,
   province: '',
   city: '',
   county: '',
   address: '',
   signer_name: '',
   signer_mobile: '',
-  is_default: false,
 });
 
 const normalizeCollection = (payload) => {
@@ -323,12 +316,16 @@ export default {
     const regionSelection = ref([]);
     const currentAddress = ref(createEmptyAddress());
 
-    const profileLoading = ref(false);
-    const addressLoading = ref(false);
+    const profileLoading = ref(true);
+    const addressLoading = ref(true);
     const savingProfile = ref(false);
     const savingAddress = ref(false);
     const uploadingAvatar = ref(false);
     const deletingAddressId = ref(null);
+    const profileFetchState = ref('pending');
+    const addressFetchState = ref('pending');
+    const addressDialogSession = ref(0);
+    const addressSaveToken = ref(0);
 
     const isEditing = ref(false);
     const addressDialogVisible = ref(false);
@@ -342,18 +339,40 @@ export default {
     const addressActionMessage = ref('');
     const addressActionType = ref('success');
     const addressFormError = ref('');
+    const addressDialogWidth = computed(() => 'min(560px, calc(100vw - 32px))');
+    const isProfileReady = computed(() => profileFetchState.value === 'success');
+    const isAddressReady = computed(() => addressFetchState.value === 'success');
 
-    const displayUsername = computed(() => userProfile.value.username || '宠物爱好者');
-    const displayMobile = computed(() => userProfile.value.mobile || '未填写手机号');
-    const displayUpdatedTime = computed(() => formatDateTime(userProfile.value.updated_time));
-    const accountStatusLabel = computed(() => userProfile.value.id ? '正常' : '待完善');
-    const formattedUserScore = computed(() => userProfile.value.user_score ?? '--');
-    const formattedTotalCost = computed(() => formatMoney(userProfile.value.total_cost_amt));
+    const displayUsername = computed(() => {
+      if (profileFetchState.value === 'pending') return '账户信息加载中';
+      if (profileFetchState.value === 'error') return '账户信息暂未获取';
+      return userProfile.value.username || '宠物爱好者';
+    });
+    const displayMobile = computed(() => isProfileReady.value ? (userProfile.value.mobile || '未填写手机号') : '--');
+    const displayUpdatedTime = computed(() => {
+      if (profileFetchState.value === 'pending') return '加载中';
+      if (profileFetchState.value === 'error') return '暂未获取';
+      return formatDateTime(userProfile.value.updated_time);
+    });
+    const accountStatusLabel = computed(() => {
+      if (profileFetchState.value === 'pending') return '加载中';
+      if (profileFetchState.value === 'error') return '暂未获取';
+      return userProfile.value.id ? '正常' : '待完善';
+    });
+    const formattedUserScore = computed(() => isProfileReady.value ? (userProfile.value.user_score ?? '--') : '--');
+    const formattedTotalCost = computed(() => isProfileReady.value ? `¥${formatMoney(userProfile.value.total_cost_amt)}` : '--');
     const fallbackAvatar = computed(() => buildFallbackAvatar(displayUsername.value));
     const displayAvatar = computed(() => normalizeAvatarUrl(userProfile.value.avatar) || fallbackAvatar.value);
-    const defaultAddressCount = computed(() => userAddresses.value.filter(item => item.is_default).length);
-    const latestSignerName = computed(() => userAddresses.value[0]?.signer_name || '暂无');
+    const addressCountDisplay = computed(() => isAddressReady.value ? userAddresses.value.length : '--');
+    const defaultAddressCount = computed(() => isAddressReady.value ? userAddresses.value.filter(item => item.is_default).length : '--');
+    const representativeSignerName = computed(() => {
+      if (!isAddressReady.value) return '--';
+      const sample = userAddresses.value.find(item => item?.signer_name);
+      return sample?.signer_name || '暂无';
+    });
     const profileDescription = computed(() => {
+      if (profileFetchState.value === 'pending') return '正在获取你的账户摘要，请稍候。';
+      if (profileFetchState.value === 'error') return '账户摘要暂未获取，你可以稍后重试。';
       const intro = (userProfile.value.user_intro || '').trim();
       if (intro) return intro;
       return '欢迎回到账户主页，在这里统一管理你的资料、头像和常用收货地址。';
@@ -376,6 +395,7 @@ export default {
 
     const fetchUserProfile = async () => {
       profileLoading.value = true;
+      profileFetchState.value = 'pending';
       profileLoadError.value = '';
       try {
         const response = await getUserProfile();
@@ -394,9 +414,11 @@ export default {
           total_cost_amt: profile.total_cost_amt ?? null,
           updated_time: profile.updated_time || '',
         };
+        profileFetchState.value = 'success';
       } catch (error) {
         const detail = extractErrorMessage(error);
         profileLoadError.value = detail || '资料读取失败，请刷新后重试。';
+        profileFetchState.value = 'error';
         ElMessage.error(profileLoadError.value);
         console.error(error);
       } finally {
@@ -406,14 +428,18 @@ export default {
 
     const fetchUserAddresses = async () => {
       addressLoading.value = true;
+      addressFetchState.value = 'pending';
       addressLoadError.value = '';
       try {
         const response = await getUserAddresses();
         const addresses = normalizeCollection(response?.data);
         userAddresses.value = Array.isArray(addresses) ? addresses : [];
+        addressFetchState.value = 'success';
       } catch (error) {
         const detail = extractErrorMessage(error);
         addressLoadError.value = detail || '地址列表读取失败，请稍后重试。';
+        addressFetchState.value = 'error';
+        userAddresses.value = [];
         ElMessage.error(addressLoadError.value);
         console.error(error);
       } finally {
@@ -493,6 +519,7 @@ export default {
     };
 
     const showAddressDialog = () => {
+      addressDialogSession.value += 1;
       currentAddress.value = createEmptyAddress();
       regionSelection.value = [];
       addressFormError.value = '';
@@ -501,6 +528,7 @@ export default {
     };
 
     const editAddress = (address) => {
+      addressDialogSession.value += 1;
       currentAddress.value = {
         ...createEmptyAddress(),
         ...address,
@@ -525,19 +553,10 @@ export default {
         addressFormError.value = '请填写区 / 县信息。';
         return;
       }
-      if (!currentAddress.value.address) {
-        addressFormError.value = '请填写详细地址。';
-        return;
-      }
-      if (!currentAddress.value.signer_name) {
-        addressFormError.value = '请填写收件人姓名。';
-        return;
-      }
-      if (!currentAddress.value.signer_mobile) {
-        addressFormError.value = '请填写联系电话。';
-        return;
-      }
 
+      const sessionId = addressDialogSession.value;
+      const saveToken = addressSaveToken.value + 1;
+      addressSaveToken.value = saveToken;
       savingAddress.value = true;
       addressFormError.value = '';
       try {
@@ -547,12 +566,20 @@ export default {
           setAddressAction('success', '地址已更新。');
           ElMessage.success('地址更新成功');
         } else {
+          delete payload.id;
+          delete payload.is_default;
           await createUserAddress(payload);
           setAddressAction('success', '地址已添加。');
           ElMessage.success('地址创建成功');
         }
         await fetchUserAddresses();
-        closeAddressDialog();
+        if (
+          saveToken === addressSaveToken.value
+          && sessionId === addressDialogSession.value
+          && addressDialogVisible.value
+        ) {
+          closeAddressDialog(true);
+        }
       } catch (error) {
         const detail = extractErrorMessage(error);
         const message = detail || '地址保存失败，请核对后重试。';
@@ -561,7 +588,9 @@ export default {
         ElMessage.error(message);
         console.error(error);
       } finally {
-        savingAddress.value = false;
+        if (saveToken === addressSaveToken.value) {
+          savingAddress.value = false;
+        }
       }
     };
 
@@ -583,8 +612,18 @@ export default {
       }
     };
 
-    const closeAddressDialog = () => {
+    const closeAddressDialog = (force = false) => {
+      if (savingAddress.value && !force) {
+        return;
+      }
       addressDialogVisible.value = false;
+    };
+
+    const handleAddressDialogBeforeClose = (done) => {
+      if (savingAddress.value) {
+        return;
+      }
+      done();
     };
 
     const resetAddressDraft = () => {
@@ -620,6 +659,8 @@ export default {
       currentAddress,
       regionOptions,
       regionSelection,
+      profileFetchState,
+      addressFetchState,
       profileLoading,
       addressLoading,
       savingProfile,
@@ -627,6 +668,7 @@ export default {
       uploadingAvatar,
       deletingAddressId,
       addressDialogVisible,
+      addressDialogWidth,
       isEditing,
       profileLoadError,
       addressLoadError,
@@ -645,8 +687,9 @@ export default {
       formattedUserScore,
       formattedTotalCost,
       profileDescription,
+      addressCountDisplay,
       defaultAddressCount,
-      latestSignerName,
+      representativeSignerName,
       fetchUserProfile,
       fetchUserAddresses,
       updateMyProfile,
@@ -657,6 +700,7 @@ export default {
       saveAddress,
       deleteAddress,
       closeAddressDialog,
+      handleAddressDialogBeforeClose,
       resetAddressDraft,
       formatAddress,
       formatRegion,
