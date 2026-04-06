@@ -137,7 +137,7 @@ class AnalyticsServiceTests(TestCase):
         self.assertEqual(province_distribution["浙江省"], 2)
         self.assertEqual(province_distribution["广东省"], 1)
 
-    def test_refund_distribution_uses_business_buckets(self):
+    def test_refund_distribution_uses_order_status_precedence(self):
         seed_minimal_order_scenario()
         now = timezone.now()
 
@@ -200,12 +200,13 @@ class AnalyticsServiceTests(TestCase):
             for item in dashboard["sections"]["orders"]["refund_distribution"]
         }
         self.assertSetEqual(set(refund_distribution.keys()), {"退款中", "已退货"})
-        self.assertEqual(refund_distribution["退款中"], 2)
-        self.assertEqual(refund_distribution["已退货"], 3)
+        self.assertEqual(refund_distribution["退款中"], 4)
+        self.assertEqual(refund_distribution["已退货"], 1)
         self.assertEqual(
             refund_distribution["退款中"] + refund_distribution["已退货"],
             5,
         )
+        self.assertGreater(refund_distribution["退款中"], refund_distribution["已退货"])
 
     def test_dashboard_distributions_and_top_lists_use_30d_window(self):
         seed_minimal_order_scenario()
@@ -307,8 +308,8 @@ class AnalyticsServiceTests(TestCase):
         self.assertEqual(payment_distribution["支付宝"], 1)
         self.assertEqual(payment_distribution["银联"], 1)
         self.assertEqual(status_distribution["已退货"], 0)
-        self.assertEqual(refund_distribution["退款中"], 1)
-        self.assertEqual(refund_distribution["已退货"], 1)
+        self.assertEqual(refund_distribution["退款中"], 2)
+        self.assertEqual(refund_distribution["已退货"], 0)
 
     def test_rolling_window_metrics_exclude_future_orders_and_users(self):
         seed_minimal_order_scenario()
@@ -384,3 +385,41 @@ class AnalyticsServiceTests(TestCase):
         self.assertEqual(sum(item["value"] for item in order_30d), 3)
         self.assertEqual(sum(item["value"] for item in user_7d), 1)
         self.assertEqual(sum(item["value"] for item in user_30d), 1)
+
+    def test_new_user_metrics_exclude_staff_and_superusers(self):
+        seed_minimal_order_scenario()
+        now = timezone.now()
+
+        superuser = User.objects.create_superuser(
+            username="analytics_admin",
+            email="analytics_admin@example.com",
+            password="test-password",
+        )
+        staff_user = User.objects.create_user(username="analytics_staff")
+        User.objects.filter(pk=staff_user.pk).update(is_staff=True)
+        User.objects.filter(pk__in=[superuser.pk, staff_user.pk]).update(
+            date_joined=now - timedelta(days=1)
+        )
+
+        overview = build_overview_payload()
+        dashboard = build_dashboard_payload()
+        user_trend_7d = dashboard["sections"]["users"]["new_user_trend"]["7d"]
+        user_trend_30d = dashboard["sections"]["users"]["new_user_trend"]["30d"]
+
+        self.assertEqual(overview["metrics"]["new_users_count"], 1)
+        self.assertEqual(sum(item["value"] for item in user_trend_7d), 1)
+        self.assertEqual(sum(item["value"] for item in user_trend_30d), 1)
+
+    def test_refund_alert_only_counts_pending_review_orders(self):
+        seed_minimal_order_scenario()
+
+        overview = build_overview_payload()
+        refund_alert = next(
+            alert for alert in overview["alerts"] if alert["title"] == "退款申请待审核"
+        )
+
+        self.assertIn("1 笔", refund_alert["description"])
+        self.assertNotIn(
+            "退款订单待处理",
+            [alert["title"] for alert in overview["alerts"]],
+        )

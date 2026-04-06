@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 
@@ -29,30 +30,61 @@ RATING_PRECISION = Decimal("0.01")
 DASHBOARD_WINDOW_DAYS = TREND_WINDOWS[1]
 
 
-def _today() -> date:
-    return timezone.now().date()
+@dataclass
+class _AnalyticsTimeContext:
+    now: datetime
+    today: date
+    window_bounds: dict[int, tuple[date, date]] = field(default_factory=dict)
+    window_datetime_bounds: dict[int, tuple[datetime, datetime]] = field(
+        default_factory=dict
+    )
 
 
-def _window_start(days: int) -> date:
-    return _today() - timedelta(days=days - 1)
+def _build_time_context(now: datetime | None = None) -> _AnalyticsTimeContext:
+    current_now = now or timezone.now()
+    return _AnalyticsTimeContext(now=current_now, today=current_now.date())
 
 
-def _window_bounds(days: int) -> tuple[date, date]:
-    return _window_start(days), _today()
+def _window_start(
+    days: int,
+    time_context: _AnalyticsTimeContext | None = None,
+) -> date:
+    context = time_context or _build_time_context()
+    return context.today - timedelta(days=days - 1)
 
 
-def _make_boundary_datetime(day: date) -> datetime:
+def _window_bounds(
+    days: int,
+    time_context: _AnalyticsTimeContext | None = None,
+) -> tuple[date, date]:
+    context = time_context or _build_time_context()
+    if days not in context.window_bounds:
+        context.window_bounds[days] = (_window_start(days, time_context=context), context.today)
+    return context.window_bounds[days]
+
+
+def _make_boundary_datetime(day: date, reference_now: datetime) -> datetime:
     boundary = datetime.combine(day, time.min)
-    if timezone.is_aware(timezone.now()) and timezone.is_naive(boundary):
+    if timezone.is_aware(reference_now) and timezone.is_naive(boundary):
         return timezone.make_aware(boundary, timezone.get_current_timezone())
     return boundary
 
 
-def _window_datetime_bounds(days: int) -> tuple[datetime, datetime]:
-    start_date, end_date = _window_bounds(days)
-    return _make_boundary_datetime(start_date), _make_boundary_datetime(
-        end_date + timedelta(days=1)
-    )
+def _window_datetime_bounds(
+    days: int,
+    time_context: _AnalyticsTimeContext | None = None,
+) -> tuple[datetime, datetime]:
+    context = time_context or _build_time_context()
+    if days not in context.window_datetime_bounds:
+        start_date, end_date = _window_bounds(days, time_context=context)
+        context.window_datetime_bounds[days] = (
+            _make_boundary_datetime(start_date, reference_now=context.now),
+            _make_boundary_datetime(
+                end_date + timedelta(days=1),
+                reference_now=context.now,
+            ),
+        )
+    return context.window_datetime_bounds[days]
 
 
 def _format_money(value: Decimal | None) -> str:
@@ -68,8 +100,12 @@ def _coerce_day(value) -> date:
     return date.fromisoformat(str(value))
 
 
-def _build_zero_filled_daily_series(days: int, rows_by_day: dict[date, int | Decimal]):
-    start_date = _window_start(days)
+def _build_zero_filled_daily_series(
+    days: int,
+    rows_by_day: dict[date, int | Decimal],
+    time_context: _AnalyticsTimeContext | None = None,
+):
+    start_date = _window_start(days, time_context=time_context)
     series = []
     for offset in range(days):
         day = start_date + timedelta(days=offset)
@@ -86,10 +122,11 @@ def _order_queryset(
     days: int | None = DASHBOARD_WINDOW_DAYS,
     included_statuses=None,
     refund_statuses=None,
+    time_context: _AnalyticsTimeContext | None = None,
 ):
     queryset = OrderInfos.objects.all()
     if days is not None:
-        start_at, end_at = _window_datetime_bounds(days)
+        start_at, end_at = _window_datetime_bounds(days, time_context=time_context)
         queryset = queryset.filter(created_time__gte=start_at, created_time__lt=end_at)
     if included_statuses is not None:
         queryset = queryset.filter(order_status__in=included_statuses)
@@ -98,11 +135,12 @@ def _order_queryset(
     return queryset
 
 
-def _gmv_queryset(days: int):
+def _gmv_queryset(days: int, time_context: _AnalyticsTimeContext | None = None):
     return _order_queryset(
         days=days,
         included_statuses=GMV_ORDER_STATUSES,
         refund_statuses=GMV_ALLOWED_REFUND_STATUSES,
+        time_context=time_context,
     )
 
 
@@ -113,19 +151,42 @@ def _rows_to_day_map(rows):
     return rows_by_day
 
 
-def _calculate_gmv(days: int = 30) -> str:
-    total = _gmv_queryset(days).aggregate(total=Sum("payable_price"))["total"] or MONEY_ZERO
+def _calculate_gmv(
+    days: int = 30,
+    time_context: _AnalyticsTimeContext | None = None,
+) -> str:
+    total = (
+        _gmv_queryset(days, time_context=time_context).aggregate(total=Sum("payable_price"))[
+            "total"
+        ]
+        or MONEY_ZERO
+    )
     return _format_money(total)
 
 
-def _calculate_order_count(days: int = 30, included_statuses=ORDER_COUNT_STATUSES) -> int:
-    return _order_queryset(days=days, included_statuses=included_statuses).count()
+def _calculate_order_count(
+    days: int = 30,
+    included_statuses=ORDER_COUNT_STATUSES,
+    time_context: _AnalyticsTimeContext | None = None,
+) -> int:
+    return _order_queryset(
+        days=days,
+        included_statuses=included_statuses,
+        time_context=time_context,
+    ).count()
 
 
-def _calculate_new_users(days: int = 30) -> int:
+def _marketplace_users_queryset(user_model):
+    return user_model.objects.filter(is_staff=False, is_superuser=False)
+
+
+def _calculate_new_users(
+    days: int = 30,
+    time_context: _AnalyticsTimeContext | None = None,
+) -> int:
     user_model = get_user_model()
-    start_at, end_at = _window_datetime_bounds(days)
-    return user_model.objects.filter(
+    start_at, end_at = _window_datetime_bounds(days, time_context=time_context)
+    return _marketplace_users_queryset(user_model).filter(
         date_joined__gte=start_at,
         date_joined__lt=end_at,
     ).count()
@@ -135,11 +196,13 @@ def _calculate_average_order_value(
     days: int,
     order_statuses,
     refund_statuses,
+    time_context: _AnalyticsTimeContext | None = None,
 ) -> str:
     included_orders = _order_queryset(
         days=days,
         included_statuses=order_statuses,
         refund_statuses=refund_statuses,
+        time_context=time_context,
     )
     aggregates = included_orders.aggregate(total=Sum("payable_price"), count=Count("id"))
     order_count = aggregates["count"] or 0
@@ -149,49 +212,77 @@ def _calculate_average_order_value(
     return _format_money(total / Decimal(order_count))
 
 
-def _build_daily_sales_trend(days: int):
+def _build_daily_sales_trend(
+    days: int,
+    time_context: _AnalyticsTimeContext | None = None,
+):
     rows = (
-        _gmv_queryset(days)
+        _gmv_queryset(days, time_context=time_context)
         .annotate(day=TruncDate("created_time"))
         .values("day")
         .annotate(value=Sum("payable_price"))
         .order_by("day")
     )
-    return _build_zero_filled_daily_series(days, _rows_to_day_map(rows))
+    return _build_zero_filled_daily_series(
+        days,
+        _rows_to_day_map(rows),
+        time_context=time_context,
+    )
 
 
-def _build_daily_order_trend(days: int):
+def _build_daily_order_trend(
+    days: int,
+    time_context: _AnalyticsTimeContext | None = None,
+):
     rows = (
-        _order_queryset(days=days, included_statuses=ORDER_COUNT_STATUSES)
+        _order_queryset(
+            days=days,
+            included_statuses=ORDER_COUNT_STATUSES,
+            time_context=time_context,
+        )
         .annotate(day=TruncDate("created_time"))
         .values("day")
         .annotate(value=Count("id"))
         .order_by("day")
     )
-    return _build_zero_filled_daily_series(days, _rows_to_day_map(rows))
+    return _build_zero_filled_daily_series(
+        days,
+        _rows_to_day_map(rows),
+        time_context=time_context,
+    )
 
 
-def _build_daily_user_trend(days: int):
+def _build_daily_user_trend(
+    days: int,
+    time_context: _AnalyticsTimeContext | None = None,
+):
     user_model = get_user_model()
-    start_at, end_at = _window_datetime_bounds(days)
+    start_at, end_at = _window_datetime_bounds(days, time_context=time_context)
     rows = (
-        user_model.objects.filter(date_joined__gte=start_at, date_joined__lt=end_at)
+        _marketplace_users_queryset(user_model)
+        .filter(date_joined__gte=start_at, date_joined__lt=end_at)
         .annotate(day=TruncDate("date_joined"))
         .values("day")
         .annotate(value=Count("id"))
         .order_by("day")
     )
-    return _build_zero_filled_daily_series(days, _rows_to_day_map(rows))
+    return _build_zero_filled_daily_series(
+        days,
+        _rows_to_day_map(rows),
+        time_context=time_context,
+    )
 
 
-def _build_category_share(days: int = DASHBOARD_WINDOW_DAYS):
+def _build_category_share(
+    days: int = DASHBOARD_WINDOW_DAYS,
+    time_context: _AnalyticsTimeContext | None = None,
+):
+    start_at, end_at = _window_datetime_bounds(days, time_context=time_context)
     rows = (
         OrderGoods.objects.filter(
+            order__created_time__gte=start_at,
+            order__created_time__lt=end_at,
             order__order_status__in=ORDER_COUNT_STATUSES,
-            order__in=_order_queryset(
-                days=days,
-                included_statuses=ORDER_COUNT_STATUSES,
-            ),
         )
         .values("goods__types__title")
         .annotate(value=Sum("goods_num"))
@@ -203,14 +294,17 @@ def _build_category_share(days: int = DASHBOARD_WINDOW_DAYS):
     ]
 
 
-def _build_hot_products(limit: int, days: int = DASHBOARD_WINDOW_DAYS):
+def _build_hot_products(
+    limit: int,
+    days: int = DASHBOARD_WINDOW_DAYS,
+    time_context: _AnalyticsTimeContext | None = None,
+):
+    start_at, end_at = _window_datetime_bounds(days, time_context=time_context)
     rows = (
         OrderGoods.objects.filter(
+            order__created_time__gte=start_at,
+            order__created_time__lt=end_at,
             order__order_status__in=ORDER_COUNT_STATUSES,
-            order__in=_order_queryset(
-                days=days,
-                included_statuses=ORDER_COUNT_STATUSES,
-            ),
         )
         .values("goods_id", "goods__sku_title", "goods__stock_quantity")
         .annotate(sold_quantity=Sum("goods_num"))
@@ -227,11 +321,14 @@ def _build_hot_products(limit: int, days: int = DASHBOARD_WINDOW_DAYS):
     ]
 
 
-def _build_alerts():
+def _count_low_stock_products() -> int:
+    return CommodityInfos.objects.filter(stock_quantity__lte=LOW_STOCK_THRESHOLD).count()
+
+
+def _build_alerts(low_stock_count: int | None = None):
     alerts = []
-    low_stock_count = CommodityInfos.objects.filter(
-        stock_quantity__lte=LOW_STOCK_THRESHOLD
-    ).count()
+    if low_stock_count is None:
+        low_stock_count = _count_low_stock_products()
     if low_stock_count:
         alerts.append(
             {
@@ -242,13 +339,13 @@ def _build_alerts():
             }
         )
 
-    refund_review_count = OrderInfos.objects.filter(refund_status__in=(1, 2)).count()
+    refund_review_count = OrderInfos.objects.filter(refund_status=1).count()
     if refund_review_count:
         alerts.append(
             {
                 "level": "warning",
-                "title": "退款订单待处理",
-                "description": f"当前有 {refund_review_count} 笔退款单需要跟进处理。",
+                "title": "退款申请待审核",
+                "description": f"当前有 {refund_review_count} 笔退款申请待审核，请及时处理。",
                 "target_url": "/admin/trade/orderinfos/",
             }
         )
@@ -292,9 +389,16 @@ def _build_low_stock_products(limit: int = 10):
     ]
 
 
-def _build_payment_method_distribution(days: int = DASHBOARD_WINDOW_DAYS):
+def _build_payment_method_distribution(
+    days: int = DASHBOARD_WINDOW_DAYS,
+    time_context: _AnalyticsTimeContext | None = None,
+):
     rows = (
-        _order_queryset(days=days, included_statuses=ORDER_COUNT_STATUSES)
+        _order_queryset(
+            days=days,
+            included_statuses=ORDER_COUNT_STATUSES,
+            time_context=time_context,
+        )
         .values("pay_method")
         .annotate(value=Count("id"))
     )
@@ -305,8 +409,15 @@ def _build_payment_method_distribution(days: int = DASHBOARD_WINDOW_DAYS):
     ]
 
 
-def _build_order_status_distribution(days: int = DASHBOARD_WINDOW_DAYS):
-    rows = _order_queryset(days=days).values("order_status").annotate(value=Count("id"))
+def _build_order_status_distribution(
+    days: int = DASHBOARD_WINDOW_DAYS,
+    time_context: _AnalyticsTimeContext | None = None,
+):
+    rows = (
+        _order_queryset(days=days, time_context=time_context)
+        .values("order_status")
+        .annotate(value=Count("id"))
+    )
     counts = {row["order_status"]: row["value"] for row in rows}
     return [
         {"name": name, "value": counts.get(code, 0)}
@@ -314,17 +425,29 @@ def _build_order_status_distribution(days: int = DASHBOARD_WINDOW_DAYS):
     ]
 
 
-def _build_refund_distribution(days: int = DASHBOARD_WINDOW_DAYS):
+def _build_refund_distribution(
+    days: int = DASHBOARD_WINDOW_DAYS,
+    time_context: _AnalyticsTimeContext | None = None,
+):
+    """
+    Refund bucket precedence:
+    1) `order_status=5` is canonical completion and must map to "已退货".
+    2) Everything still in the workflow (including `refund_status` 1/2) maps to "退款中".
+    """
     rows = (
-        _order_queryset(days=days, included_statuses=ORDER_COUNT_STATUSES)
+        _order_queryset(
+            days=days,
+            included_statuses=ORDER_COUNT_STATUSES,
+            time_context=time_context,
+        )
         .annotate(
             refund_bucket=Case(
                 When(
-                    Q(refund_status=2) | Q(order_status=5),
+                    Q(order_status=5),
                     then=Value(REFUND_BUCKET_RETURNED),
                 ),
                 When(
-                    Q(refund_status=1) | Q(order_status=4),
+                    Q(order_status=4) | Q(refund_status__in=(1, 2)),
                     then=Value(REFUND_BUCKET_IN_PROGRESS),
                 ),
                 default=Value(None),
@@ -348,9 +471,16 @@ def _build_refund_distribution(days: int = DASHBOARD_WINDOW_DAYS):
     ]
 
 
-def _build_province_distribution(days: int = DASHBOARD_WINDOW_DAYS):
+def _build_province_distribution(
+    days: int = DASHBOARD_WINDOW_DAYS,
+    time_context: _AnalyticsTimeContext | None = None,
+):
     rows = (
-        _order_queryset(days=days, included_statuses=ORDER_COUNT_STATUSES)
+        _order_queryset(
+            days=days,
+            included_statuses=ORDER_COUNT_STATUSES,
+            time_context=time_context,
+        )
         .values("address__province")
         .annotate(value=Count("id"))
         .order_by("-value", "address__province")
@@ -389,39 +519,75 @@ def _build_rating_summary():
     }
 
 
-def build_overview_payload():
-    days_short, days_long = TREND_WINDOWS
-    return {
+def _build_overview_core(
+    *,
+    days_short: int,
+    days_long: int,
+    hot_products_limit: int,
+    include_alerts: bool,
+    time_context: _AnalyticsTimeContext,
+):
+    low_stock_count = _count_low_stock_products()
+    sales_trends = {
+        "7d": _build_daily_sales_trend(days=days_short, time_context=time_context),
+        "30d": _build_daily_sales_trend(days=days_long, time_context=time_context),
+    }
+    order_trends = {
+        "7d": _build_daily_order_trend(days=days_short, time_context=time_context),
+        "30d": _build_daily_order_trend(days=days_long, time_context=time_context),
+    }
+    payload = {
         "metrics": {
-            "gmv": _calculate_gmv(days=days_long),
+            "gmv": _calculate_gmv(days=days_long, time_context=time_context),
             "order_count": _calculate_order_count(
                 days=days_long,
                 included_statuses=ORDER_COUNT_STATUSES,
+                time_context=time_context,
             ),
-            "new_users_count": _calculate_new_users(days=days_long),
-            "low_stock_count": CommodityInfos.objects.filter(
-                stock_quantity__lte=LOW_STOCK_THRESHOLD
-            ).count(),
+            "new_users_count": _calculate_new_users(
+                days=days_long,
+                time_context=time_context,
+            ),
+            "low_stock_count": low_stock_count,
         },
         "trends": {
-            "sales": {
-                "7d": _build_daily_sales_trend(days=days_short),
-                "30d": _build_daily_sales_trend(days=days_long),
-            },
-            "orders": {
-                "7d": _build_daily_order_trend(days=days_short),
-                "30d": _build_daily_order_trend(days=days_long),
-            },
+            "sales": sales_trends,
+            "orders": order_trends,
         },
-        "category_share": _build_category_share(days=days_long),
-        "hot_products": _build_hot_products(limit=5, days=days_long),
-        "alerts": _build_alerts(),
+        "category_share": _build_category_share(days=days_long, time_context=time_context),
+        "hot_products": _build_hot_products(
+            limit=hot_products_limit,
+            days=days_long,
+            time_context=time_context,
+        ),
     }
+    if include_alerts:
+        payload["alerts"] = _build_alerts(low_stock_count=low_stock_count)
+    return payload
+
+
+def build_overview_payload():
+    days_short, days_long = TREND_WINDOWS
+    time_context = _build_time_context()
+    return _build_overview_core(
+        days_short=days_short,
+        days_long=days_long,
+        hot_products_limit=5,
+        include_alerts=True,
+        time_context=time_context,
+    )
 
 
 def build_dashboard_payload():
     days_short, days_long = TREND_WINDOWS
-    overview = build_overview_payload()
+    time_context = _build_time_context()
+    overview = _build_overview_core(
+        days_short=days_short,
+        days_long=days_long,
+        hot_products_limit=10,
+        include_alerts=False,
+        time_context=time_context,
+    )
     return {
         "sections": {
             "operations": {
@@ -431,36 +597,47 @@ def build_dashboard_payload():
                     days=days_long,
                     order_statuses=GMV_ORDER_STATUSES,
                     refund_statuses=GMV_ALLOWED_REFUND_STATUSES,
+                    time_context=time_context,
                 ),
                 "payment_method_distribution": _build_payment_method_distribution(
-                    days=days_long
+                    days=days_long,
+                    time_context=time_context,
                 ),
             },
             "catalog": {
-                "category_share": _build_category_share(days=days_long),
-                "hot_products": _build_hot_products(limit=10, days=days_long),
+                "category_share": overview["category_share"],
+                "hot_products": overview["hot_products"],
                 "price_band_distribution": _build_price_band_distribution(),
                 "low_stock_products": _build_low_stock_products(),
             },
             "users": {
                 "new_user_trend": {
-                    "7d": _build_daily_user_trend(days=days_short),
-                    "30d": _build_daily_user_trend(days=days_long),
+                    "7d": _build_daily_user_trend(
+                        days=days_short,
+                        time_context=time_context,
+                    ),
+                    "30d": _build_daily_user_trend(
+                        days=days_long,
+                        time_context=time_context,
+                    ),
                 },
-                "province_distribution": _build_province_distribution(days=days_long),
+                "province_distribution": _build_province_distribution(
+                    days=days_long,
+                    time_context=time_context,
+                ),
                 "rating_summary": _build_rating_summary(),
             },
             "orders": {
-                "status_distribution": _build_order_status_distribution(days=days_long),
-                "refund_distribution": _build_refund_distribution(days=days_long),
-                "sales_trend": {
-                    "7d": _build_daily_sales_trend(days=days_short),
-                    "30d": _build_daily_sales_trend(days=days_long),
-                },
-                "order_trend": {
-                    "7d": _build_daily_order_trend(days=days_short),
-                    "30d": _build_daily_order_trend(days=days_long),
-                },
+                "status_distribution": _build_order_status_distribution(
+                    days=days_long,
+                    time_context=time_context,
+                ),
+                "refund_distribution": _build_refund_distribution(
+                    days=days_long,
+                    time_context=time_context,
+                ),
+                "sales_trend": overview["trends"]["sales"],
+                "order_trend": overview["trends"]["orders"],
             },
         }
     }
