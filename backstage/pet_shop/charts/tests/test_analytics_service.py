@@ -21,6 +21,21 @@ class AnalyticsServiceTests(TestCase):
         self.assertIn("category_share", overview)
         self.assertIn("hot_products", overview)
         self.assertIn("alerts", overview)
+        self.assertTrue(overview["category_share"])
+        self.assertTrue(overview["hot_products"])
+        self.assertTrue(overview["alerts"])
+        self.assertSetEqual(
+            set(overview["category_share"][0].keys()),
+            {"name", "value"},
+        )
+        self.assertSetEqual(
+            set(overview["hot_products"][0].keys()),
+            {"product_id", "title", "sold_quantity", "stock_quantity"},
+        )
+        self.assertSetEqual(
+            set(overview["alerts"][0].keys()),
+            {"level", "title", "description", "target_url"},
+        )
 
         self.assertEqual(overview["metrics"]["gmv"], "128.00")
         self.assertEqual(overview["metrics"]["low_stock_count"], 1)
@@ -61,7 +76,26 @@ class AnalyticsServiceTests(TestCase):
         self.assertIn("hot_products", catalog)
         self.assertIn("price_band_distribution", catalog)
         self.assertIn("low_stock_products", catalog)
+        self.assertTrue(catalog["category_share"])
+        self.assertTrue(catalog["hot_products"])
+        self.assertTrue(catalog["price_band_distribution"])
         self.assertEqual(len(catalog["low_stock_products"]), 1)
+        self.assertSetEqual(
+            set(catalog["category_share"][0].keys()),
+            {"name", "value"},
+        )
+        self.assertSetEqual(
+            set(catalog["hot_products"][0].keys()),
+            {"product_id", "title", "sold_quantity", "stock_quantity"},
+        )
+        self.assertSetEqual(
+            set(catalog["price_band_distribution"][0].keys()),
+            {"name", "value"},
+        )
+        self.assertSetEqual(
+            set(catalog["low_stock_products"][0].keys()),
+            {"product_id", "title", "stock_quantity", "sold_quantity"},
+        )
 
         users = dashboard["sections"]["users"]
         self.assertEqual(len(users["new_user_trend"]["7d"]), 7)
@@ -76,6 +110,14 @@ class AnalyticsServiceTests(TestCase):
         orders = dashboard["sections"]["orders"]
         self.assertTrue(orders["status_distribution"])
         self.assertTrue(orders["refund_distribution"])
+        self.assertSetEqual(
+            set(orders["status_distribution"][0].keys()),
+            {"name", "value"},
+        )
+        self.assertSetEqual(
+            set(orders["refund_distribution"][0].keys()),
+            {"name", "value"},
+        )
         self.assertEqual(len(orders["sales_trend"]["7d"]), 7)
         self.assertEqual(len(orders["sales_trend"]["30d"]), 30)
         self.assertEqual(len(orders["order_trend"]["7d"]), 7)
