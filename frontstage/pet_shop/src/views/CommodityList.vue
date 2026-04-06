@@ -83,6 +83,20 @@
           <div class="summary-copy">
             <p class="summary-title">{{ selectedContextLabel }}</p>
             <p class="summary-description">{{ resultSummary }}</p>
+            <div
+              v-if="isLoading || hasLoadError"
+              class="summary-inline-status"
+              :class="{
+                'status-loading': isLoading,
+                'status-error': hasLoadError && !isLoading
+              }"
+            >
+              <span v-if="isLoading">正在更新结果…</span>
+              <template v-else>
+                <span>{{ loadErrorMessage }}</span>
+                <el-button link type="danger" @click="retryCurrentContext">重试</el-button>
+              </template>
+            </div>
           </div>
         </div>
 
@@ -181,7 +195,6 @@ export default {
     const hasLoadError = ref(false);
     const loadErrorMessage = ref('商品目录加载失败，请稍后重试。');
     const showUnlockFeedback = ref(false);
-    const isResultLimited = ref(false);
     const router = useRouter();
     const store = useStore();
     const isLoggedIn = computed(() => store.state.isLoggedIn);
@@ -238,7 +251,6 @@ export default {
       if (!guestPreviewLimit.value) {
         guestPreviewLimit.value = 6;
       }
-      isResultLimited.value = Boolean(payload.limited);
     };
 
     const fetchCommodities = async ({ showUnlockState = false } = {}) => {
@@ -267,6 +279,7 @@ export default {
     const resetToAllCommodities = () => {
       activeNames.value = [];
       searchQuery.value = '';
+      hasLoadError.value = false;
       fetchCommodities();
     };
 
@@ -275,6 +288,8 @@ export default {
         parentCategory,
         subCategory,
       });
+      searchQuery.value = '';
+      hasLoadError.value = false;
       selectedContextLabel.value = parentCategory && subCategory
         ? `${parentCategory} / ${subCategory}`
         : subCategory || parentCategory || '分类筛选';
@@ -290,6 +305,7 @@ export default {
 
       isLoading.value = true;
       hasLoadError.value = false;
+      activeNames.value = [];
       try {
         const response = await searchCommodities(query);
         const payload = response.data || {};
@@ -297,13 +313,20 @@ export default {
         filteredCommodities.value = applyCategoryMeta(payload.results || payload);
         selectedContextLabel.value = `搜索：${query}`;
         currentPage.value = 1;
-        activeNames.value = [];
       } catch (error) {
         hasLoadError.value = true;
         loadErrorMessage.value = '搜索失败，请稍后重试。';
       } finally {
         isLoading.value = false;
       }
+    };
+
+    const retryCurrentContext = () => {
+      if (searchQuery.value.trim()) {
+        searchCommoditiesAction();
+        return;
+      }
+      fetchCommodities();
     };
 
     const getCommodityDetail = (commodityId) => {
@@ -349,7 +372,7 @@ export default {
       const stockQuantity = Number(commodity.stock_quantity);
       if (!Number.isNaN(stockQuantity)) {
         if (stockQuantity === 0) {
-          return '库存紧张';
+          return '暂时售罄';
         }
         if (stockQuantity <= 5) {
           return `库存 ${stockQuantity} 件`;
@@ -383,8 +406,26 @@ export default {
     const hasAnyCommodities = computed(() => totalCommodities.value > 0);
     const previewLimitDisplay = computed(() => guestPreviewLimit.value || 6);
     const isGuestPreview = computed(() => !isLoggedIn.value);
+    const hasMoreContentBehindLogin = computed(() => {
+      if (!isGuestPreview.value) {
+        return false;
+      }
+      const sourceCount = (filteredCommodities.value || []).length;
+      const previewedCount = effectiveCommodities.value.length;
+      return sourceCount > previewedCount;
+    });
+    const hasReachedPreviewTail = computed(() => {
+      if (!isGuestPreview.value || !totalCommodities.value) {
+        return false;
+      }
+      const pageCount = Math.ceil(totalCommodities.value / pageSize.value);
+      return currentPage.value >= pageCount;
+    });
     const showGuestUnlockCue = computed(() => {
-      return isGuestPreview.value && isResultLimited.value && hasAnyCommodities.value;
+      return isGuestPreview.value
+        && hasAnyCommodities.value
+        && hasMoreContentBehindLogin.value
+        && hasReachedPreviewTail.value;
     });
     const categoryPanels = computed(() => {
       return Object.entries(commodities.value || {}).map(([parentTitle, categoryInfo]) => ({
@@ -394,7 +435,10 @@ export default {
     });
     const resultSummary = computed(() => {
       if (isGuestPreview.value) {
-        return `当前先展示 ${totalCommodities.value} 条真实内容（预览上限 ${previewLimitDisplay.value} 条），登录后可继续查看完整目录。`;
+        if (hasMoreContentBehindLogin.value) {
+          return `当前先展示 ${totalCommodities.value} 条真实内容（预览上限 ${previewLimitDisplay.value} 条），登录后可继续查看完整目录。`;
+        }
+        return `当前共 ${totalCommodities.value} 条结果，已全部展示。登录后可同步收藏、下单与账户操作。`;
       }
       return `当前共 ${totalCommodities.value} 条结果，可继续搜索或切换分类。`;
     });
@@ -444,6 +488,7 @@ export default {
       resetToAllCommodities,
       resolveCategoryHint,
       resolveDecisionHint,
+      retryCurrentContext,
       resultSummary,
       searchCommoditiesAction,
       searchQuery,
@@ -668,6 +713,27 @@ export default {
   color: var(--text-muted);
   line-height: var(--line-height-base);
   font-size: var(--font-size-sm);
+}
+
+.summary-inline-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  font-size: var(--font-size-xs);
+}
+
+.summary-inline-status.status-loading {
+  color: var(--text-subtle);
+}
+
+.summary-inline-status.status-error {
+  color: var(--state-danger);
+}
+
+.summary-inline-status :deep(.el-button) {
+  min-height: auto;
+  padding: 0;
 }
 
 .unlocked-feedback {
