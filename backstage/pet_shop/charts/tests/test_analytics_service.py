@@ -386,6 +386,96 @@ class AnalyticsServiceTests(TestCase):
         self.assertEqual(sum(item["value"] for item in user_7d), 1)
         self.assertEqual(sum(item["value"] for item in user_30d), 1)
 
+    def test_catalog_sales_widgets_exclude_refund_and_return_orders(self):
+        seed_minimal_order_scenario()
+        now = timezone.now()
+
+        refunded_category = CommodityCategories.objects.create(title="异常退货分类")
+        refunded_product = CommodityInfos.objects.create(
+            sku_title="异常退货商品",
+            sku_description="仅用于验证退货订单不应抬高销量看板",
+            main_image="product_photos/test_refunded_main.png",
+            detail_images="product_photos_details/test_refunded_detail.png",
+            cost_price=Decimal("30.00"),
+            price=Decimal("300.00"),
+            status="1",
+            types=refunded_category,
+            sold=0,
+            stock_quantity=300,
+            created_by="test_seed",
+            updated_by="test_seed",
+        )
+
+        base_user = User.objects.get(username="legacy_buyer")
+        base_address = UserAddress.objects.filter(user=base_user).first()
+        self.assertIsNotNone(base_address)
+
+        returned_order = OrderInfos.objects.create(
+            user=base_user,
+            order_sn="TEST-RETURNED-BIG-001",
+            address=base_address,
+            total_price="180000.00",
+            coupon_price="0.00",
+            payable_price="180000.00",
+            pay_method=1,
+            leave_comment="高量级退货订单，不应计入销量看板",
+            order_status=5,
+            refund_status=0,
+            created_by="test_seed",
+            update_by="test_seed",
+        )
+        refunding_order = OrderInfos.objects.create(
+            user=base_user,
+            order_sn="TEST-REFUNDING-BIG-001",
+            address=base_address,
+            total_price="120000.00",
+            coupon_price="0.00",
+            payable_price="120000.00",
+            pay_method=2,
+            leave_comment="高量级退款中订单，不应计入销量看板",
+            order_status=4,
+            refund_status=1,
+            created_by="test_seed",
+            update_by="test_seed",
+        )
+        OrderInfos.objects.filter(pk__in=[returned_order.pk, refunding_order.pk]).update(
+            created_time=now - timedelta(days=1),
+            update_time=now - timedelta(days=1),
+        )
+        OrderGoods.objects.create(
+            order=returned_order,
+            goods=refunded_product,
+            goods_num=600,
+            commented=False,
+        )
+        OrderGoods.objects.create(
+            order=refunding_order,
+            goods=refunded_product,
+            goods_num=700,
+            commented=False,
+        )
+
+        overview = build_overview_payload()
+        dashboard = build_dashboard_payload()
+        expected_product = CommodityInfos.objects.get(sku_title="高蛋白主粮")
+
+        for category_share in (
+            overview["category_share"],
+            dashboard["sections"]["catalog"]["category_share"],
+        ):
+            category_map = {item["name"]: item["value"] for item in category_share}
+            self.assertNotIn("异常退货分类", category_map)
+            self.assertEqual(category_map.get("测试主粮"), 1)
+
+        for hot_products in (
+            overview["hot_products"],
+            dashboard["sections"]["catalog"]["hot_products"],
+        ):
+            hot_product_ids = {item["product_id"] for item in hot_products}
+            self.assertNotIn(refunded_product.id, hot_product_ids)
+            self.assertEqual(hot_products[0]["product_id"], expected_product.id)
+            self.assertEqual(hot_products[0]["sold_quantity"], 1)
+
     def test_new_user_metrics_exclude_staff_and_superusers(self):
         seed_minimal_order_scenario()
         now = timezone.now()

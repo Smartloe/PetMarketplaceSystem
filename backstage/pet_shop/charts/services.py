@@ -282,7 +282,8 @@ def _build_category_share(
         OrderGoods.objects.filter(
             order__created_time__gte=start_at,
             order__created_time__lt=end_at,
-            order__order_status__in=ORDER_COUNT_STATUSES,
+            order__order_status__in=GMV_ORDER_STATUSES,
+            order__refund_status__in=GMV_ALLOWED_REFUND_STATUSES,
         )
         .values("goods__types__title")
         .annotate(value=Sum("goods_num"))
@@ -304,7 +305,8 @@ def _build_hot_products(
         OrderGoods.objects.filter(
             order__created_time__gte=start_at,
             order__created_time__lt=end_at,
-            order__order_status__in=ORDER_COUNT_STATUSES,
+            order__order_status__in=GMV_ORDER_STATUSES,
+            order__refund_status__in=GMV_ALLOWED_REFUND_STATUSES,
         )
         .values("goods_id", "goods__sku_title", "goods__stock_quantity")
         .annotate(sold_quantity=Sum("goods_num"))
