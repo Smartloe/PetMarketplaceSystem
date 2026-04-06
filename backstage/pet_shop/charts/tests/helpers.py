@@ -119,6 +119,20 @@ def seed_minimal_order_scenario():
         created_by="test_seed",
         update_by="test_seed",
     )
+    unpaid_order = OrderInfos.objects.create(
+        user=new_user,
+        order_sn="TEST-UNPAID-001",
+        address=new_address,
+        total_price=Decimal("58.00"),
+        coupon_price=Decimal("0.00"),
+        payable_price=Decimal("58.00"),
+        pay_method=1,
+        leave_comment="测试订单：未支付。",
+        order_status=0,
+        refund_status=0,
+        created_by="test_seed",
+        update_by="test_seed",
+    )
 
     OrderInfos.objects.filter(pk=paid_order.pk).update(
         created_time=now - timedelta(days=2),
@@ -132,9 +146,14 @@ def seed_minimal_order_scenario():
         created_time=now,
         update_time=now,
     )
+    OrderInfos.objects.filter(pk=unpaid_order.pk).update(
+        created_time=now - timedelta(days=1),
+        update_time=now - timedelta(days=1),
+    )
     paid_order.refresh_from_db()
     shipping_order.refresh_from_db()
     refunding_order.refresh_from_db()
+    unpaid_order.refresh_from_db()
 
     paid_goods = OrderGoods.objects.create(
         order=paid_order,
@@ -154,9 +173,16 @@ def seed_minimal_order_scenario():
         goods_num=1,
         commented=False,
     )
+    unpaid_goods = OrderGoods.objects.create(
+        order=unpaid_order,
+        goods=premium_food,
+        goods_num=1,
+        commented=False,
+    )
     OrderGoods.objects.filter(pk=paid_goods.pk).update(add_time=now - timedelta(days=2))
     OrderGoods.objects.filter(pk=shipping_goods.pk).update(add_time=now - timedelta(days=1))
     OrderGoods.objects.filter(pk=refunding_goods.pk).update(add_time=now)
+    OrderGoods.objects.filter(pk=unpaid_goods.pk).update(add_time=now - timedelta(days=1))
 
     UserComment.objects.create(
         user=new_user,

@@ -14,6 +14,7 @@ class AnalyticsServiceTests(TestCase):
     def test_overview_payload_uses_spec_metrics(self):
         seed_minimal_order_scenario()
 
+        self.assertEqual(OrderInfos.objects.count(), 4)
         overview = build_overview_payload()
         self.assertIn("metrics", overview)
         self.assertIn("trends", overview)
@@ -194,3 +195,25 @@ class AnalyticsServiceTests(TestCase):
             for item in dashboard["sections"]["users"]["province_distribution"]
         }
         self.assertNotIn("未来省", province_names)
+
+        future_date = (now + timedelta(days=2)).date().strftime("%Y-%m-%d")
+        sales_7d = overview["trends"]["sales"]["7d"]
+        sales_30d = overview["trends"]["sales"]["30d"]
+        order_7d = overview["trends"]["orders"]["7d"]
+        order_30d = overview["trends"]["orders"]["30d"]
+        user_7d = dashboard["sections"]["users"]["new_user_trend"]["7d"]
+        user_30d = dashboard["sections"]["users"]["new_user_trend"]["30d"]
+
+        self.assertNotIn(future_date, [item["date"] for item in sales_7d])
+        self.assertNotIn(future_date, [item["date"] for item in sales_30d])
+        self.assertNotIn(future_date, [item["date"] for item in order_7d])
+        self.assertNotIn(future_date, [item["date"] for item in order_30d])
+        self.assertNotIn(future_date, [item["date"] for item in user_7d])
+        self.assertNotIn(future_date, [item["date"] for item in user_30d])
+
+        self.assertEqual(sum(item["value"] for item in sales_7d), 128.0)
+        self.assertEqual(sum(item["value"] for item in sales_30d), 128.0)
+        self.assertEqual(sum(item["value"] for item in order_7d), 3)
+        self.assertEqual(sum(item["value"] for item in order_30d), 3)
+        self.assertEqual(sum(item["value"] for item in user_7d), 1)
+        self.assertEqual(sum(item["value"] for item in user_30d), 1)
