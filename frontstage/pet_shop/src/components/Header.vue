@@ -1,539 +1,537 @@
 <template>
-	<header class="pet-page-header">
-		<div class="container">
-			<nav class="pet-navbar">
-				<!-- Logo区域 -->
-				<div class="navbar-brand">
-					<a href="http://localhost:8010/" class="brand-link">
-						<img src="/img/logo.png" alt="吉祥宠物商城" class="brand-logo">
-						<span class="brand-text pet-gradient-text">吉祥宠物</span>
-					</a>
-				</div>
+  <header class="pet-page-header">
+    <div class="container">
+      <nav class="pet-navbar">
+        <div class="navbar-brand">
+          <router-link to="/" class="brand-link">
+            <img src="/img/logo.png" alt="吉祥宠物商城" class="brand-logo" />
+            <span class="brand-text pet-gradient-text">吉祥宠物</span>
+          </router-link>
+        </div>
 
-				<!-- 导航菜单 -->
-				<div class="navbar-nav">
-					<a href="/" :class="['nav-link', { active: activeIndex === '1' }]">
-						<span class="nav-icon">🏠</span>
-						首页
-					</a>
-					<a href="/ai-pet-expert" :class="['nav-link', { active: activeIndex === '2' }]">
-						<span class="nav-icon">🤖</span>
-						AI宠物顾问
-					</a>
-					<a href="/commodity" :class="['nav-link', { active: activeIndex === '3' }]">
-						<span class="nav-icon">🛍️</span>
-						所有商品
-					</a>
-					<a href="/trade/shopping-carts" :class="['nav-link', { active: activeIndex === '4' }]">
-						<span class="nav-icon">🛒</span>
-						购物车
-					</a>
-					<a href="/favorites" :class="['nav-link', { active: activeIndex === '5' }]">
-						<span class="nav-icon">❤️</span>
-						我的收藏
-					</a>
-					<a href="/trade/orders" :class="['nav-link', { active: activeIndex === '6' }]">
-						<span class="nav-icon">📋</span>
-						我的订单
-					</a>
-					<a href="/messages" :class="['nav-link', { active: activeIndex === '7' }]">
-						<span class="nav-icon">💬</span>
-						我的留言
-					</a>
-				</div>
+        <div class="navbar-nav" aria-label="主导航">
+          <router-link
+            v-for="item in primaryNav"
+            :key="item.href"
+            :to="item.href"
+            :class="['nav-link', { active: isRouteActive(item.href) }]"
+          >
+            {{ item.label }}
+          </router-link>
+        </div>
 
-				<!-- 用户中心 -->
-				<div class="navbar-user">
-					<div class="user-dropdown" @click="toggleUserMenu">
-						<div class="user-avatar">
-							<span v-if="isLoggedIn">👤</span>
-							<span v-else>🔐</span>
-						</div>
-						<span class="user-text">
-							{{ isLoggedIn ? '用户中心' : '登录/注册' }}
-						</span>
-						<span class="dropdown-arrow">▼</span>
-					</div>
-					
-					<div v-show="showUserMenu" class="user-menu">
-						<template v-if="!isLoggedIn">
-							<a href="/accounts/login" class="user-menu-item">
-								<span class="menu-icon">🔑</span>
-								登录
-							</a>
-							<a href="/accounts/register" class="user-menu-item">
-								<span class="menu-icon">📝</span>
-								注册
-							</a>
-						</template>
-						<template v-else>
-							<a href="/accounts/user-center" class="user-menu-item">
-								<span class="menu-icon">👤</span>
-								个人信息
-							</a>
-							<a href="#" @click.prevent="logout" class="user-menu-item">
-								<span class="menu-icon">🚪</span>
-								登出
-							</a>
-						</template>
-					</div>
-				</div>
+        <div class="navbar-account">
+          <button
+            type="button"
+            class="account-trigger"
+            :aria-expanded="showAccountMenu"
+            aria-label="账户菜单"
+            @click="toggleAccountMenu"
+          >
+            <span class="account-label">{{ accountLabel }}</span>
+            <span :class="['account-arrow', { open: showAccountMenu }]">▾</span>
+          </button>
 
-				<!-- 移动端菜单按钮 -->
-				<button class="mobile-menu-btn" @click="toggleMobileMenu">
-					<span></span>
-					<span></span>
-					<span></span>
-				</button>
-			</nav>
+          <div v-show="showAccountMenu" class="account-menu">
+            <div class="account-group">
+              <p class="group-title">{{ isLoggedIn ? '账户管理' : '快速登录' }}</p>
+              <template v-if="!isLoggedIn">
+                <router-link
+                  v-for="item in guestActions"
+                  :key="item.href"
+                  :to="item.href"
+                  class="account-menu-item"
+                >
+                  {{ item.label }}
+                </router-link>
+              </template>
+              <template v-else>
+                <router-link to="/accounts/user-center" class="account-menu-item">
+                  个人中心
+                </router-link>
+                <button type="button" class="account-menu-item account-logout" @click="logout">
+                  退出登录
+                </button>
+              </template>
+            </div>
 
-			<!-- 移动端菜单 -->
-			<div v-show="showMobileMenu" class="mobile-menu">
-				<div class="mobile-nav">
-					<a href="/" class="mobile-nav-item">🏠 首页</a>
-					<a href="/ai-pet-expert" class="mobile-nav-item">🤖 AI宠物顾问</a>
-					<a href="/commodity" class="mobile-nav-item">🛍️ 所有商品</a>
-					<a href="/trade/shopping-carts" class="mobile-nav-item">🛒 购物车</a>
-					<a href="/favorites" class="mobile-nav-item">❤️ 我的收藏</a>
-					<a href="/trade/orders" class="mobile-nav-item">📋 我的订单</a>
-					<a href="/messages" class="mobile-nav-item">💬 我的留言</a>
-					
-					<div class="mobile-user-section">
-						<template v-if="!isLoggedIn">
-							<a href="/accounts/login" class="mobile-nav-item">🔑 登录</a>
-							<a href="/accounts/register" class="mobile-nav-item">📝 注册</a>
-						</template>
-						<template v-else>
-							<a href="/accounts/user-center" class="mobile-nav-item">👤 个人信息</a>
-							<a href="#" @click.prevent="logout" class="mobile-nav-item">🚪 登出</a>
-						</template>
-					</div>
-				</div>
-			</div>
-		</div>
-	</header>
+            <div class="account-divider"></div>
+
+            <div class="account-group">
+              <p class="group-title">常用入口</p>
+              <router-link
+                v-for="item in accountQuickLinks"
+                :key="item.href"
+                :to="item.href"
+                :class="['account-menu-item', { active: isRouteActive(item.href) }]"
+              >
+                {{ item.label }}
+              </router-link>
+            </div>
+          </div>
+        </div>
+
+        <div class="mobile-menu-shell">
+          <button
+            type="button"
+            class="mobile-menu-btn"
+            :aria-expanded="showMobileMenu"
+            aria-label="打开移动端菜单"
+            @click="toggleMobileMenu"
+          >
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+
+          <div v-show="showMobileMenu" class="mobile-menu">
+            <section class="mobile-menu-section">
+              <p class="mobile-section-title">浏览入口</p>
+              <router-link
+                v-for="item in primaryNav"
+                :key="`mobile-primary-${item.href}`"
+                :to="item.href"
+                :class="['mobile-nav-item', { active: isRouteActive(item.href) }]"
+              >
+                {{ item.label }}
+              </router-link>
+            </section>
+
+            <section class="mobile-menu-section">
+              <p class="mobile-section-title">账户服务</p>
+              <template v-if="!isLoggedIn">
+                <router-link
+                  v-for="item in guestActions"
+                  :key="`mobile-guest-${item.href}`"
+                  :to="item.href"
+                  class="mobile-nav-item"
+                >
+                  {{ item.label }}
+                </router-link>
+              </template>
+              <template v-else>
+                <router-link to="/accounts/user-center" class="mobile-nav-item">
+                  个人中心
+                </router-link>
+                <button type="button" class="mobile-nav-item mobile-logout" @click="logout">
+                  退出登录
+                </button>
+              </template>
+              <router-link
+                v-for="item in accountQuickLinks"
+                :key="`mobile-account-${item.href}`"
+                :to="item.href"
+                :class="['mobile-nav-item', { active: isRouteActive(item.href) }]"
+              >
+                {{ item.label }}
+              </router-link>
+            </section>
+          </div>
+        </div>
+      </nav>
+    </div>
+  </header>
 </template>
 
 <script>
-import {computed, ref, watch, onMounted, onUnmounted} from 'vue';
-import {useStore} from 'vuex';
-import {useRoute} from 'vue-router';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
+import { useStore } from 'vuex';
+
+const primaryNav = [
+  { label: '首页', href: '/' },
+  { label: '在售商品', href: '/commodity' },
+  { label: 'AI 宠物顾问', href: '/ai-pet-expert' },
+  { label: '购物车', href: '/trade/shopping-carts' }
+];
+
+const accountQuickLinks = [
+  { label: '我的收藏', href: '/favorites' },
+  { label: '我的订单', href: '/trade/orders' },
+  { label: '我的留言', href: '/messages' }
+];
+
+const guestActions = [
+  { label: '登录', href: '/accounts/login' },
+  { label: '注册', href: '/accounts/register' }
+];
 
 export default {
-	setup() {
-		const store = useStore();
-		const route = useRoute();
-		const activeIndex = ref('0');
-		const showUserMenu = ref(false);
-		const showMobileMenu = ref(false);
+  setup() {
+    const route = useRoute();
+    const store = useStore();
 
-		const isLoggedIn = computed(() => store.state.isLoggedIn);
+    const showAccountMenu = ref(false);
+    const showMobileMenu = ref(false);
 
-		const clearCookies = () => {
-			document.cookie.split(";").forEach((c) => {
-				document.cookie = c
-					.replace(/^ +/, "")
-					.replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-			});
-		};
+    const isLoggedIn = computed(() => store.state.isLoggedIn);
+    const accountLabel = computed(() => (isLoggedIn.value ? '账户' : '账户 / 登录'));
 
-		const logout = () => {
-			store.dispatch('logout');
-			clearCookies();
-			localStorage.clear();
-			sessionStorage.clear();
-			window.location.href = '/';
-		};
+    const isRouteActive = (href) => {
+      if (href === '/') {
+        return route.path === '/';
+      }
 
-		const toggleUserMenu = () => {
-			showUserMenu.value = !showUserMenu.value;
-			showMobileMenu.value = false;
-		};
+      return route.path.startsWith(href);
+    };
 
-		const toggleMobileMenu = () => {
-			showMobileMenu.value = !showMobileMenu.value;
-			showUserMenu.value = false;
-		};
+    const closeMenus = () => {
+      showAccountMenu.value = false;
+      showMobileMenu.value = false;
+    };
 
-		const closeMenus = () => {
-			showUserMenu.value = false;
-			showMobileMenu.value = false;
-		};
+    const toggleAccountMenu = () => {
+      showAccountMenu.value = !showAccountMenu.value;
+      showMobileMenu.value = false;
+    };
 
-		const handleClickOutside = (event) => {
-			const userDropdown = event.target.closest('.user-dropdown');
-			const userMenu = event.target.closest('.user-menu');
-			const mobileBtn = event.target.closest('.mobile-menu-btn');
-			const mobileMenu = event.target.closest('.mobile-menu');
+    const toggleMobileMenu = () => {
+      showMobileMenu.value = !showMobileMenu.value;
+      showAccountMenu.value = false;
+    };
 
-			if (!userDropdown && !userMenu) {
-				showUserMenu.value = false;
-			}
-			if (!mobileBtn && !mobileMenu) {
-				showMobileMenu.value = false;
-			}
-		};
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.navbar-account')) {
+        showAccountMenu.value = false;
+      }
+      if (!event.target.closest('.mobile-menu-shell')) {
+        showMobileMenu.value = false;
+      }
+    };
 
-		const setActiveIndex = () => {
-			const path = route.path;
-			if (path === '/') {
-				activeIndex.value = '1';
-			} else if (path.startsWith('/ai-pet-expert')) {
-				activeIndex.value = '2';
-			} else if (path.startsWith('/commodity')) {
-				activeIndex.value = '3';
-			} else if (path.startsWith('/trade/shopping-carts')) {
-				activeIndex.value = '4';
-			} else if (path.startsWith('/favorites')) {
-				activeIndex.value = '5';
-			} else if (path.startsWith('/trade/orders')) {
-				activeIndex.value = '6';
-			} else if (path.startsWith('/messages')) {
-				activeIndex.value = '7';
-			} else if (path.startsWith('/accounts/user-center')) {
-				activeIndex.value = '8-1';
-			} else if (path.startsWith('/accounts/login')) {
-				activeIndex.value = '8-1';
-			} else if (path.startsWith('/accounts/register')) {
-				activeIndex.value = '8-2';
-			}
-		};
+    const clearCookies = () => {
+      document.cookie.split(';').forEach((cookieItem) => {
+        document.cookie = cookieItem
+          .replace(/^ +/, '')
+          .replace(/=.*/, `=;expires=${new Date().toUTCString()};path=/`);
+      });
+    };
 
-		onMounted(() => {
-			document.addEventListener('click', handleClickOutside);
-		});
+    const logout = () => {
+      store.dispatch('logout');
+      clearCookies();
+      localStorage.clear();
+      sessionStorage.clear();
+      closeMenus();
+      window.location.href = '/';
+    };
 
-		onUnmounted(() => {
-			document.removeEventListener('click', handleClickOutside);
-		});
+    watch(
+      () => route.fullPath,
+      () => {
+        closeMenus();
+      }
+    );
 
-		watch(route, setActiveIndex, {immediate: true});
+    onMounted(() => {
+      document.addEventListener('click', handleClickOutside);
+    });
 
-		return {
-			activeIndex,
-			isLoggedIn,
-			showUserMenu,
-			showMobileMenu,
-			logout,
-			toggleUserMenu,
-			toggleMobileMenu,
-			closeMenus
-		};
-	}
+    onUnmounted(() => {
+      document.removeEventListener('click', handleClickOutside);
+    });
+
+    return {
+      primaryNav,
+      accountQuickLinks,
+      guestActions,
+      showAccountMenu,
+      showMobileMenu,
+      isLoggedIn,
+      accountLabel,
+      isRouteActive,
+      toggleAccountMenu,
+      toggleMobileMenu,
+      logout
+    };
+  }
 };
 </script>
 
 <style scoped>
-/* ===== 导航栏样式 ===== */
 .pet-page-header {
-	background: var(--background-white);
-	box-shadow: var(--shadow-md);
-	position: sticky;
-	top: 0;
-	z-index: var(--z-sticky);
-	border-bottom: 1px solid var(--border-light);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  border-bottom: 1px solid var(--line-soft);
+  background: rgba(255, 253, 249, 0.94);
+  background: color-mix(in srgb, var(--bg-elevated) 90%, white 10%);
+  backdrop-filter: blur(12px);
 }
 
 .pet-navbar {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: var(--spacing-md) 0;
-	position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 84px;
 }
 
-/* Logo区域 */
 .navbar-brand {
-	flex-shrink: 0;
+  flex-shrink: 0;
 }
 
 .brand-link {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing-sm);
-	text-decoration: none;
-	transition: transform var(--transition-fast);
-}
-
-.brand-link:hover {
-	transform: scale(1.05);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
 }
 
 .brand-logo {
-	width: 50px;
-	height: 50px;
-	object-fit: contain;
-	border-radius: var(--radius-md);
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
 }
 
 .brand-text {
-	font-size: var(--font-size-lg);
-	font-weight: 700;
-	display: none;
+  font-size: var(--font-size-lg);
+  font-weight: 700;
 }
 
-/* 导航菜单 */
 .navbar-nav {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing-sm);
-	flex: 1;
-	justify-content: center;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+  margin-right: var(--space-2);
 }
 
 .nav-link {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing-xs);
-	padding: var(--spacing-sm) var(--spacing-md);
-	text-decoration: none;
-	color: var(--text-primary);
-	font-size: var(--font-size-sm);
-	font-weight: 500;
-	border-radius: var(--radius-md);
-	transition: all var(--transition-fast);
-	white-space: nowrap;
+  padding: 0.6rem 0.9rem;
+  border-radius: var(--radius-pill);
+  color: var(--text-default);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  transition: color var(--motion-fast), background-color var(--motion-fast),
+    box-shadow var(--motion-fast), transform var(--motion-fast);
 }
 
 .nav-link:hover {
-	background: var(--primary-color);
-	color: white;
-	transform: translateY(-2px);
-	box-shadow: var(--shadow-sm);
+  background: rgba(219, 124, 93, 0.12);
+  color: var(--brand-primary-strong);
+  transform: translateY(-1px);
 }
 
 .nav-link.active {
-	background: var(--gradient-primary);
-	color: white;
-	box-shadow: var(--shadow-hover);
+  background: rgba(219, 124, 93, 0.18);
+  color: var(--brand-primary-strong);
+  box-shadow: inset 0 0 0 1px rgba(199, 101, 70, 0.24);
 }
 
-.nav-icon {
-	font-size: 16px;
+.navbar-account {
+  position: relative;
+  flex-shrink: 0;
 }
 
-/* 用户中心 */
-.navbar-user {
-	position: relative;
-	flex-shrink: 0;
+.account-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.78);
+  padding: 0.58rem 0.9rem;
+  color: var(--text-default);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color var(--motion-fast), background-color var(--motion-fast),
+    box-shadow var(--motion-fast);
 }
 
-.user-dropdown {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing-xs);
-	padding: var(--spacing-sm) var(--spacing-md);
-	background: var(--background-white);
-	border: 1px solid var(--border-color);
-	border-radius: var(--radius-md);
-	cursor: pointer;
-	transition: all var(--transition-fast);
+.account-trigger:hover {
+  border-color: rgba(127, 162, 166, 0.5);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 10px 20px rgba(83, 56, 40, 0.1);
 }
 
-.user-dropdown:hover {
-	background: var(--primary-color);
-	color: white;
-	border-color: var(--primary-color);
+.account-arrow {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  transition: transform var(--motion-fast);
 }
 
-.user-avatar {
-	width: 32px;
-	height: 32px;
-	border-radius: var(--radius-round);
-	background: var(--background-color);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	font-size: 16px;
+.account-arrow.open {
+  transform: rotate(180deg);
 }
 
-.user-text {
-	font-size: var(--font-size-sm);
-	font-weight: 500;
+.account-menu {
+  position: absolute;
+  top: calc(100% + 0.55rem);
+  right: 0;
+  min-width: 210px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 253, 249, 0.98);
+  box-shadow: var(--shadow-medium);
+  padding: var(--space-3);
+  display: grid;
+  gap: var(--space-3);
 }
 
-.dropdown-arrow {
-	font-size: 10px;
-	transition: transform var(--transition-fast);
+.account-group {
+  display: grid;
+  gap: 0.35rem;
 }
 
-.user-dropdown:hover .dropdown-arrow {
-	transform: rotate(180deg);
+.group-title {
+  margin: 0 0 0.2rem;
+  color: var(--text-subtle);
+  font-size: var(--font-size-2xs);
+  letter-spacing: 0.04em;
 }
 
-.user-menu {
-	position: absolute;
-	top: 100%;
-	right: 0;
-	margin-top: var(--spacing-xs);
-	background: var(--background-white);
-	border: 1px solid var(--border-color);
-	border-radius: var(--radius-md);
-	box-shadow: var(--shadow-lg);
-	min-width: 160px;
-	z-index: var(--z-dropdown);
-	animation: fadeIn 0.3s ease;
+.account-divider {
+  height: 1px;
+  background: var(--line-soft);
 }
 
-.user-menu-item {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing-sm);
-	padding: var(--spacing-sm) var(--spacing-md);
-	text-decoration: none;
-	color: var(--text-primary);
-	font-size: var(--font-size-sm);
-	transition: background var(--transition-fast);
+.account-menu-item {
+  width: 100%;
+  display: block;
+  padding: 0.5rem 0.6rem;
+  border-radius: 0.55rem;
+  font-size: var(--font-size-sm);
+  color: var(--text-default);
+  text-align: left;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--motion-fast), color var(--motion-fast);
 }
 
-.user-menu-item:hover {
-	background: var(--background-color);
-	color: var(--primary-color);
+.account-menu-item:hover {
+  background: rgba(219, 124, 93, 0.12);
+  color: var(--brand-primary-strong);
 }
 
-.menu-icon {
-	font-size: 16px;
+.account-menu-item.active {
+  background: rgba(127, 162, 166, 0.16);
+  color: var(--brand-accent-strong);
 }
 
-/* 移动端菜单按钮 */
+.account-logout {
+  font-weight: 500;
+}
+
+.mobile-menu-shell {
+  display: none;
+  position: relative;
+  margin-left: auto;
+}
+
 .mobile-menu-btn {
-	display: none;
-	flex-direction: column;
-	gap: 4px;
-	background: none;
-	border: none;
-	cursor: pointer;
-	padding: var(--spacing-sm);
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--line-soft);
+  background: rgba(255, 255, 255, 0.84);
+  padding: 0;
+  cursor: pointer;
 }
 
 .mobile-menu-btn span {
-	width: 24px;
-	height: 3px;
-	background: var(--primary-color);
-	border-radius: 2px;
-	transition: all var(--transition-fast);
+  width: 18px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--text-default);
+  margin: 0 auto;
+  transition: background-color var(--motion-fast);
 }
 
 .mobile-menu-btn:hover span {
-	background: var(--primary-dark);
+  background: var(--brand-primary-strong);
 }
 
-/* 移动端菜单 */
 .mobile-menu {
-	position: absolute;
-	top: 100%;
-	left: 0;
-	right: 0;
-	background: var(--background-white);
-	border: 1px solid var(--border-color);
-	border-top: none;
-	border-radius: 0 0 var(--radius-md) var(--radius-md);
-	box-shadow: var(--shadow-lg);
-	z-index: var(--z-dropdown);
-	animation: slideIn 0.3s ease;
+  position: absolute;
+  top: calc(100% + 0.55rem);
+  right: 0;
+  width: min(84vw, 320px);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 253, 249, 0.98);
+  box-shadow: var(--shadow-medium);
+  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-4);
 }
 
-.mobile-nav {
-	padding: var(--spacing-md);
+.mobile-menu-section {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.mobile-section-title {
+  margin: 0 0 0.25rem;
+  color: var(--text-subtle);
+  font-size: var(--font-size-2xs);
+  letter-spacing: 0.04em;
 }
 
 .mobile-nav-item {
-	display: block;
-	padding: var(--spacing-md);
-	text-decoration: none;
-	color: var(--text-primary);
-	font-size: var(--font-size-sm);
-	border-radius: var(--radius-md);
-	margin-bottom: var(--spacing-xs);
-	transition: all var(--transition-fast);
+  width: 100%;
+  display: block;
+  padding: 0.58rem 0.62rem;
+  border-radius: 0.6rem;
+  border: none;
+  background: transparent;
+  text-align: left;
+  color: var(--text-default);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
 }
 
+.mobile-nav-item.active,
 .mobile-nav-item:hover {
-	background: var(--primary-color);
-	color: white;
+  background: rgba(219, 124, 93, 0.14);
+  color: var(--brand-primary-strong);
 }
 
-.mobile-user-section {
-	border-top: 1px solid var(--border-light);
-	margin-top: var(--spacing-md);
-	padding-top: var(--spacing-md);
+.mobile-logout {
+  font-weight: 500;
 }
 
-/* 响应式设计 */
-@media (min-width: 1200px) {
-	.brand-text {
-		display: block;
-	}
+@media (max-width: 1100px) {
+  .brand-text {
+    display: none;
+  }
 }
 
-@media (max-width: 1024px) {
-	.navbar-nav {
-		gap: var(--spacing-xs);
-	}
-	
-	.nav-link {
-		padding: var(--spacing-xs) var(--spacing-sm);
-		font-size: var(--font-size-xs);
-	}
-	
-	.nav-icon {
-		font-size: 14px;
-	}
+@media (max-width: 900px) {
+  .pet-navbar {
+    min-height: 74px;
+  }
+
+  .navbar-nav {
+    display: none;
+  }
+
+  .mobile-menu-shell {
+    display: block;
+  }
 }
 
-@media (max-width: 768px) {
-	.navbar-nav {
-		display: none;
-	}
-	
-	.mobile-menu-btn {
-		display: flex;
-	}
-	
-	.user-text {
-		display: none;
-	}
-	
-	.user-dropdown {
-		padding: var(--spacing-sm);
-	}
-}
+@media (max-width: 640px) {
+  .pet-navbar {
+    gap: var(--space-2);
+  }
 
-@media (max-width: 480px) {
-	.pet-navbar {
-		padding: var(--spacing-sm) 0;
-	}
-	
-	.brand-logo {
-		width: 40px;
-		height: 40px;
-	}
-	
-	.container {
-		padding: 0 var(--spacing-sm);
-	}
-}
+  .brand-logo {
+    width: 42px;
+    height: 42px;
+  }
 
-/* 动画效果 */
-@keyframes fadeIn {
-	from {
-		opacity: 0;
-		transform: translateY(-10px);
-	}
-	to {
-		opacity: 1;
-		transform: translateY(0);
-	}
-}
+  .account-trigger {
+    padding-inline: 0.72rem;
+  }
 
-@keyframes slideIn {
-	from {
-		opacity: 0;
-		transform: translateY(-20px);
-	}
-	to {
-		opacity: 1;
-		transform: translateY(0);
-	}
+  .account-label {
+    font-size: var(--font-size-xs);
+  }
 }
 </style>
