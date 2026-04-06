@@ -204,18 +204,22 @@ export default {
 
 .captcha-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 132px;
+  grid-template-columns: minmax(0, 1fr) 140px;
   gap: var(--space-3);
-  align-items: stretch;
+  align-items: center;
 }
 
 .captcha-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
-  min-height: 44px;
+  height: 36px;
+  aspect-ratio: 4 / 1;
   border-radius: var(--radius-sm);
   border: 1px solid rgba(82, 57, 46, 0.2);
   background: linear-gradient(160deg, rgba(255, 253, 249, 0.98) 0%, rgba(244, 232, 220, 0.64) 100%);
-  padding: 0;
+  padding: 0.2rem 0.35rem;
   overflow: hidden;
   cursor: pointer;
   transition: transform var(--motion-standard), box-shadow var(--motion-standard);
@@ -234,7 +238,7 @@ export default {
 .captcha-preview img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .captcha-preview span {
@@ -271,7 +275,8 @@ export default {
   }
 
   .captcha-preview {
-    min-height: 58px;
+    width: min(188px, 100%);
+    height: 40px;
   }
 }
 </style>

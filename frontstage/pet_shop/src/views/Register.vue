@@ -58,7 +58,7 @@
           <el-button type="primary" native-type="submit" class="auth-primary-button">快速开始，进入商城</el-button>
         </el-form-item>
       </el-form>
-      <p class="register-note">提交注册即表示你同意商城用户协议与隐私说明。</p>
+      <p class="register-note">提交前请确认信息填写准确，注册成功后可直接登录继续浏览商城。</p>
     </AuthSplitLayout>
   </div>
 </template>
@@ -155,8 +155,7 @@ export default {
         return '注册失败，请稍后再试';
       }
 
-      const shortDetails = details.slice(0, 2).join('；');
-      return `注册失败，请检查：${shortDetails}`;
+      return `注册失败，请检查：${details.join('；')}`;
     };
 
     const handleRegister = () => {
