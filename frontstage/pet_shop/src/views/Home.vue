@@ -1,378 +1,502 @@
 <template>
-	<div class="pet-page home-page">
-		<!-- 加载状态 -->
-		<div v-if="loading" class="loading-overlay">
-			<div class="loading-content fade-in">
-				<img src="/img/logo.png" alt="吉祥宠物商城" class="loading-logo bounce">
-				<h1 class="pet-gradient-text loading-title">欢迎来到吉祥宠物商城！</h1>
-				<p class="loading-subtitle">为您的爱宠提供最优质的服务 🐾</p>
-				<div class="pet-loading"></div>
-			</div>
-		</div>
+  <div class="home-page">
+    <section class="hero shell-surface shell-section">
+      <div class="hero-copy">
+        <p class="hero-kicker">吉祥宠物商城</p>
+        <h1 class="hero-title">帮你安心找到适合新手家庭的宠物与用品</h1>
+        <p class="hero-description">
+          从在售宠物到日常用品，我们优先展示近期活跃商家，并提供支持同城看宠的筛选建议，让第一次养宠也能稳妥开始。
+        </p>
+        <div class="hero-actions">
+          <el-button type="primary" size="large" @click="goToCommodity">浏览在售商品</el-button>
+          <el-button size="large" plain @click="scrollToTrustGuide">查看同城看宠指引</el-button>
+        </div>
+        <ul class="hero-points">
+          <li>适合新手家庭</li>
+          <li>支持同城看宠</li>
+          <li>近期活跃商家优先展示</li>
+        </ul>
+      </div>
+      <div class="hero-media">
+        <img src="/img/index/top.gif" alt="吉祥宠物商城首页视觉" class="hero-image">
+        <div class="hero-media-card">
+          <img src="/img/logo.png" alt="吉祥宠物商城" class="hero-logo">
+          <p>本周导购重点：先看同城可见，再按家庭经验筛选。</p>
+        </div>
+      </div>
+    </section>
 
-		<!-- 主要内容 -->
-		<div v-else class="home-content fade-in">
-			<!-- 顶部横幅 -->
-			<section class="hero-banner">
-				<div class="container">
-					<div class="banner-wrapper">
-						<img src="/img/index/top.gif" alt="吉祥宠物商城" class="banner-image">
-						<div class="banner-overlay">
-							<h2 class="banner-title">🐾 专业宠物服务平台</h2>
-							<p class="banner-subtitle">为每一个毛孩子提供最贴心的关爱</p>
-						</div>
-					</div>
-				</div>
-			</section>
+    <section class="storefront-section">
+      <div class="section-heading">
+        <h2>快速浏览</h2>
+        <p>按照家庭阶段和看宠方式开始，先缩小范围再进入完整目录。</p>
+      </div>
+      <div class="shortcut-grid">
+        <article
+          v-for="shortcut in quickShortcuts"
+          :key="shortcut.title"
+          class="shortcut-card shell-surface"
+        >
+          <img :src="shortcut.image" :alt="shortcut.title" class="shortcut-image">
+          <div class="shortcut-content">
+            <h3>{{ shortcut.title }}</h3>
+            <p>{{ shortcut.description }}</p>
+            <button type="button" class="shortcut-link" @click="goToCommodity">
+              {{ shortcut.actionText }}
+            </button>
+          </div>
+        </article>
+      </div>
+    </section>
 
-			<!-- 轮播图展示区域 -->
-			<section class="carousel-section">
-				<div class="container">
-					<div v-for="(group, index) in groupedImages" :key="index" class="carousel-group">
-						<div class="pet-card carousel-card">
-							<div class="pet-card-header">
-								<h3 class="pet-card-title">{{ getGroupTitle(index) }}</h3>
-								<p class="pet-card-subtitle">精选推荐</p>
-							</div>
-							<el-carousel 
-								:interval="5000" 
-								arrow="hover" 
-								indicator-position="outside"
-								height="300px"
-								class="pet-carousel"
-							>
-								<el-carousel-item v-for="(img, idx) in group" :key="idx">
-									<div class="carousel-item-wrapper">
-										<img :src="img" alt="精选商品" class="carousel-image pet-hover-scale">
-									</div>
-								</el-carousel-item>
-							</el-carousel>
-						</div>
-					</div>
-				</div>
-			</section>
+    <section class="storefront-section shell-surface shell-section">
+      <div class="section-heading">
+        <h2>精选预览</h2>
+        <p>以下为近期浏览关注度较高的方向，进入目录可查看更多在售信息。</p>
+      </div>
+      <div class="featured-grid">
+        <article
+          v-for="product in featuredProducts"
+          :key="product.name"
+          class="featured-card"
+        >
+          <img :src="product.image" :alt="product.name" class="featured-image">
+          <div class="featured-content">
+            <h3>{{ product.name }}</h3>
+            <p>{{ product.copy }}</p>
+            <p class="featured-meta">{{ product.meta }}</p>
+            <button type="button" class="featured-link" @click="goToCommodity">
+              查看同类在售
+            </button>
+          </div>
+        </article>
+      </div>
+    </section>
 
-			<!-- 特色服务区域 -->
-			<section class="features-section">
-				<div class="container">
-					<h2 class="section-title text-center">🌟 我们的特色服务</h2>
-					<div class="pet-row">
-						<div class="pet-col pet-col-4 pet-col-sm-12">
-							<div class="pet-card feature-card text-center">
-								<div class="feature-icon">🛒</div>
-								<h3 class="feature-title">优质商品</h3>
-								<p class="feature-desc">精选全球优质宠物用品，为您的爱宠提供最好的</p>
-							</div>
-						</div>
-						<div class="pet-col pet-col-4 pet-col-sm-12">
-							<div class="pet-card feature-card text-center">
-								<div class="feature-icon">🤖</div>
-								<h3 class="feature-title">AI顾问</h3>
-								<p class="feature-desc">专业AI宠物顾问，24小时为您解答宠物相关问题</p>
-							</div>
-						</div>
-						<div class="pet-col pet-col-4 pet-col-sm-12">
-							<div class="pet-card feature-card text-center">
-								<div class="feature-icon">🚚</div>
-								<h3 class="feature-title">快速配送</h3>
-								<p class="feature-desc">全国包邮，快速配送，让您的爱宠尽快享受</p>
-							</div>
-						</div>
-					</div>
-				</div>
-			</section>
-		</div>
-	</div>
+    <section id="trust-guide" class="trust-strip shell-surface shell-section">
+      <div class="section-heading">
+        <h2>购买与看宠指引</h2>
+        <p>不追求花哨口号，先把决策关键信息说明白。</p>
+      </div>
+      <div class="trust-grid">
+        <article v-for="item in trustGuides" :key="item.title" class="trust-item">
+          <h3>{{ item.title }}</h3>
+          <p>{{ item.description }}</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="ai-entry shell-surface shell-section">
+      <div class="ai-copy">
+        <h2>还想了解喂养细节？</h2>
+        <p>
+          AI 宠物顾问可作为补充咨询，帮助你准备喂养清单和到家前注意事项。建议先完成商品筛选，再按问题咨询。
+        </p>
+      </div>
+      <el-button size="default" plain @click="goToAiAssistant">进入 AI 宠物顾问</el-button>
+    </section>
+  </div>
 </template>
 
 <script>
 export default {
-	name: 'Home',
-	data() {
-		return {
-			loading: true, // 控制加载状态
-			images: [
-				'/img/index/a4.png',
-				'/img/index/a1.png',
-				'/img/index/a2.png',
-				'/img/index/a3.png',
-				'/img/index/a5.png',
-				'/img/index/b1.png',
-				'/img/index/b2.png',
-				'/img/index/b3.png',
-				'/img/index/p2.png',
-				'/img/index/p3.png',
-				'/img/index/p4.png',
-			],
-		};
-	},
-	computed: {
-			// 将图片按首字母分组，用于创建轮播图
-			groupedImages() {
-				const groups = {};
-				this.images.forEach(img => {
-					const key = img.match(/\/(\w)\d+\.png$/)[1];
-					if (!groups[key]) {
-						groups[key] = [];
-					}
-					groups[key].push(img);
-				});
-				return Object.values(groups);
-			},
-		},
-		methods: {
-			getGroupTitle(index) {
-				const titles = ['热门商品', '精选推荐', '新品上市'];
-				return titles[index] || '推荐商品';
-			}
-		},
-	mounted() {
-			// 模拟异步加载完成
-			setTimeout(() => {
-				this.loading = false;
-			}, 2000); // 优化加载时间
-		}
+  name: 'Home',
+  data() {
+    return {
+      quickShortcuts: [
+        {
+          title: '新手家庭专区',
+          description: '优先查看饲养门槛更清晰的在售信息，避免一开始就选择高维护类型。',
+          image: '/img/index/a1.png',
+          actionText: '浏览新手友好目录',
+        },
+        {
+          title: '同城看宠优先',
+          description: '支持同城看宠的商家会在列表中优先露出，方便你先见再决定。',
+          image: '/img/index/b1.png',
+          actionText: '查看同城可见内容',
+        },
+        {
+          title: '家庭用品清单',
+          description: '从基础用品到到家准备，先补全日常必需品再安排宠物接回。',
+          image: '/img/index/p2.png',
+          actionText: '进入用品目录',
+        },
+        {
+          title: '近期活跃商家',
+          description: '优先展示近期活跃商家，减少信息过旧导致的沟通成本。',
+          image: '/img/index/a5.png',
+          actionText: '查看活跃商家在售',
+        },
+      ],
+      featuredProducts: [
+        {
+          name: '布偶猫幼猫方向',
+          copy: '适合室内陪伴场景，建议先确认家庭作息和毛发打理时间。',
+          meta: '支持同城看宠 · 可对比近期活跃商家',
+          image: '/img/index/a2.png',
+        },
+        {
+          name: '小型犬家庭陪伴方向',
+          copy: '更关注日常互动和基础训练，适合希望建立固定陪伴节奏的家庭。',
+          meta: '新手家庭可先看饲养说明',
+          image: '/img/index/b2.png',
+        },
+        {
+          name: '到家基础用品方向',
+          copy: '围绕吃、住、清洁做标准化准备，减少宠物到家后的临时采购压力。',
+          meta: '近期下单集中在喂养与清洁组合',
+          image: '/img/index/p3.png',
+        },
+      ],
+      trustGuides: [
+        {
+          title: '先看再定',
+          description: '支持同城看宠的条目会明确标注，可先约时间确认状态再沟通交易。',
+        },
+        {
+          title: '信息透明',
+          description: '优先展示近期活跃商家，减少历史信息失效带来的沟通偏差。',
+        },
+        {
+          title: '步骤清晰',
+          description: '建议按“浏览目录 → 对比商家 → 咨询细节 → 决定下单”完成选择。',
+        },
+      ],
+    };
+  },
+  methods: {
+    goToCommodity() {
+      this.$router.push('/commodity');
+    },
+    goToAiAssistant() {
+      this.$router.push('/ai-pet-expert');
+    },
+    scrollToTrustGuide() {
+      const target = document.getElementById('trust-guide');
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    },
+  },
 };
 </script>
 
 <style scoped>
-/* ===== 首页特定样式 ===== */
 .home-page {
-	background: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 20%, #fd79a8 40%, #fdcb6e 60%, #e17055 80%, #d63031 100%);
-	min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-7);
+  padding-block: var(--space-3) var(--space-8);
 }
 
-/* 加载状态样式 */
-.loading-overlay {
-	position: fixed;
-	top: 0;
-	left: 0;
-	width: 100%;
-	height: 100%;
-	background: var(--gradient-warm);
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	z-index: var(--z-modal);
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: clamp(var(--space-5), 2.8vw, var(--space-8));
+  align-items: center;
 }
 
-.loading-content {
-	text-align: center;
-	padding: var(--spacing-xl);
-	background: rgba(255, 255, 255, 0.95);
-	border-radius: var(--radius-xl);
-	box-shadow: var(--shadow-lg);
-	backdrop-filter: blur(10px);
+.hero-kicker {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
+  background: rgba(219, 124, 93, 0.12);
+  color: var(--brand-primary-strong);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.08em;
 }
 
-.loading-logo {
-	width: 120px;
-	height: auto;
-	margin-bottom: var(--spacing-lg);
+.hero-title {
+  margin-top: var(--space-4);
+  max-width: 16em;
 }
 
-.loading-title {
-	font-size: var(--font-size-title);
-	margin-bottom: var(--spacing-md);
-	font-weight: 700;
+.hero-description {
+  margin-top: var(--space-4);
+  max-width: 42ch;
+  color: var(--text-muted);
+  line-height: var(--line-height-relaxed);
 }
 
-.loading-subtitle {
-	font-size: var(--font-size-lg);
-	color: var(--text-secondary);
-	margin-bottom: var(--spacing-lg);
+.hero-actions {
+  margin-top: var(--space-5);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
 }
 
-/* 主要内容样式 */
-.home-content {
-	position: relative;
-	z-index: 1;
+.hero-points {
+  margin: var(--space-5) 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
-/* 英雄横幅样式 */
-.hero-banner {
-	position: relative;
-	margin-bottom: var(--spacing-xxl);
+.hero-points li {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(127, 162, 166, 0.35);
+  color: var(--text-default);
+  background: rgba(127, 162, 166, 0.1);
+  font-size: var(--font-size-sm);
 }
 
-.banner-wrapper {
-	position: relative;
-	border-radius: var(--radius-xl);
-	overflow: hidden;
-	box-shadow: var(--shadow-lg);
+.hero-media {
+  position: relative;
 }
 
-.banner-image {
-	width: 100%;
-	height: auto;
-	display: block;
+.hero-image {
+  width: 100%;
+  min-height: 340px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-medium);
 }
 
-.banner-overlay {
-	position: absolute;
-	top: 50%;
-	left: var(--spacing-xl);
-	transform: translateY(-50%);
-	color: white;
-	text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+.hero-media-card {
+  position: absolute;
+  left: var(--space-4);
+  right: var(--space-4);
+  bottom: var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: rgba(255, 252, 247, 0.9);
+  box-shadow: 0 10px 24px rgba(63, 43, 32, 0.12);
 }
 
-.banner-title {
-	font-size: var(--font-size-title);
-	font-weight: 700;
-	margin-bottom: var(--spacing-sm);
-	text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+.hero-logo {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
 }
 
-.banner-subtitle {
-	font-size: var(--font-size-lg);
-	opacity: 0.9;
+.hero-media-card p {
+  color: var(--text-default);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-base);
 }
 
-/* 轮播图区域样式 */
-.carousel-section {
-	margin-bottom: var(--spacing-xxl);
+.storefront-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
 }
 
-.carousel-group {
-	margin-bottom: var(--spacing-xl);
+.section-heading h2 {
+  font-size: clamp(1.3rem, 1.7vw, 1.7rem);
 }
 
-.carousel-card {
-	background: var(--pet-glass);
-	border: 1px solid rgba(255, 255, 255, 0.3);
+.section-heading p {
+  margin-top: var(--space-2);
+  color: var(--text-muted);
+  max-width: 54ch;
 }
 
-.pet-carousel {
-	border-radius: var(--radius-lg);
-	overflow: hidden;
+.shortcut-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
 }
 
-.carousel-item-wrapper {
-	height: 100%;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	background: var(--background-white);
+.shortcut-card {
+  overflow: hidden;
+  border-radius: var(--radius-md);
 }
 
-.carousel-image {
-	width: 100%;
-	height: 100%;
-	object-fit: cover;
-	transition: transform var(--transition-normal);
+.shortcut-image {
+  width: 100%;
+  height: 144px;
+  object-fit: cover;
 }
 
-/* 特色服务区域样式 */
-.features-section {
-	padding: var(--spacing-xxl) 0;
-	background: rgba(255, 255, 255, 0.9);
-	backdrop-filter: blur(10px);
-	border-radius: var(--radius-xl);
-	margin: var(--spacing-xl) var(--spacing-md);
+.shortcut-content {
+  padding: var(--space-4);
 }
 
-.section-title {
-	font-size: var(--font-size-title);
-	font-weight: 700;
-	margin-bottom: var(--spacing-xxl);
-	color: var(--text-primary);
+.shortcut-content h3 {
+  font-size: var(--font-size-lg);
 }
 
-.feature-card {
-	height: 100%;
-	transition: all var(--transition-normal);
-	border: 1px solid rgba(255, 122, 69, 0.1);
+.shortcut-content p {
+  margin-top: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  line-height: var(--line-height-base);
 }
 
-.feature-card:hover {
-	transform: translateY(-8px);
-	box-shadow: var(--shadow-hover);
-	border-color: var(--primary-color);
+.shortcut-link {
+  margin-top: var(--space-3);
+  border: 0;
+  background: transparent;
+  color: var(--brand-primary-strong);
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  padding: 0;
 }
 
-.feature-icon {
-	font-size: 48px;
-	margin-bottom: var(--spacing-lg);
-	display: block;
+.shortcut-link:hover {
+  color: var(--brand-primary);
 }
 
-.feature-title {
-	font-size: var(--font-size-xl);
-	font-weight: 600;
-	color: var(--primary-color);
-	margin-bottom: var(--spacing-md);
+.featured-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
 }
 
-.feature-desc {
-	color: var(--text-secondary);
-	line-height: 1.6;
-	font-size: var(--font-size-sm);
+.featured-card {
+  background: rgba(255, 255, 255, 0.66);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
 }
 
-/* 响应式设计 */
+.featured-image {
+  width: 100%;
+  height: 176px;
+  object-fit: cover;
+}
+
+.featured-content {
+  padding: var(--space-4);
+}
+
+.featured-content h3 {
+  font-size: var(--font-size-lg);
+}
+
+.featured-content p {
+  margin-top: var(--space-2);
+  color: var(--text-muted);
+  line-height: var(--line-height-base);
+}
+
+.featured-meta {
+  font-size: var(--font-size-xs);
+}
+
+.featured-link {
+  margin-top: var(--space-3);
+  border: 0;
+  background: transparent;
+  color: var(--brand-accent-strong);
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  padding: 0;
+}
+
+.featured-link:hover {
+  color: var(--brand-primary-strong);
+}
+
+.trust-strip {
+  background: linear-gradient(
+    140deg,
+    rgba(255, 252, 247, 0.9) 0%,
+    rgba(127, 162, 166, 0.15) 100%
+  );
+}
+
+.trust-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.trust-item {
+  padding: var(--space-4);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(127, 162, 166, 0.25);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.trust-item h3 {
+  font-size: var(--font-size-md);
+}
+
+.trust-item p {
+  margin-top: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.ai-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  background: rgba(255, 252, 247, 0.76);
+}
+
+.ai-copy h2 {
+  font-size: clamp(1.2rem, 1.6vw, 1.5rem);
+}
+
+.ai-copy p {
+  margin-top: var(--space-2);
+  max-width: 58ch;
+  color: var(--text-muted);
+}
+
+@media (max-width: 1024px) {
+  .hero {
+    grid-template-columns: 1fr;
+  }
+
+  .shortcut-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .featured-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .trust-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 768px) {
-	.banner-overlay {
-		left: var(--spacing-md);
-		right: var(--spacing-md);
-	}
-	
-	.banner-title {
-		font-size: var(--font-size-xl);
-	}
-	
-	.banner-subtitle {
-		font-size: var(--font-size-md);
-	}
-	
-	.loading-title {
-		font-size: var(--font-size-xl);
-	}
-	
-	.section-title {
-		font-size: var(--font-size-xl);
-	}
-	
-	.features-section {
-		margin: var(--spacing-lg) var(--spacing-sm);
-		padding: var(--spacing-lg) 0;
-	}
-}
+  .home-page {
+    gap: var(--space-6);
+  }
 
-@media (max-width: 480px) {
-	.loading-logo {
-		width: 80px;
-	}
-	
-	.loading-content {
-		padding: var(--spacing-lg);
-		margin: var(--spacing-md);
-	}
-	
-	.banner-overlay {
-		position: static;
-		transform: none;
-		background: rgba(0, 0, 0, 0.6);
-		padding: var(--spacing-lg);
-		text-align: center;
-	}
-}
+  .hero-title {
+    max-width: 100%;
+  }
 
-/* Element Plus 轮播图样式覆盖 */
-:deep(.el-carousel__indicator) {
-	background-color: rgba(255, 122, 69, 0.3);
-}
+  .hero-actions .el-button {
+    width: 100%;
+    margin-left: 0;
+  }
 
-:deep(.el-carousel__indicator.is-active) {
-	background-color: var(--primary-color);
-}
+  .hero-image {
+    min-height: 230px;
+  }
 
-:deep(.el-carousel__arrow) {
-	background-color: rgba(255, 122, 69, 0.8);
-	border: none;
-}
+  .hero-media-card {
+    position: static;
+    margin-top: var(--space-3);
+  }
 
-:deep(.el-carousel__arrow:hover) {
-	background-color: var(--primary-color);
+  .shortcut-grid,
+  .featured-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-entry {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 </style>
