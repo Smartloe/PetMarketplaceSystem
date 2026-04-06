@@ -31,6 +31,9 @@ REFUND_STATUS_LABELS = {
     3: "已拒绝",
 }
 
+REFUND_BUCKET_IN_PROGRESS = "退款中"
+REFUND_BUCKET_RETURNED = "已退货"
+
 PRICE_BANDS = (
     (0, 49.99, "0-49.99"),
     (50, 99.99, "50-99.99"),

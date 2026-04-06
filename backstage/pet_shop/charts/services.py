@@ -4,7 +4,7 @@ from datetime import date, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 
 from django.contrib.auth import get_user_model
-from django.db.models import Avg, Count, Sum
+from django.db.models import Avg, Count, Q, Sum
 from django.db.models.functions import TruncDate
 from django.utils import timezone
 
@@ -16,11 +16,12 @@ from charts.constants import (
     ORDER_STATUS_LABELS,
     PAY_METHOD_LABELS,
     PRICE_BANDS,
-    REFUND_STATUS_LABELS,
+    REFUND_BUCKET_IN_PROGRESS,
+    REFUND_BUCKET_RETURNED,
     TREND_WINDOWS,
 )
 from commodity.models import CommodityInfos
-from customer_operation.models import UserAddress, UserComment
+from customer_operation.models import UserComment
 from trade.models import OrderGoods, OrderInfos
 
 MONEY_ZERO = Decimal("0.00")
@@ -32,6 +33,10 @@ def _today() -> date:
 
 def _window_start(days: int) -> date:
     return _today() - timedelta(days=days - 1)
+
+
+def _window_bounds(days: int) -> tuple[date, date]:
+    return _window_start(days), _today()
 
 
 def _format_money(value: Decimal | None) -> str:
@@ -61,8 +66,12 @@ def _build_zero_filled_daily_series(days: int, rows_by_day: dict[date, int | Dec
 
 def _order_queryset(days: int | None = None, included_statuses=None, refund_statuses=None):
     queryset = OrderInfos.objects.all()
+    end_date = _today()
     if days is not None:
-        queryset = queryset.filter(created_time__date__gte=_window_start(days))
+        start_date, end_date = _window_bounds(days)
+        queryset = queryset.filter(created_time__date__range=(start_date, end_date))
+    else:
+        queryset = queryset.filter(created_time__date__lte=end_date)
     if included_statuses is not None:
         queryset = queryset.filter(order_status__in=included_statuses)
     if refund_statuses is not None:
@@ -96,7 +105,8 @@ def _calculate_order_count(days: int = 30, included_statuses=ORDER_COUNT_STATUSE
 
 def _calculate_new_users(days: int = 30) -> int:
     user_model = get_user_model()
-    return user_model.objects.filter(date_joined__date__gte=_window_start(days)).count()
+    start_date, end_date = _window_bounds(days)
+    return user_model.objects.filter(date_joined__date__range=(start_date, end_date)).count()
 
 
 def _calculate_average_order_value(
@@ -141,8 +151,9 @@ def _build_daily_order_trend(days: int):
 
 def _build_daily_user_trend(days: int):
     user_model = get_user_model()
+    start_date, end_date = _window_bounds(days)
     rows = (
-        user_model.objects.filter(date_joined__date__gte=_window_start(days))
+        user_model.objects.filter(date_joined__date__range=(start_date, end_date))
         .annotate(day=TruncDate("date_joined"))
         .values("day")
         .annotate(value=Count("id"))
@@ -153,7 +164,10 @@ def _build_daily_user_trend(days: int):
 
 def _build_category_share():
     rows = (
-        OrderGoods.objects.filter(order__order_status__in=ORDER_COUNT_STATUSES)
+        OrderGoods.objects.filter(
+            order__order_status__in=ORDER_COUNT_STATUSES,
+            order__created_time__date__lte=_today(),
+        )
         .values("goods__types__title")
         .annotate(value=Sum("goods_num"))
         .order_by("-value", "goods__types__title")
@@ -166,7 +180,10 @@ def _build_category_share():
 
 def _build_hot_products(limit: int):
     rows = (
-        OrderGoods.objects.filter(order__order_status__in=ORDER_COUNT_STATUSES)
+        OrderGoods.objects.filter(
+            order__order_status__in=ORDER_COUNT_STATUSES,
+            order__created_time__date__lte=_today(),
+        )
         .values("goods_id", "goods__sku_title", "goods__stock_quantity")
         .annotate(sold_quantity=Sum("goods_num"))
         .order_by("-sold_quantity", "goods_id")[:limit]
@@ -261,7 +278,7 @@ def _build_payment_method_distribution():
 
 
 def _build_order_status_distribution():
-    rows = OrderInfos.objects.values("order_status").annotate(value=Count("id"))
+    rows = _order_queryset().values("order_status").annotate(value=Count("id"))
     counts = {row["order_status"]: row["value"] for row in rows}
     return [
         {"name": name, "value": counts.get(code, 0)}
@@ -270,26 +287,31 @@ def _build_order_status_distribution():
 
 
 def _build_refund_distribution():
-    rows = (
-        _order_queryset(included_statuses=ORDER_COUNT_STATUSES)
-        .values("refund_status")
-        .annotate(value=Count("id"))
-    )
-    counts = {row["refund_status"]: row["value"] for row in rows}
     return [
-        {"name": name, "value": counts.get(code, 0)}
-        for code, name in REFUND_STATUS_LABELS.items()
+        {
+            "name": REFUND_BUCKET_IN_PROGRESS,
+            "value": _order_queryset(included_statuses=ORDER_COUNT_STATUSES).filter(
+                Q(refund_status=1) | Q(order_status=4)
+            ).count(),
+        },
+        {
+            "name": REFUND_BUCKET_RETURNED,
+            "value": _order_queryset(included_statuses=ORDER_COUNT_STATUSES).filter(
+                Q(refund_status=2) | Q(order_status=5)
+            ).count(),
+        },
     ]
 
 
 def _build_province_distribution():
     rows = (
-        UserAddress.objects.values("province")
+        _order_queryset(included_statuses=ORDER_COUNT_STATUSES)
+        .values("address__province")
         .annotate(value=Count("id"))
-        .order_by("-value", "province")
+        .order_by("-value", "address__province")
     )
     return [
-        {"name": row["province"] or "未知", "value": row["value"] or 0}
+        {"name": row["address__province"] or "未知", "value": row["value"] or 0}
         for row in rows
     ]
 
