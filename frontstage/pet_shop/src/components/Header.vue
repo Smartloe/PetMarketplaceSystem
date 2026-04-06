@@ -23,7 +23,7 @@
         <div class="navbar-account">
           <button
             type="button"
-            class="account-trigger"
+            :class="['account-trigger', { active: isAccountRouteActive }]"
             :aria-expanded="showAccountMenu"
             aria-label="账户菜单"
             @click="toggleAccountMenu"
@@ -156,6 +156,15 @@ const guestActions = [
   { label: '注册', href: '/accounts/register' }
 ];
 
+const accountActivePrefixes = [
+  '/favorites',
+  '/trade/orders',
+  '/messages',
+  '/accounts/user-center',
+  '/accounts/login',
+  '/accounts/register'
+];
+
 export default {
   setup() {
     const route = useRoute();
@@ -166,6 +175,9 @@ export default {
 
     const isLoggedIn = computed(() => store.state.isLoggedIn);
     const accountLabel = computed(() => (isLoggedIn.value ? '账户' : '账户 / 登录'));
+    const isAccountRouteActive = computed(() =>
+      accountActivePrefixes.some((prefix) => route.path.startsWith(prefix))
+    );
 
     const isRouteActive = (href) => {
       if (href === '/') {
@@ -239,6 +251,7 @@ export default {
       showMobileMenu,
       isLoggedIn,
       accountLabel,
+      isAccountRouteActive,
       isRouteActive,
       toggleAccountMenu,
       toggleMobileMenu,
@@ -343,6 +356,13 @@ export default {
   border-color: rgba(127, 162, 166, 0.5);
   background: rgba(255, 255, 255, 0.95);
   box-shadow: 0 10px 20px rgba(83, 56, 40, 0.1);
+}
+
+.account-trigger.active {
+  border-color: rgba(127, 162, 166, 0.5);
+  background: rgba(127, 162, 166, 0.18);
+  color: var(--brand-accent-strong);
+  box-shadow: inset 0 0 0 1px rgba(99, 141, 145, 0.2);
 }
 
 .account-arrow {

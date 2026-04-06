@@ -29,6 +29,9 @@
 </template>
 
 <script>
+import { computed } from 'vue';
+import { useStore } from 'vuex';
+
 const servicePromises = [
   {
     title: '真实在售信息',
@@ -44,15 +47,29 @@ const servicePromises = [
   }
 ];
 
-const helpLinks = [
+const publicHelpLinks = [
+  { label: '商城首页', href: '/' },
   { label: '在售商品', href: '/commodity' },
-  { label: 'AI 宠物顾问', href: '/ai-pet-expert' },
+  { label: 'AI 宠物顾问', href: '/ai-pet-expert' }
+];
+
+const guestHelpLinks = [
+  ...publicHelpLinks,
+  { label: '登录 / 注册', href: '/accounts/login' }
+];
+
+const memberHelpLinks = [
+  ...publicHelpLinks,
   { label: '帮助与留言', href: '/messages' },
   { label: '账户中心', href: '/accounts/user-center' }
 ];
 
 export default {
   setup() {
+    const store = useStore();
+    const isLoggedIn = computed(() => store.state.isLoggedIn);
+    const helpLinks = computed(() => (isLoggedIn.value ? memberHelpLinks : guestHelpLinks));
+
     return {
       servicePromises,
       helpLinks,
