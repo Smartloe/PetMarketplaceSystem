@@ -1,4 +1,5 @@
 /* Storefront shell layer */
+/* Transitional note: legacy helper compatibility is kept in design-system.css under "Legacy bridge". */
 
 body {
   overflow-x: hidden;

@@ -6,6 +6,11 @@
   --bg-surface: rgba(255, 252, 247, 0.92);
   --bg-elevated: #fffdf9;
   --bg-muted: #efe6da;
+  --pet-glass: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.82) 0%,
+    rgba(255, 248, 240, 0.62) 100%
+  );
 
   /* Typography colors */
   --text-strong: #2d241f;
@@ -469,6 +474,187 @@ p {
   background: #fff;
 }
 
+/* Legacy bridge (temporary, remove after route refresh tasks land) */
+.pet-page {
+  min-height: 100vh;
+}
+
+.pet-page-content {
+  padding-block: var(--space-8);
+}
+
+.pet-page-footer {
+  margin-top: auto;
+}
+
+.pet-row {
+  display: flex;
+  flex-wrap: wrap;
+  margin-inline: calc(-1 * var(--space-3));
+}
+
+.pet-col {
+  flex: 1 0 0%;
+  padding-inline: var(--space-3);
+}
+
+.pet-col-1 {
+  flex: 0 0 8.333333%;
+  max-width: 8.333333%;
+}
+
+.pet-col-2 {
+  flex: 0 0 16.666667%;
+  max-width: 16.666667%;
+}
+
+.pet-col-3 {
+  flex: 0 0 25%;
+  max-width: 25%;
+}
+
+.pet-col-4 {
+  flex: 0 0 33.333333%;
+  max-width: 33.333333%;
+}
+
+.pet-col-5 {
+  flex: 0 0 41.666667%;
+  max-width: 41.666667%;
+}
+
+.pet-col-6 {
+  flex: 0 0 50%;
+  max-width: 50%;
+}
+
+.pet-col-7 {
+  flex: 0 0 58.333333%;
+  max-width: 58.333333%;
+}
+
+.pet-col-8 {
+  flex: 0 0 66.666667%;
+  max-width: 66.666667%;
+}
+
+.pet-col-9 {
+  flex: 0 0 75%;
+  max-width: 75%;
+}
+
+.pet-col-10 {
+  flex: 0 0 83.333333%;
+  max-width: 83.333333%;
+}
+
+.pet-col-11 {
+  flex: 0 0 91.666667%;
+  max-width: 91.666667%;
+}
+
+.pet-col-12 {
+  flex: 0 0 100%;
+  max-width: 100%;
+}
+
+.pet-loading {
+  width: 42px;
+  height: 42px;
+  margin-inline: auto;
+  border: 3px solid rgba(127, 162, 166, 0.25);
+  border-top-color: var(--brand-primary);
+  border-radius: 50%;
+  animation: legacy-spin 0.9s linear infinite;
+}
+
+.fade-in {
+  animation: legacy-fade-in var(--motion-slow) both;
+}
+
+.bounce {
+  animation: legacy-bounce 2.2s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.pet-hover-scale {
+  transition: transform var(--motion-standard), box-shadow var(--motion-standard);
+}
+
+.pet-hover-scale:hover {
+  transform: scale(1.02);
+  box-shadow: var(--shadow-soft);
+}
+
+.pet-glass {
+  background: var(--pet-glass);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.pet-alert {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-base);
+}
+
+.pet-alert-success {
+  background: rgba(95, 154, 122, 0.12);
+  border-color: rgba(95, 154, 122, 0.28);
+  color: #2b5f46;
+}
+
+.pet-alert-warning {
+  background: rgba(191, 133, 86, 0.12);
+  border-color: rgba(191, 133, 86, 0.3);
+  color: #7b4d2d;
+}
+
+.pet-alert-error,
+.pet-alert-danger {
+  background: rgba(196, 90, 88, 0.12);
+  border-color: rgba(196, 90, 88, 0.32);
+  color: #7f3734;
+}
+
+.pet-alert-info {
+  background: rgba(111, 149, 173, 0.12);
+  border-color: rgba(111, 149, 173, 0.3);
+  color: #2f5671;
+}
+
+@keyframes legacy-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes legacy-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes legacy-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
 @media (max-width: 768px) {
   .container,
   .container-narrow {
@@ -477,6 +663,11 @@ p {
 
   .section {
     padding-block: var(--space-8);
+  }
+
+  .pet-col-sm-12 {
+    flex: 0 0 100%;
+    max-width: 100%;
   }
 }
 
