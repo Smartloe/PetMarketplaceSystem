@@ -111,7 +111,7 @@
         </div>
         <div v-else-if="hasLoadError && !hasAnyCommodities" class="app-notice-state list-state">
           <p>{{ loadErrorMessage }}</p>
-          <el-button type="primary" @click="fetchCommodities">重新加载</el-button>
+          <el-button type="primary" @click="retryCurrentContext">重新加载</el-button>
         </div>
         <div v-else-if="!hasAnyCommodities" class="app-empty-state list-state">
           <h3>当前条件下暂无在售内容</h3>
@@ -195,6 +195,8 @@ export default {
     const hasLoadError = ref(false);
     const loadErrorMessage = ref('商品目录加载失败，请稍后重试。');
     const showUnlockFeedback = ref(false);
+    const resultContext = ref('browse');
+    const backendLimitedSignal = ref(null);
     const router = useRouter();
     const store = useStore();
     const isLoggedIn = computed(() => store.state.isLoggedIn);
@@ -253,6 +255,10 @@ export default {
       }
     };
 
+    const updateBackendLimitedSignal = (payload = {}) => {
+      backendLimitedSignal.value = typeof payload.limited === 'boolean' ? payload.limited : null;
+    };
+
     const fetchCommodities = async ({ showUnlockState = false } = {}) => {
       isLoading.value = true;
       hasLoadError.value = false;
@@ -260,10 +266,12 @@ export default {
         const response = await getCommodities();
         const payload = response.data || {};
         updateLimitMeta(payload);
+        updateBackendLimitedSignal(payload);
         const categoryData = payload.categories || payload;
         commodities.value = categoryData;
         filteredCommodities.value = flattenCommodities(categoryData);
         selectedContextLabel.value = '全部在售目录';
+        resultContext.value = 'browse';
         currentPage.value = 1;
         if (showUnlockState) {
           triggerUnlockFeedback();
@@ -293,6 +301,7 @@ export default {
       selectedContextLabel.value = parentCategory && subCategory
         ? `${parentCategory} / ${subCategory}`
         : subCategory || parentCategory || '分类筛选';
+      resultContext.value = 'category';
       currentPage.value = 1;
     };
 
@@ -310,8 +319,10 @@ export default {
         const response = await searchCommodities(query);
         const payload = response.data || {};
         updateLimitMeta(payload);
+        updateBackendLimitedSignal(payload);
         filteredCommodities.value = applyCategoryMeta(payload.results || payload);
         selectedContextLabel.value = `搜索：${query}`;
+        resultContext.value = 'search';
         currentPage.value = 1;
       } catch (error) {
         hasLoadError.value = true;
@@ -412,7 +423,11 @@ export default {
       }
       const sourceCount = (filteredCommodities.value || []).length;
       const previewedCount = effectiveCommodities.value.length;
-      return sourceCount > previewedCount;
+      const hasMoreByClientSlice = sourceCount > previewedCount;
+      const hasMoreBySearchLimitedSignal = resultContext.value === 'search'
+        && backendLimitedSignal.value === true
+        && sourceCount >= previewLimitDisplay.value;
+      return hasMoreByClientSlice || hasMoreBySearchLimitedSignal;
     });
     const hasReachedPreviewTail = computed(() => {
       if (!isGuestPreview.value || !totalCommodities.value) {
@@ -438,7 +453,7 @@ export default {
         if (hasMoreContentBehindLogin.value) {
           return `当前先展示 ${totalCommodities.value} 条真实内容（预览上限 ${previewLimitDisplay.value} 条），登录后可继续查看完整目录。`;
         }
-        return `当前共 ${totalCommodities.value} 条结果，已全部展示。登录后可同步收藏、下单与账户操作。`;
+        return `当前共展示 ${totalCommodities.value} 条结果，你可以继续筛选；登录后可同步收藏、下单与账户操作。`;
       }
       return `当前共 ${totalCommodities.value} 条结果，可继续搜索或切换分类。`;
     });
