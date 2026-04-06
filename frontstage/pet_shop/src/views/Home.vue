@@ -5,16 +5,20 @@
         <p class="hero-kicker">吉祥宠物商城</p>
         <h1 class="hero-title">帮你安心找到适合新手家庭的宠物与用品</h1>
         <p class="hero-description">
-          从在售宠物到日常用品，我们优先展示近期活跃商家，并提供支持同城看宠的筛选建议，让第一次养宠也能稳妥开始。
+          从在售宠物到日常用品，我们整理了同城看宠、家庭经验和沟通准备的导购建议，帮助你先建立判断框架，再进入完整目录慢慢挑选。
         </p>
         <div class="hero-actions">
-          <el-button type="primary" size="large" @click="goToCommodity">浏览在售商品</el-button>
-          <el-button size="large" plain @click="scrollToTrustGuide">查看同城看宠指引</el-button>
+          <router-link to="/commodity" class="hero-action hero-action-primary">
+            浏览在售商品
+          </router-link>
+          <button type="button" class="hero-action hero-action-secondary" @click="scrollToTrustGuide">
+            查看同城看宠指引
+          </button>
         </div>
         <ul class="hero-points">
           <li>适合新手家庭</li>
           <li>支持同城看宠</li>
-          <li>近期活跃商家优先展示</li>
+          <li>可先核对商家资料更新时间</li>
         </ul>
       </div>
       <div class="hero-media">
@@ -37,13 +41,19 @@
           :key="shortcut.title"
           class="shortcut-card shell-surface"
         >
-          <img :src="shortcut.image" :alt="shortcut.title" class="shortcut-image">
+          <img
+            :src="shortcut.image"
+            :alt="shortcut.title"
+            class="shortcut-image"
+            loading="lazy"
+            decoding="async"
+          >
           <div class="shortcut-content">
             <h3>{{ shortcut.title }}</h3>
             <p>{{ shortcut.description }}</p>
-            <button type="button" class="shortcut-link" @click="goToCommodity">
+            <router-link to="/commodity" class="shortcut-link">
               {{ shortcut.actionText }}
-            </button>
+            </router-link>
           </div>
         </article>
       </div>
@@ -52,7 +62,7 @@
     <section class="storefront-section shell-surface shell-section">
       <div class="section-heading">
         <h2>精选预览</h2>
-        <p>以下为近期浏览关注度较高的方向，进入目录可查看更多在售信息。</p>
+        <p>以下是我们整理的常见入门方向，进入目录可查看更多在售信息。</p>
       </div>
       <div class="featured-grid">
         <article
@@ -60,14 +70,20 @@
           :key="product.name"
           class="featured-card"
         >
-          <img :src="product.image" :alt="product.name" class="featured-image">
+          <img
+            :src="product.image"
+            :alt="product.name"
+            class="featured-image"
+            loading="lazy"
+            decoding="async"
+          >
           <div class="featured-content">
             <h3>{{ product.name }}</h3>
             <p>{{ product.copy }}</p>
             <p class="featured-meta">{{ product.meta }}</p>
-            <button type="button" class="featured-link" @click="goToCommodity">
+            <router-link to="/commodity" class="featured-link">
               查看同类在售
-            </button>
+            </router-link>
           </div>
         </article>
       </div>
@@ -93,7 +109,7 @@
           AI 宠物顾问可作为补充咨询，帮助你准备喂养清单和到家前注意事项。建议先完成商品筛选，再按问题咨询。
         </p>
       </div>
-      <el-button size="default" plain @click="goToAiAssistant">进入 AI 宠物顾问</el-button>
+      <router-link to="/ai-pet-expert" class="ai-link">进入 AI 宠物顾问</router-link>
     </section>
   </div>
 </template>
@@ -106,13 +122,13 @@ export default {
       quickShortcuts: [
         {
           title: '新手家庭专区',
-          description: '优先查看饲养门槛更清晰的在售信息，避免一开始就选择高维护类型。',
+          description: '先查看饲养门槛更清晰的在售信息，避免一开始就选择高维护类型。',
           image: '/img/index/a1.png',
           actionText: '浏览新手友好目录',
         },
         {
-          title: '同城看宠优先',
-          description: '支持同城看宠的商家会在列表中优先露出，方便你先见再决定。',
+          title: '同城看宠提示',
+          description: '可先筛选支持同城看宠的条目，方便先约看再决定。',
           image: '/img/index/b1.png',
           actionText: '查看同城可见内容',
         },
@@ -123,17 +139,17 @@ export default {
           actionText: '进入用品目录',
         },
         {
-          title: '近期活跃商家',
-          description: '优先展示近期活跃商家，减少信息过旧导致的沟通成本。',
+          title: '商家沟通准备',
+          description: '先核对商家资料是否近期更新、说明是否完整，再进入详细咨询。',
           image: '/img/index/a5.png',
-          actionText: '查看活跃商家在售',
+          actionText: '查看沟通前检查点',
         },
       ],
       featuredProducts: [
         {
           name: '布偶猫幼猫方向',
           copy: '适合室内陪伴场景，建议先确认家庭作息和毛发打理时间。',
-          meta: '支持同城看宠 · 可对比近期活跃商家',
+          meta: '可结合同城看宠与商家说明做对比',
           image: '/img/index/a2.png',
         },
         {
@@ -145,7 +161,7 @@ export default {
         {
           name: '到家基础用品方向',
           copy: '围绕吃、住、清洁做标准化准备，减少宠物到家后的临时采购压力。',
-          meta: '近期下单集中在喂养与清洁组合',
+          meta: '建议先补齐喂养与清洁组合',
           image: '/img/index/p3.png',
         },
       ],
@@ -156,7 +172,7 @@ export default {
         },
         {
           title: '信息透明',
-          description: '优先展示近期活跃商家，减少历史信息失效带来的沟通偏差。',
+          description: '先核对商家资料更新时间、健康说明和服务范围，再做下一步沟通。',
         },
         {
           title: '步骤清晰',
@@ -166,12 +182,6 @@ export default {
     };
   },
   methods: {
-    goToCommodity() {
-      this.$router.push('/commodity');
-    },
-    goToAiAssistant() {
-      this.$router.push('/ai-pet-expert');
-    },
     scrollToTrustGuide() {
       const target = document.getElementById('trust-guide');
       if (target) {
@@ -225,6 +235,47 @@ export default {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
+}
+
+.hero-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform var(--motion-standard), box-shadow var(--motion-standard),
+    background-color var(--motion-standard), color var(--motion-standard);
+}
+
+.hero-action:hover {
+  transform: translateY(-1px);
+}
+
+.hero-action-primary {
+  background: var(--brand-primary);
+  color: var(--text-on-brand);
+  box-shadow: 0 10px 20px rgba(199, 101, 70, 0.2);
+}
+
+.hero-action-primary:hover {
+  background: var(--brand-primary-strong);
+  color: var(--text-on-brand);
+}
+
+.hero-action-secondary {
+  border: 1px solid var(--line-soft);
+  background: rgba(255, 255, 255, 0.76);
+  color: var(--text-default);
+  cursor: pointer;
+}
+
+.hero-action-secondary:hover {
+  border-color: rgba(127, 162, 166, 0.42);
+  color: var(--brand-accent-strong);
 }
 
 .hero-points {
@@ -405,6 +456,7 @@ export default {
     rgba(255, 252, 247, 0.9) 0%,
     rgba(127, 162, 166, 0.15) 100%
   );
+  scroll-margin-top: clamp(86px, 12vw, 128px);
 }
 
 .trust-grid {
@@ -448,6 +500,29 @@ export default {
   color: var(--text-muted);
 }
 
+.ai-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line-soft);
+  color: var(--text-default);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.82);
+  transition: border-color var(--motion-standard), color var(--motion-standard),
+    transform var(--motion-standard);
+}
+
+.ai-link:hover {
+  border-color: rgba(127, 162, 166, 0.45);
+  color: var(--brand-accent-strong);
+  transform: translateY(-1px);
+}
+
 @media (max-width: 1024px) {
   .hero {
     grid-template-columns: 1fr;
@@ -475,9 +550,8 @@ export default {
     max-width: 100%;
   }
 
-  .hero-actions .el-button {
+  .hero-action {
     width: 100%;
-    margin-left: 0;
   }
 
   .hero-image {
