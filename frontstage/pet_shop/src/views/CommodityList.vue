@@ -195,8 +195,6 @@ export default {
     const hasLoadError = ref(false);
     const loadErrorMessage = ref('商品目录加载失败，请稍后重试。');
     const showUnlockFeedback = ref(false);
-    const resultContext = ref('browse');
-    const backendLimitedSignal = ref(null);
     const router = useRouter();
     const store = useStore();
     const isLoggedIn = computed(() => store.state.isLoggedIn);
@@ -255,10 +253,6 @@ export default {
       }
     };
 
-    const updateBackendLimitedSignal = (payload = {}) => {
-      backendLimitedSignal.value = typeof payload.limited === 'boolean' ? payload.limited : null;
-    };
-
     const fetchCommodities = async ({ showUnlockState = false } = {}) => {
       isLoading.value = true;
       hasLoadError.value = false;
@@ -266,12 +260,10 @@ export default {
         const response = await getCommodities();
         const payload = response.data || {};
         updateLimitMeta(payload);
-        updateBackendLimitedSignal(payload);
         const categoryData = payload.categories || payload;
         commodities.value = categoryData;
         filteredCommodities.value = flattenCommodities(categoryData);
         selectedContextLabel.value = '全部在售目录';
-        resultContext.value = 'browse';
         currentPage.value = 1;
         if (showUnlockState) {
           triggerUnlockFeedback();
@@ -301,7 +293,6 @@ export default {
       selectedContextLabel.value = parentCategory && subCategory
         ? `${parentCategory} / ${subCategory}`
         : subCategory || parentCategory || '分类筛选';
-      resultContext.value = 'category';
       currentPage.value = 1;
     };
 
@@ -319,10 +310,8 @@ export default {
         const response = await searchCommodities(query);
         const payload = response.data || {};
         updateLimitMeta(payload);
-        updateBackendLimitedSignal(payload);
         filteredCommodities.value = applyCategoryMeta(payload.results || payload);
         selectedContextLabel.value = `搜索：${query}`;
-        resultContext.value = 'search';
         currentPage.value = 1;
       } catch (error) {
         hasLoadError.value = true;
@@ -423,11 +412,7 @@ export default {
       }
       const sourceCount = (filteredCommodities.value || []).length;
       const previewedCount = effectiveCommodities.value.length;
-      const hasMoreByClientSlice = sourceCount > previewedCount;
-      const hasMoreBySearchLimitedSignal = resultContext.value === 'search'
-        && backendLimitedSignal.value === true
-        && sourceCount >= previewLimitDisplay.value;
-      return hasMoreByClientSlice || hasMoreBySearchLimitedSignal;
+      return sourceCount > previewedCount;
     });
     const hasReachedPreviewTail = computed(() => {
       if (!isGuestPreview.value || !totalCommodities.value) {
