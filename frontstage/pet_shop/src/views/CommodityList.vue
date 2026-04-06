@@ -180,6 +180,7 @@ export default {
 			paginatedCommodities,
 			totalCommodities,
 			isLoggedIn,
+			fetchCommodities,
 			showCommodities,
 			searchCommoditiesAction,
 			getCommodityDetail,

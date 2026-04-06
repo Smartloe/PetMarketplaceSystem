@@ -27,7 +27,7 @@
 </template>
 
 <script>
-import {ref, watch} from 'vue';
+import {onBeforeUnmount, ref, watch} from 'vue';
 import {useRouter} from 'vue-router';
 import {ElMessage} from 'element-plus';
 import {getCaptcha, loginUser} from '@/api';
@@ -44,22 +44,56 @@ export default {
 			code: '',
 		});
 		const captchaSrc = ref('');
+		const captchaRequestToken = ref(0);
+		let captchaTimer = null;
 
-		const fetchCaptcha = () => {
-			if (loginForm.value.username) {
-				getCaptcha(loginForm.value.username).then(response => {
-					captchaSrc.value = 'data:image/png;base64,' + response.data.img;
-					console.log(response.data.code)
-				}).catch(error => {
-					ElMessage.error('获取验证码失败');
-					console.error(error);
-				});
+		const resetCaptcha = () => {
+			captchaSrc.value = '';
+			loginForm.value.code = '';
+		};
+
+		const fetchCaptcha = (username = loginForm.value.username) => {
+			const normalizedUsername = username.trim();
+			if (!normalizedUsername) {
+				resetCaptcha();
+				return Promise.resolve();
 			}
+
+			const requestToken = ++captchaRequestToken.value;
+			return getCaptcha(normalizedUsername).then(response => {
+				const isLatestRequest = requestToken === captchaRequestToken.value;
+				const isCurrentUsername = normalizedUsername === loginForm.value.username.trim();
+				if (!isLatestRequest || !isCurrentUsername) {
+					return;
+				}
+
+				captchaSrc.value = 'data:image/png;base64,' + response.data.img;
+				loginForm.value.code = '';
+			}).catch(() => {
+				ElMessage.error('获取验证码失败');
+			});
+		};
+
+		const scheduleCaptchaRefresh = (username) => {
+			if (captchaTimer) {
+				window.clearTimeout(captchaTimer);
+			}
+			if (!username.trim()) {
+				resetCaptcha();
+				return;
+			}
+			captchaTimer = window.setTimeout(() => {
+				fetchCaptcha(username);
+			}, 250);
 		};
 
 		watch(() => loginForm.value.username, (newVal) => {
-			if (newVal) {
-				fetchCaptcha();
+			scheduleCaptchaRefresh(newVal);
+		});
+
+		onBeforeUnmount(() => {
+			if (captchaTimer) {
+				window.clearTimeout(captchaTimer);
 			}
 		});
 
@@ -73,7 +107,7 @@ export default {
 					store.commit('setUserName', response.data.username);
 					store.commit('setLastLogin', response.data.last_login);
 					store.commit('setIsLoggedIn', true); // 更新用户登录状态
-					router.push('/'); // 登录成功后的跳转，根据需要调整
+					router.push('/commodity');
 				}
 			}).catch(error => {
 				if (error.response && error.response.data) {
@@ -85,7 +119,7 @@ export default {
 			});
 		};
 		const goToRegister = () => {
-			router.push('register');
+			router.push('/accounts/register');
 		};
 
 
