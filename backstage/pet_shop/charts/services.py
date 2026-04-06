@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 
 from django.contrib.auth import get_user_model
-from django.db.models import Avg, Count, Q, Sum
+from django.db.models import Avg, Case, CharField, Count, Q, Sum, Value, When
 from django.db.models.functions import TruncDate
 from django.utils import timezone
 
@@ -25,6 +25,8 @@ from customer_operation.models import UserComment
 from trade.models import OrderGoods, OrderInfos
 
 MONEY_ZERO = Decimal("0.00")
+RATING_PRECISION = Decimal("0.01")
+DASHBOARD_WINDOW_DAYS = TREND_WINDOWS[1]
 
 
 def _today() -> date:
@@ -39,12 +41,28 @@ def _window_bounds(days: int) -> tuple[date, date]:
     return _window_start(days), _today()
 
 
+def _make_boundary_datetime(day: date) -> datetime:
+    boundary = datetime.combine(day, time.min)
+    if timezone.is_aware(timezone.now()) and timezone.is_naive(boundary):
+        return timezone.make_aware(boundary, timezone.get_current_timezone())
+    return boundary
+
+
+def _window_datetime_bounds(days: int) -> tuple[datetime, datetime]:
+    start_date, end_date = _window_bounds(days)
+    return _make_boundary_datetime(start_date), _make_boundary_datetime(
+        end_date + timedelta(days=1)
+    )
+
+
 def _format_money(value: Decimal | None) -> str:
     amount = value if value is not None else MONEY_ZERO
     return str(amount.quantize(MONEY_ZERO, rounding=ROUND_HALF_UP))
 
 
 def _coerce_day(value) -> date:
+    if isinstance(value, datetime):
+        return value.date()
     if isinstance(value, date):
         return value
     return date.fromisoformat(str(value))
@@ -64,14 +82,15 @@ def _build_zero_filled_daily_series(days: int, rows_by_day: dict[date, int | Dec
     return series
 
 
-def _order_queryset(days: int | None = None, included_statuses=None, refund_statuses=None):
+def _order_queryset(
+    days: int | None = DASHBOARD_WINDOW_DAYS,
+    included_statuses=None,
+    refund_statuses=None,
+):
     queryset = OrderInfos.objects.all()
-    end_date = _today()
     if days is not None:
-        start_date, end_date = _window_bounds(days)
-        queryset = queryset.filter(created_time__date__range=(start_date, end_date))
-    else:
-        queryset = queryset.filter(created_time__date__lte=end_date)
+        start_at, end_at = _window_datetime_bounds(days)
+        queryset = queryset.filter(created_time__gte=start_at, created_time__lt=end_at)
     if included_statuses is not None:
         queryset = queryset.filter(order_status__in=included_statuses)
     if refund_statuses is not None:
@@ -105,8 +124,11 @@ def _calculate_order_count(days: int = 30, included_statuses=ORDER_COUNT_STATUSE
 
 def _calculate_new_users(days: int = 30) -> int:
     user_model = get_user_model()
-    start_date, end_date = _window_bounds(days)
-    return user_model.objects.filter(date_joined__date__range=(start_date, end_date)).count()
+    start_at, end_at = _window_datetime_bounds(days)
+    return user_model.objects.filter(
+        date_joined__gte=start_at,
+        date_joined__lt=end_at,
+    ).count()
 
 
 def _calculate_average_order_value(
@@ -151,9 +173,9 @@ def _build_daily_order_trend(days: int):
 
 def _build_daily_user_trend(days: int):
     user_model = get_user_model()
-    start_date, end_date = _window_bounds(days)
+    start_at, end_at = _window_datetime_bounds(days)
     rows = (
-        user_model.objects.filter(date_joined__date__range=(start_date, end_date))
+        user_model.objects.filter(date_joined__gte=start_at, date_joined__lt=end_at)
         .annotate(day=TruncDate("date_joined"))
         .values("day")
         .annotate(value=Count("id"))
@@ -162,11 +184,14 @@ def _build_daily_user_trend(days: int):
     return _build_zero_filled_daily_series(days, _rows_to_day_map(rows))
 
 
-def _build_category_share():
+def _build_category_share(days: int = DASHBOARD_WINDOW_DAYS):
     rows = (
         OrderGoods.objects.filter(
             order__order_status__in=ORDER_COUNT_STATUSES,
-            order__created_time__date__lte=_today(),
+            order__in=_order_queryset(
+                days=days,
+                included_statuses=ORDER_COUNT_STATUSES,
+            ),
         )
         .values("goods__types__title")
         .annotate(value=Sum("goods_num"))
@@ -178,11 +203,14 @@ def _build_category_share():
     ]
 
 
-def _build_hot_products(limit: int):
+def _build_hot_products(limit: int, days: int = DASHBOARD_WINDOW_DAYS):
     rows = (
         OrderGoods.objects.filter(
             order__order_status__in=ORDER_COUNT_STATUSES,
-            order__created_time__date__lte=_today(),
+            order__in=_order_queryset(
+                days=days,
+                included_statuses=ORDER_COUNT_STATUSES,
+            ),
         )
         .values("goods_id", "goods__sku_title", "goods__stock_quantity")
         .annotate(sold_quantity=Sum("goods_num"))
@@ -264,9 +292,9 @@ def _build_low_stock_products(limit: int = 10):
     ]
 
 
-def _build_payment_method_distribution():
+def _build_payment_method_distribution(days: int = DASHBOARD_WINDOW_DAYS):
     rows = (
-        _order_queryset(included_statuses=ORDER_COUNT_STATUSES)
+        _order_queryset(days=days, included_statuses=ORDER_COUNT_STATUSES)
         .values("pay_method")
         .annotate(value=Count("id"))
     )
@@ -277,8 +305,8 @@ def _build_payment_method_distribution():
     ]
 
 
-def _build_order_status_distribution():
-    rows = _order_queryset().values("order_status").annotate(value=Count("id"))
+def _build_order_status_distribution(days: int = DASHBOARD_WINDOW_DAYS):
+    rows = _order_queryset(days=days).values("order_status").annotate(value=Count("id"))
     counts = {row["order_status"]: row["value"] for row in rows}
     return [
         {"name": name, "value": counts.get(code, 0)}
@@ -286,26 +314,43 @@ def _build_order_status_distribution():
     ]
 
 
-def _build_refund_distribution():
+def _build_refund_distribution(days: int = DASHBOARD_WINDOW_DAYS):
+    rows = (
+        _order_queryset(days=days, included_statuses=ORDER_COUNT_STATUSES)
+        .annotate(
+            refund_bucket=Case(
+                When(
+                    Q(refund_status=2) | Q(order_status=5),
+                    then=Value(REFUND_BUCKET_RETURNED),
+                ),
+                When(
+                    Q(refund_status=1) | Q(order_status=4),
+                    then=Value(REFUND_BUCKET_IN_PROGRESS),
+                ),
+                default=Value(None),
+                output_field=CharField(),
+            )
+        )
+        .exclude(refund_bucket__isnull=True)
+        .values("refund_bucket")
+        .annotate(value=Count("id"))
+    )
+    counts = {row["refund_bucket"]: row["value"] for row in rows}
     return [
         {
             "name": REFUND_BUCKET_IN_PROGRESS,
-            "value": _order_queryset(included_statuses=ORDER_COUNT_STATUSES).filter(
-                Q(refund_status=1) | Q(order_status=4)
-            ).count(),
+            "value": counts.get(REFUND_BUCKET_IN_PROGRESS, 0),
         },
         {
             "name": REFUND_BUCKET_RETURNED,
-            "value": _order_queryset(included_statuses=ORDER_COUNT_STATUSES).filter(
-                Q(refund_status=2) | Q(order_status=5)
-            ).count(),
+            "value": counts.get(REFUND_BUCKET_RETURNED, 0),
         },
     ]
 
 
-def _build_province_distribution():
+def _build_province_distribution(days: int = DASHBOARD_WINDOW_DAYS):
     rows = (
-        _order_queryset(included_statuses=ORDER_COUNT_STATUSES)
+        _order_queryset(days=days, included_statuses=ORDER_COUNT_STATUSES)
         .values("address__province")
         .annotate(value=Count("id"))
         .order_by("-value", "address__province")
@@ -333,8 +378,12 @@ def _build_rating_summary():
     ]
 
     average_rating = aggregates["average_rating"]
+    formatted_rating = Decimal(str(average_rating or 0)).quantize(
+        RATING_PRECISION,
+        rounding=ROUND_HALF_UP,
+    )
     return {
-        "average_rating": _format_money(Decimal(str(average_rating or 0))),
+        "average_rating": str(formatted_rating),
         "total_comments": aggregates["total_comments"] or 0,
         "distribution": distribution,
     }
@@ -364,8 +413,8 @@ def build_overview_payload():
                 "30d": _build_daily_order_trend(days=days_long),
             },
         },
-        "category_share": _build_category_share(),
-        "hot_products": _build_hot_products(limit=5),
+        "category_share": _build_category_share(days=days_long),
+        "hot_products": _build_hot_products(limit=5, days=days_long),
         "alerts": _build_alerts(),
     }
 
@@ -383,11 +432,13 @@ def build_dashboard_payload():
                     order_statuses=GMV_ORDER_STATUSES,
                     refund_statuses=GMV_ALLOWED_REFUND_STATUSES,
                 ),
-                "payment_method_distribution": _build_payment_method_distribution(),
+                "payment_method_distribution": _build_payment_method_distribution(
+                    days=days_long
+                ),
             },
             "catalog": {
-                "category_share": _build_category_share(),
-                "hot_products": _build_hot_products(limit=10),
+                "category_share": _build_category_share(days=days_long),
+                "hot_products": _build_hot_products(limit=10, days=days_long),
                 "price_band_distribution": _build_price_band_distribution(),
                 "low_stock_products": _build_low_stock_products(),
             },
@@ -396,12 +447,12 @@ def build_dashboard_payload():
                     "7d": _build_daily_user_trend(days=days_short),
                     "30d": _build_daily_user_trend(days=days_long),
                 },
-                "province_distribution": _build_province_distribution(),
+                "province_distribution": _build_province_distribution(days=days_long),
                 "rating_summary": _build_rating_summary(),
             },
             "orders": {
-                "status_distribution": _build_order_status_distribution(),
-                "refund_distribution": _build_refund_distribution(),
+                "status_distribution": _build_order_status_distribution(days=days_long),
+                "refund_distribution": _build_refund_distribution(days=days_long),
                 "sales_trend": {
                     "7d": _build_daily_sales_trend(days=days_short),
                     "30d": _build_daily_sales_trend(days=days_long),

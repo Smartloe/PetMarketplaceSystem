@@ -1,4 +1,5 @@
 from datetime import timedelta
+from decimal import Decimal
 
 from django.contrib.auth.models import User
 from django.test import TestCase
@@ -6,8 +7,9 @@ from django.utils import timezone
 
 from charts.services import build_dashboard_payload, build_overview_payload
 from charts.tests.helpers import seed_minimal_order_scenario
+from commodity.models import CommodityCategories, CommodityInfos
 from customer_operation.models import UserAddress
-from trade.models import OrderInfos
+from trade.models import OrderGoods, OrderInfos
 
 
 class AnalyticsServiceTests(TestCase):
@@ -171,7 +173,23 @@ class AnalyticsServiceTests(TestCase):
             created_by="test_seed",
             update_by="test_seed",
         )
-        OrderInfos.objects.filter(pk__in=[returned_order.pk, in_refund_order.pk]).update(
+        overlap_order = OrderInfos.objects.create(
+            user=base_user,
+            order_sn="TEST-OVERLAP-001",
+            address=base_address,
+            total_price="77.00",
+            coupon_price="0.00",
+            payable_price="77.00",
+            pay_method=2,
+            leave_comment="测试订单：退款字段和状态重叠",
+            order_status=4,
+            refund_status=2,
+            created_by="test_seed",
+            update_by="test_seed",
+        )
+        OrderInfos.objects.filter(
+            pk__in=[returned_order.pk, in_refund_order.pk, overlap_order.pk]
+        ).update(
             created_time=now - timedelta(days=1),
             update_time=now - timedelta(days=1),
         )
@@ -183,7 +201,114 @@ class AnalyticsServiceTests(TestCase):
         }
         self.assertSetEqual(set(refund_distribution.keys()), {"退款中", "已退货"})
         self.assertEqual(refund_distribution["退款中"], 2)
-        self.assertEqual(refund_distribution["已退货"], 2)
+        self.assertEqual(refund_distribution["已退货"], 3)
+        self.assertEqual(
+            refund_distribution["退款中"] + refund_distribution["已退货"],
+            5,
+        )
+
+    def test_dashboard_distributions_and_top_lists_use_30d_window(self):
+        seed_minimal_order_scenario()
+        now = timezone.now()
+
+        old_category = CommodityCategories.objects.create(title="历史分类")
+        old_product = CommodityInfos.objects.create(
+            sku_title="历史高销量商品",
+            sku_description="超过30天的历史商品",
+            main_image="product_photos/test_old_main.png",
+            detail_images="product_photos_details/test_old_detail.png",
+            cost_price=Decimal("50.00"),
+            price=Decimal("520.00"),
+            status="1",
+            types=old_category,
+            sold=0,
+            stock_quantity=200,
+            created_by="test_seed",
+            updated_by="test_seed",
+        )
+
+        base_user = User.objects.get(username="legacy_buyer")
+        old_address = UserAddress.objects.create(
+            user=base_user,
+            province="历史省",
+            city="历史市",
+            county="历史区",
+            address="历史路 88 号",
+            is_default=False,
+            signer_name="历史用户",
+            signer_mobile="13700000000",
+            created_by="test_seed",
+            updated_by="test_seed",
+        )
+        old_order = OrderInfos.objects.create(
+            user=base_user,
+            order_sn="TEST-OLD-001",
+            address=old_address,
+            total_price="520.00",
+            coupon_price="0.00",
+            payable_price="520.00",
+            pay_method=1,
+            leave_comment="超过30天的历史订单",
+            order_status=5,
+            refund_status=2,
+            created_by="test_seed",
+            update_by="test_seed",
+        )
+        OrderInfos.objects.filter(pk=old_order.pk).update(
+            created_time=now - timedelta(days=45),
+            update_time=now - timedelta(days=45),
+        )
+        OrderGoods.objects.create(
+            order=old_order,
+            goods=old_product,
+            goods_num=99,
+            commented=False,
+        )
+
+        overview = build_overview_payload()
+        dashboard = build_dashboard_payload()
+
+        overview_category_names = {item["name"] for item in overview["category_share"]}
+        overview_hot_product_ids = {
+            item["product_id"] for item in overview["hot_products"]
+        }
+        catalog_category_names = {
+            item["name"] for item in dashboard["sections"]["catalog"]["category_share"]
+        }
+        catalog_hot_product_ids = {
+            item["product_id"]
+            for item in dashboard["sections"]["catalog"]["hot_products"]
+        }
+        province_names = {
+            item["name"]
+            for item in dashboard["sections"]["users"]["province_distribution"]
+        }
+        payment_distribution = {
+            item["name"]: item["value"]
+            for item in dashboard["sections"]["operations"][
+                "payment_method_distribution"
+            ]
+        }
+        status_distribution = {
+            item["name"]: item["value"]
+            for item in dashboard["sections"]["orders"]["status_distribution"]
+        }
+        refund_distribution = {
+            item["name"]: item["value"]
+            for item in dashboard["sections"]["orders"]["refund_distribution"]
+        }
+
+        self.assertNotIn("历史分类", overview_category_names)
+        self.assertNotIn(old_product.id, overview_hot_product_ids)
+        self.assertNotIn("历史分类", catalog_category_names)
+        self.assertNotIn(old_product.id, catalog_hot_product_ids)
+        self.assertNotIn("历史省", province_names)
+        self.assertEqual(payment_distribution["微信"], 1)
+        self.assertEqual(payment_distribution["支付宝"], 1)
+        self.assertEqual(payment_distribution["银联"], 1)
+        self.assertEqual(status_distribution["已退货"], 0)
+        self.assertEqual(refund_distribution["退款中"], 1)
+        self.assertEqual(refund_distribution["已退货"], 1)
 
     def test_rolling_window_metrics_exclude_future_orders_and_users(self):
         seed_minimal_order_scenario()
