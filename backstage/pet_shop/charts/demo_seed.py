@@ -233,14 +233,20 @@ def _seed_orders_and_comments(
                 goods_num=goods_num,
                 commented=False,
             )
+            OrderGoods.objects.filter(pk=order_goods.pk).update(
+                add_time=created_at + timedelta(minutes=5),
+            )
 
             if order_status >= 3 and sequence % 2 == 0:
-                UserComment.objects.create(
+                comment = UserComment.objects.create(
                     user=user,
                     commodity=commodity,
                     content="演示评价：商品体验良好，物流速度快。",
                     rating=(sequence % 5) + 1,
                     created_by=DEMO_CREATED_BY,
+                )
+                UserComment.objects.filter(pk=comment.pk).update(
+                    created_time=created_at + timedelta(hours=6),
                 )
                 order_goods.commented = True
                 order_goods.save(update_fields=["commented"])

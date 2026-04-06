@@ -6,7 +6,8 @@ from django.test import TestCase, override_settings
 
 from charts.constants import DEMO_USER_PREFIX
 from commodity.models import CommodityInfos
-from trade.models import OrderInfos
+from customer_operation.models import UserComment
+from trade.models import OrderGoods, OrderInfos
 
 
 class SeedDemoBusinessDataCommandTests(TestCase):
@@ -32,5 +33,27 @@ class SeedDemoBusinessDataCommandTests(TestCase):
         self.assertIsNotNone(users.last())
         self.assertGreaterEqual(
             (users.last().date_joined - users.first().date_joined).days,
+            20,
+        )
+
+        order_goods = OrderGoods.objects.filter(
+            order__created_by="demo_seed"
+        ).order_by("add_time")
+        self.assertGreater(order_goods.count(), 0)
+        self.assertIsNotNone(order_goods.first())
+        self.assertIsNotNone(order_goods.last())
+        self.assertGreaterEqual(
+            (order_goods.last().add_time - order_goods.first().add_time).days,
+            20,
+        )
+
+        comments = UserComment.objects.filter(created_by="demo_seed").order_by(
+            "created_time"
+        )
+        self.assertGreater(comments.count(), 0)
+        self.assertIsNotNone(comments.first())
+        self.assertIsNotNone(comments.last())
+        self.assertGreaterEqual(
+            (comments.last().created_time - comments.first().created_time).days,
             20,
         )
