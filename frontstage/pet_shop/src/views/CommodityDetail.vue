@@ -39,14 +39,16 @@
           <button
             type="button"
             class="action-btn primary-action"
-            @click="addToCart(commodityDetail.id)"
+            :disabled="!actionsEnabled"
+            @click="addToCart(resolvedCommodityId)"
           >
             加入购物车
           </button>
           <button
             type="button"
             class="action-btn secondary-action"
-            @click="addToFavorites(commodityDetail.id)"
+            :disabled="!actionsEnabled"
+            @click="addToFavorites(resolvedCommodityId)"
           >
             加入收藏
           </button>
@@ -65,7 +67,13 @@
       <el-tabs v-model="activeTab" class="commodity-tabs">
         <el-tab-pane label="商品详情" name="details">
           <div class="detail-pane">
-            <div v-if="detailImageList.length > 0" class="detail-images">
+            <div v-if="isDetailLoading" class="detail-state">
+              商品详情加载中，请稍候。
+            </div>
+            <div v-else-if="detailLoadFailed" class="detail-state detail-state-error">
+              商品详情加载失败，请稍后重试。
+            </div>
+            <div v-else-if="detailImageList.length > 0" class="detail-images">
               <img
                 v-for="(image, index) in detailImageList"
                 :key="`${image}-${index}`"
@@ -76,14 +84,20 @@
                 decoding="async"
               >
             </div>
-            <div v-else class="detail-empty">
-              暂无更多详情图片，可先查看评价再决定下一步。
+            <div v-else class="detail-state">
+              当前商品暂未上传详情图片，可先参考评价信息。
             </div>
           </div>
         </el-tab-pane>
 
         <el-tab-pane label="商品评价" name="reviews">
-          <div v-if="reviews.length > 0" class="reviews-container">
+          <div v-if="areReviewsLoading" class="detail-state">
+            评价加载中，请稍候。
+          </div>
+          <div v-else-if="reviewsLoadFailed" class="detail-state detail-state-error">
+            评价加载失败，请稍后重试。
+          </div>
+          <div v-else-if="reviews.length > 0" class="reviews-container">
             <article v-for="review in reviews" :key="review.id" class="review-item">
               <img :src="getImageUrl(review.avatar)" class="review-avatar" alt="用户头像">
               <div class="review-content">
@@ -99,8 +113,8 @@
               </div>
             </article>
           </div>
-          <div v-else class="no-reviews">
-            暂无商品评价，可先收藏后持续关注。
+          <div v-else class="detail-state">
+            当前还没有评价记录，可先收藏后持续关注。
           </div>
         </el-tab-pane>
       </el-tabs>
@@ -122,13 +136,27 @@ export default {
     const router = useRouter();
     const store = useStore();
     const commodityDetail = ref({});
+    const isDetailLoading = ref(true);
+    const detailLoadFailed = ref(false);
     const activeTab = ref('details');
     const reviews = ref([]);
+    const areReviewsLoading = ref(true);
+    const reviewsLoadFailed = ref(false);
     const isLoggedIn = computed(() => store.state.isLoggedIn);
 
+    const resolveFiniteNumber = (value) => {
+      const numberValue = Number(value);
+      return Number.isFinite(numberValue) ? numberValue : null;
+    };
+
+    const resolveCommodityId = (value) => {
+      const idValue = Number(value);
+      return Number.isInteger(idValue) && idValue > 0 ? idValue : null;
+    };
+
     const formatPrice = (value) => {
-      const price = Number(value);
-      if (!Number.isFinite(price)) {
+      const price = resolveFiniteNumber(value);
+      if (price === null) {
         return '--';
       }
       return Number.isInteger(price) ? String(price) : price.toFixed(2);
@@ -164,20 +192,32 @@ export default {
 
     const detailImageList = computed(() => normalizeImageList(commodityDetail.value.detail_images));
 
+    const resolvedCommodityId = computed(() => resolveCommodityId(commodityDetail.value.id));
+
+    const actionsEnabled = computed(() => (
+      !isDetailLoading.value && !detailLoadFailed.value && resolvedCommodityId.value !== null
+    ));
+
+    const resolvedPrice = computed(() => resolveFiniteNumber(commodityDetail.value.price));
+
     const reviewCount = computed(() => reviews.value.length);
 
     const decisionHighlights = computed(() => [
       {
         title: '价格判断',
-        copy: commodityDetail.value.price
-          ? `当前参考价为 ￥${formatPrice(commodityDetail.value.price)}，建议结合同类商品综合比较。`
+        copy: resolvedPrice.value !== null
+          ? `当前参考价为 ￥${formatPrice(resolvedPrice.value)}，建议结合同类商品综合比较。`
           : '价格信息正在加载，请稍候再确认。',
       },
       {
         title: '参考反馈',
-        copy: reviewCount.value > 0
+        copy: areReviewsLoading.value
+          ? '评价数据加载中，稍后即可查看参考反馈。'
+          : reviewsLoadFailed.value
+            ? '评价加载失败，建议稍后重试后再综合判断。'
+            : reviewCount.value > 0
           ? `当前共有 ${reviewCount.value} 条评价可参考，可先查看真实反馈。`
-          : '当前还没有评价记录，可先收藏并持续关注。',
+              : '当前还没有评价记录，可先收藏并持续关注。',
       },
       {
         title: '下一步建议',
@@ -188,20 +228,31 @@ export default {
     ]);
 
     const fetchCommodityDetail = async () => {
+      isDetailLoading.value = true;
+      detailLoadFailed.value = false;
       try {
         const response = await getCommodityDetail(route.params.id);
         commodityDetail.value = response.data.commodity_info || {};
       } catch (error) {
+        commodityDetail.value = {};
+        detailLoadFailed.value = true;
         ElMessage.error('商品详情加载失败，请稍后重试');
+      } finally {
+        isDetailLoading.value = false;
       }
     };
 
     const fetchCommodityReviews = async (commodityId) => {
+      areReviewsLoading.value = true;
+      reviewsLoadFailed.value = false;
       try {
         const response = await getCommodityComments(commodityId);
         reviews.value = response.data.results || [];
       } catch (error) {
         reviews.value = [];
+        reviewsLoadFailed.value = true;
+      } finally {
+        areReviewsLoading.value = false;
       }
     };
 
@@ -215,10 +266,22 @@ export default {
     };
 
     const handleAddToCart = (commodityId) => {
+      const validCommodityId = resolveCommodityId(commodityId);
+      if (validCommodityId === null) {
+        if (isDetailLoading.value) {
+          ElMessage.info('商品信息加载中，请稍候再试');
+        } else if (detailLoadFailed.value) {
+          ElMessage.warning('商品信息加载失败，暂时无法加入购物车');
+        } else {
+          ElMessage.info('商品信息暂不可用，请稍后再试');
+        }
+        return;
+      }
+
       if (!ensureLoggedIn()) {
         return;
       }
-      addToCart({ commodity: commodityId, quantity: 1 }).then(() => {
+      addToCart({ commodity: validCommodityId, quantity: 1 }).then(() => {
         ElMessage.success('商品已加入购物车');
       }).catch((error) => {
         if (error?.response?.status === 401) {
@@ -231,10 +294,22 @@ export default {
     };
 
     const handleAddToFavorites = (commodityId) => {
+      const validCommodityId = resolveCommodityId(commodityId);
+      if (validCommodityId === null) {
+        if (isDetailLoading.value) {
+          ElMessage.info('商品信息加载中，请稍候再试');
+        } else if (detailLoadFailed.value) {
+          ElMessage.warning('商品信息加载失败，暂时无法加入收藏');
+        } else {
+          ElMessage.info('商品信息暂不可用，请稍后再试');
+        }
+        return;
+      }
+
       if (!ensureLoggedIn()) {
         return;
       }
-      addToFavorites({ goods: commodityId }).then(() => {
+      addToFavorites({ goods: validCommodityId }).then(() => {
         ElMessage.success('商品已加入收藏');
       }).catch((error) => {
         if (error?.response?.status === 401) {
@@ -258,15 +333,21 @@ export default {
       activeTab,
       addToCart: handleAddToCart,
       addToFavorites: handleAddToFavorites,
+      actionsEnabled,
+      areReviewsLoading,
       commodityDetail,
       decisionHighlights,
+      detailLoadFailed,
       detailImageList,
       formatDate,
       formatPrice,
       getImageUrl,
+      isDetailLoading,
       isLoggedIn,
       mainImageUrl,
+      resolvedCommodityId,
       reviews,
+      reviewsLoadFailed,
     };
   },
 };
@@ -402,6 +483,13 @@ export default {
   transform: translateY(-1px);
 }
 
+.action-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+  transform: none;
+  box-shadow: none;
+}
+
 .primary-action {
   border: none;
   background: var(--brand-primary);
@@ -413,6 +501,12 @@ export default {
   background: var(--brand-primary-strong);
 }
 
+.primary-action:disabled,
+.primary-action:disabled:hover {
+  background: rgba(199, 101, 70, 0.45);
+  color: rgba(255, 250, 245, 0.85);
+}
+
 .secondary-action {
   border: 1px solid var(--line-strong);
   background: rgba(255, 255, 255, 0.86);
@@ -422,6 +516,13 @@ export default {
 .secondary-action:hover {
   border-color: rgba(127, 162, 166, 0.45);
   background: rgba(255, 255, 255, 0.96);
+}
+
+.secondary-action:disabled,
+.secondary-action:disabled:hover {
+  border-color: rgba(82, 57, 46, 0.14);
+  background: rgba(255, 255, 255, 0.66);
+  color: var(--text-subtle);
 }
 
 .login-guidance {
@@ -469,8 +570,7 @@ export default {
   object-fit: cover;
 }
 
-.detail-empty,
-.no-reviews {
+.detail-state {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -481,6 +581,13 @@ export default {
   background: rgba(255, 255, 255, 0.62);
   text-align: center;
   padding: var(--space-5);
+}
+
+.detail-state-error {
+  border-style: solid;
+  border-color: rgba(196, 90, 88, 0.3);
+  color: #9a4a48;
+  background: rgba(196, 90, 88, 0.08);
 }
 
 .reviews-container {
