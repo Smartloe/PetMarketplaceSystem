@@ -156,6 +156,15 @@
             renderAlertsPanel(payload.alerts || []);
         }
 
+        function renderTrendPanelShell(bodyHtml) {
+            panels.trend.innerHTML = renderPanel(
+                "Trend",
+                "近 7 / 30 天走势",
+                "",
+                bodyHtml
+            );
+        }
+
         function renderLoadingOverview() {
             disposeCharts();
             panels.metrics.innerHTML =
@@ -163,12 +172,7 @@
                 renderKpiCard("订单数", "--", "正在同步有效订单总量") +
                 renderKpiCard("新增用户", "--", "正在同步近 30 天新增注册") +
                 renderKpiCard("低库存提醒", "--", "正在同步待补货商品数量");
-            panels.trend.innerHTML = renderPanel(
-                "Trend",
-                "近 7 / 30 天走势",
-                "",
-                renderEmptyBlock("正在连接经营走势数据。")
-            );
+            renderTrendPanelShell(renderEmptyBlock("正在连接经营走势数据。"));
             panels.share.innerHTML = renderPanel(
                 "Category Share",
                 "分类销量占比",
@@ -196,12 +200,7 @@
                 renderKpiCard("订单数", formatNumber(0), "当前统计周期内暂无有效订单") +
                 renderKpiCard("新增用户", formatNumber(0), "当前统计周期内暂无新增注册") +
                 renderKpiCard("低库存提醒", formatNumber(0), "当前没有待补货商品");
-            panels.trend.innerHTML = renderPanel(
-                "Trend",
-                "近 7 / 30 天走势",
-                "",
-                renderEmptyBlock("暂无趋势数据，待订单产生后即可在首页查看走势变化。")
-            );
+            renderTrendPanelShell(renderEmptyBlock("暂无趋势数据，待订单产生后即可在首页查看走势变化。"));
             panels.share.innerHTML = renderPanel(
                 "Category Share",
                 "分类销量占比",
@@ -229,12 +228,7 @@
                 renderKpiCard("订单数", "--", "概览接口暂时不可用") +
                 renderKpiCard("新增用户", "--", "概览接口暂时不可用") +
                 renderKpiCard("低库存提醒", "--", "概览接口暂时不可用");
-            panels.trend.innerHTML = renderPanel(
-                "Trend",
-                "近 7 / 30 天走势",
-                "",
-                renderEmptyBlock("暂时无法渲染趋势图，请稍后点击“重新获取”。")
-            );
+            renderTrendPanelShell(renderEmptyBlock("暂时无法渲染趋势图，请稍后点击“重新获取”。"));
             panels.share.innerHTML = renderPanel(
                 "Category Share",
                 "分类销量占比",
@@ -275,10 +269,7 @@
                     ? formatNumber(latestValue)
                     : formatCurrency(latestValue);
 
-            panels.trend.innerHTML = renderPanel(
-                "Trend",
-                "近 7 / 30 天走势",
-                "",
+            renderTrendPanelShell(
                 !series.length
                     ? renderEmptyBlock("暂无趋势数据。")
                     : '<div class="overview-toolbar">' +

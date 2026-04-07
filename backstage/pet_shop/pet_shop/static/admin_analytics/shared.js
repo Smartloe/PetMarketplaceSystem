@@ -51,6 +51,14 @@
     }
 
     function renderPanelShell(eyebrow, title, caption, bodyHtml) {
+        var captionHtml = "";
+        if (caption) {
+            captionHtml =
+                '<p class="analytics-panel__caption">' +
+                escapeHtml(caption) +
+                "</p>";
+        }
+
         return (
             '<div class="analytics-panel__header">' +
                 "<div>" +
@@ -61,11 +69,7 @@
                     escapeHtml(title) +
                     "</h2>" +
                 "</div>" +
-                (caption
-                    ? '<p class="analytics-panel__caption">' +
-                      escapeHtml(caption) +
-                      "</p>"
-                    : "") +
+                captionHtml +
             "</div>" +
             bodyHtml
         );

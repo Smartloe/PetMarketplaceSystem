@@ -15,6 +15,15 @@ class AnalyticsAdminViewTests(TestCase):
         )
         self.client.force_login(self.admin_user)
 
+    def assertSimpleUiMenuLeakRemoved(self, response):
+        self.assertNotContains(response, 'class="menu-content"')
+        self.assertNotContains(response, "{&#x27;name&#x27;: &#x27;交易管理&#x27;")
+
+    def assertOverviewCopyRemoved(self, response):
+        self.assertNotContains(response, "把后台首页做成“先扫一眼”的总控台")
+        self.assertNotContains(response, "正在同步销售额与订单量变化。")
+        self.assertNotContains(response, "继续使用 Django 管理后台默认应用列表与快捷入口。")
+
     def test_sold_model_changelist_becomes_dashboard_entry(self):
         response = self.client.get(reverse("admin:charts_soldmodel_changelist"))
         dashboard_url = reverse("charts-dashboard")
@@ -23,8 +32,7 @@ class AnalyticsAdminViewTests(TestCase):
         self.assertContains(response, 'id="analytics-dashboard-root"')
         self.assertContains(response, f'data-dashboard-url="{dashboard_url}"')
         self.assertContains(response, "admin_analytics/shared.js")
-        self.assertNotContains(response, 'class="menu-content"')
-        self.assertNotContains(response, "{&#x27;name&#x27;: &#x27;交易管理&#x27;")
+        self.assertSimpleUiMenuLeakRemoved(response)
 
     def test_admin_index_renders_overview_and_app_list(self):
         response = self.client.get(reverse("admin:index"))
@@ -37,12 +45,9 @@ class AnalyticsAdminViewTests(TestCase):
         self.assertContains(response, reverse("admin:charts_soldmodel_changelist"))
         self.assertContains(response, "数据可视化")
         self.assertContains(response, 'id="recent-actions-module"')
-        self.assertNotContains(response, 'class="menu-content"')
-        self.assertNotContains(response, "{&#x27;name&#x27;: &#x27;交易管理&#x27;")
+        self.assertSimpleUiMenuLeakRemoved(response)
         self.assertNotContains(response, " dashboard admin-overview-index")
-        self.assertNotContains(response, "把后台首页做成“先扫一眼”的总控台")
-        self.assertNotContains(response, "正在同步销售额与订单量变化。")
-        self.assertNotContains(response, "继续使用 Django 管理后台默认应用列表与快捷入口。")
+        self.assertOverviewCopyRemoved(response)
 
 
 class AnalyticsStaticRegressionTests(SimpleTestCase):
