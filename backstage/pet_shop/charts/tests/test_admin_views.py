@@ -14,7 +14,8 @@ class AnalyticsAdminViewTests(TestCase):
 
     def test_sold_model_changelist_becomes_dashboard_entry(self):
         response = self.client.get(reverse("admin:charts_soldmodel_changelist"))
+        dashboard_url = reverse("charts-dashboard")
 
         self.assertContains(response, "综合数据看板")
         self.assertContains(response, 'id="analytics-dashboard-root"')
-        self.assertContains(response, 'data-dashboard-url="/api/charts/dashboard/"')
+        self.assertContains(response, f'data-dashboard-url="{dashboard_url}"')
