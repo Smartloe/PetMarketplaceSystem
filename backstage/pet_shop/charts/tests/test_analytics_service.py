@@ -495,6 +495,64 @@ class AnalyticsServiceTests(TestCase):
             self.assertEqual(hot_products[0]["product_id"], expected_product.id)
             self.assertEqual(hot_products[0]["sold_quantity"], 1)
 
+    def test_low_stock_products_use_real_order_goods_quantity(self):
+        seed_minimal_order_scenario()
+        now = timezone.now()
+
+        category = CommodityCategories.objects.create(title="低库存销量回归分类")
+        low_stock_product = CommodityInfos.objects.create(
+            sku_title="低库存高成交商品",
+            sku_description="用于验证低库存销量来源于真实订单明细",
+            main_image="product_photos/test_low_stock_main.png",
+            detail_images="product_photos_details/test_low_stock_detail.png",
+            cost_price=Decimal("20.00"),
+            price=Decimal("88.00"),
+            status="1",
+            types=category,
+            sold=0,
+            stock_quantity=3,
+            created_by="test_seed",
+            updated_by="test_seed",
+        )
+
+        buyer = User.objects.get(username="legacy_buyer")
+        buyer_address = UserAddress.objects.filter(user=buyer).first()
+        self.assertIsNotNone(buyer_address)
+
+        order = OrderInfos.objects.create(
+            user=buyer,
+            order_sn="TEST-LOW-STOCK-SALES-001",
+            address=buyer_address,
+            total_price="352.00",
+            coupon_price="0.00",
+            payable_price="352.00",
+            pay_method=1,
+            leave_comment="低库存销量回归测试订单",
+            order_status=1,
+            refund_status=0,
+            created_by="test_seed",
+            update_by="test_seed",
+        )
+        OrderInfos.objects.filter(pk=order.pk).update(
+            created_time=now - timedelta(days=1),
+            update_time=now - timedelta(days=1),
+        )
+        OrderGoods.objects.create(
+            order=order,
+            goods=low_stock_product,
+            goods_num=4,
+            commented=False,
+        )
+
+        dashboard = build_dashboard_payload()
+        low_stock_products = {
+            item["product_id"]: item
+            for item in dashboard["sections"]["catalog"]["low_stock_products"]
+        }
+        self.assertIn(low_stock_product.id, low_stock_products)
+        self.assertEqual(low_stock_product.sold, 0)
+        self.assertEqual(low_stock_products[low_stock_product.id]["sold_quantity"], 4)
+
     def test_new_user_metrics_exclude_staff_and_superusers(self):
         seed_minimal_order_scenario()
         now = timezone.now()

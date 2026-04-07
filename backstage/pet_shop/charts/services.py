@@ -273,18 +273,25 @@ def _build_daily_user_trend(
     )
 
 
-def _build_category_share(
+def _gmv_order_goods_queryset(
     days: int = DASHBOARD_WINDOW_DAYS,
     time_context: _AnalyticsTimeContext | None = None,
 ):
     start_at, end_at = _window_datetime_bounds(days, time_context=time_context)
+    return OrderGoods.objects.filter(
+        order__created_time__gte=start_at,
+        order__created_time__lt=end_at,
+        order__order_status__in=GMV_ORDER_STATUSES,
+        order__refund_status__in=GMV_ALLOWED_REFUND_STATUSES,
+    )
+
+
+def _build_category_share(
+    days: int = DASHBOARD_WINDOW_DAYS,
+    time_context: _AnalyticsTimeContext | None = None,
+):
     rows = (
-        OrderGoods.objects.filter(
-            order__created_time__gte=start_at,
-            order__created_time__lt=end_at,
-            order__order_status__in=GMV_ORDER_STATUSES,
-            order__refund_status__in=GMV_ALLOWED_REFUND_STATUSES,
-        )
+        _gmv_order_goods_queryset(days=days, time_context=time_context)
         .values("goods__types__title")
         .annotate(value=Sum("goods_num"))
         .order_by("-value", "goods__types__title")
@@ -300,14 +307,8 @@ def _build_hot_products(
     days: int = DASHBOARD_WINDOW_DAYS,
     time_context: _AnalyticsTimeContext | None = None,
 ):
-    start_at, end_at = _window_datetime_bounds(days, time_context=time_context)
     rows = (
-        OrderGoods.objects.filter(
-            order__created_time__gte=start_at,
-            order__created_time__lt=end_at,
-            order__order_status__in=GMV_ORDER_STATUSES,
-            order__refund_status__in=GMV_ALLOWED_REFUND_STATUSES,
-        )
+        _gmv_order_goods_queryset(days=days, time_context=time_context)
         .values("goods_id", "goods__sku_title", "goods__stock_quantity")
         .annotate(sold_quantity=Sum("goods_num"))
         .order_by("-sold_quantity", "goods_id")[:limit]
@@ -376,16 +377,35 @@ def _build_price_band_distribution():
     return distribution
 
 
-def _build_low_stock_products(limit: int = 10):
-    products = CommodityInfos.objects.filter(
-        stock_quantity__lte=LOW_STOCK_THRESHOLD
-    ).order_by("stock_quantity", "id")[:limit]
+def _build_low_stock_products(
+    limit: int = 10,
+    days: int = DASHBOARD_WINDOW_DAYS,
+    time_context: _AnalyticsTimeContext | None = None,
+):
+    products = list(
+        CommodityInfos.objects.filter(stock_quantity__lte=LOW_STOCK_THRESHOLD).order_by(
+            "stock_quantity", "id"
+        )[:limit]
+    )
+    if not products:
+        return []
+
+    sold_rows = (
+        _gmv_order_goods_queryset(days=days, time_context=time_context)
+        .filter(goods_id__in=[product.id for product in products])
+        .values("goods_id")
+        .annotate(sold_quantity=Sum("goods_num"))
+    )
+    sold_by_product_id = {
+        row["goods_id"]: row["sold_quantity"] or 0 for row in sold_rows
+    }
+
     return [
         {
             "product_id": product.id,
             "title": product.sku_title,
             "stock_quantity": product.stock_quantity or 0,
-            "sold_quantity": product.sold or 0,
+            "sold_quantity": sold_by_product_id.get(product.id, 0),
         }
         for product in products
     ]
@@ -614,7 +634,10 @@ def build_dashboard_payload():
                 "category_share": overview["category_share"],
                 "hot_products": overview["hot_products"],
                 "price_band_distribution": _build_price_band_distribution(),
-                "low_stock_products": _build_low_stock_products(),
+                "low_stock_products": _build_low_stock_products(
+                    days=days_long,
+                    time_context=time_context,
+                ),
             },
             "users": {
                 "new_user_trend": {
