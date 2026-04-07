@@ -7,6 +7,11 @@ const dashboardScriptPath = path.join(
     __dirname,
     "../../pet_shop/static/admin_analytics/dashboard.js"
 );
+const sharedScriptPath = path.join(
+    __dirname,
+    "../../pet_shop/static/admin_analytics/shared.js"
+);
+const sharedSource = fs.readFileSync(sharedScriptPath, "utf8");
 const dashboardSource = fs.readFileSync(dashboardScriptPath, "utf8");
 
 class FakeElement {
@@ -92,14 +97,21 @@ function flushPromises() {
 
 async function runDashboard(payload) {
     const harness = createHarness(payload);
-    vm.runInNewContext(dashboardSource, {
+    const context = {
         console,
         document: harness.document,
         setImmediate,
         setTimeout,
         clearTimeout,
         window: harness.window,
-    });
+    };
+
+    vm.runInNewContext(sharedSource, context);
+    assert.ok(
+        harness.window.AdminAnalyticsShared,
+        "shared analytics helper should be available before dashboard.js executes"
+    );
+    vm.runInNewContext(dashboardSource, context);
 
     await flushPromises();
     await flushPromises();

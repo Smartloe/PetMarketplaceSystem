@@ -1,13 +1,31 @@
 (function () {
-    function onReady(callback) {
-        if (document.readyState === "loading") {
-            document.addEventListener("DOMContentLoaded", callback);
-            return;
-        }
-        callback();
+    var shared = window.AdminAnalyticsShared;
+    if (!shared) {
+        return;
     }
 
-    onReady(function () {
+    var escapeHtml = shared.escapeHtml;
+    var formatCurrency = shared.formatCurrency;
+    var formatNumber = shared.formatNumber;
+    var sortItems = shared.sortItems;
+    var renderPanel = shared.renderPanelShell;
+    var renderKpiCard = shared.renderKpiCard;
+    var renderEmptyBlock = shared.renderEmptyBlock;
+    var renderBarList = shared.renderBarList;
+    var renderNoteItem = shared.renderNoteItem;
+    var renderSparkline = function (series) {
+        return shared.renderSparkline(series, {
+            width: 760,
+            height: 280,
+            paddingX: 22,
+            paddingY: 28,
+            lineWidth: 4,
+            dotRadius: 5,
+            ariaLabel: "首页经营趋势图",
+        });
+    };
+
+    shared.onReady(function () {
         var page = document.querySelector(".admin-overview");
         if (!page) {
             return;
@@ -32,6 +50,9 @@
             trendMetric: "sales",
             trendWindow: "30d",
         };
+        var setStatus = shared.createStatusUpdater(statusElement, {
+            actionAttribute: "data-overview-action",
+        });
 
         if (!overviewUrl || !statusElement || !root) {
             return;
@@ -62,7 +83,7 @@
         });
 
         if (window.addEventListener) {
-            window.addEventListener("resize", debounce(function () {
+            window.addEventListener("resize", shared.debounce(function () {
                 resizeCharts();
             }, 120));
         }
@@ -469,7 +490,7 @@
                     type: "category",
                     boundaryGap: false,
                     data: series.map(function (item) {
-                        return getSeriesLabel(item);
+                        return shared.getSeriesLabel(item);
                     }),
                     axisLine: {
                         lineStyle: {
@@ -623,25 +644,6 @@
                 "</div>";
         }
 
-        function renderPanel(eyebrow, title, caption, bodyHtml) {
-            return (
-                '<div class="analytics-panel__header">' +
-                    "<div>" +
-                        '<p class="analytics-panel__eyebrow">' +
-                        escapeHtml(eyebrow) +
-                        "</p>" +
-                        "<h2>" +
-                        escapeHtml(title) +
-                        "</h2>" +
-                    "</div>" +
-                    '<p class="analytics-panel__caption">' +
-                    escapeHtml(caption) +
-                    "</p>" +
-                "</div>" +
-                bodyHtml
-            );
-        }
-
         function renderToggleGroup(label, options, activeValue, attributeName) {
             return (
                 '<div class="segmented-control" role="group" aria-label="' +
@@ -666,206 +668,6 @@
             );
         }
 
-        function renderKpiCard(label, value, footnote) {
-            return (
-                '<article class="kpi-card">' +
-                    '<span class="kpi-card__label">' +
-                    escapeHtml(label) +
-                    "</span>" +
-                    '<strong class="kpi-card__value">' +
-                    escapeHtml(value) +
-                    "</strong>" +
-                    '<p class="kpi-card__footnote">' +
-                    escapeHtml(footnote) +
-                    "</p>" +
-                "</article>"
-            );
-        }
-
-        function renderEmptyBlock(message) {
-            return (
-                '<div class="empty-block">' +
-                    "<p>" +
-                    escapeHtml(message) +
-                    "</p>" +
-                "</div>"
-            );
-        }
-
-        function renderBarList(items, options) {
-            var list = Array.isArray(items) ? items : [];
-            var settings = options || {};
-            if (!list.length) {
-                return renderEmptyBlock(settings.emptyText || "暂无数据。");
-            }
-
-            var maxValue = list.reduce(function (current, item) {
-                return Math.max(current, Number(item.value) || 0);
-            }, 0);
-
-            return (
-                '<ul class="bar-list">' +
-                list
-                    .map(function (item, index) {
-                        var toneClass = settings.highlightFirst && index === 0 ? " bar-fill--highlight" : "";
-                        return (
-                            "<li>" +
-                                '<div class="bar-list__meta"><span>' +
-                                escapeHtml(item.name) +
-                                '</span><span class="bar-list__value">' +
-                                formatNumber(item.value) +
-                                "</span></div>" +
-                                '<div class="bar-track"><div class="bar-fill' +
-                                toneClass +
-                                '" style="width:' +
-                                percentageWidth(item.value, maxValue) +
-                                '%"></div></div>' +
-                            "</li>"
-                        );
-                    })
-                    .join("") +
-                "</ul>"
-            );
-        }
-
-        function renderNoteItem(label, value) {
-            return (
-                "<li><span>" +
-                escapeHtml(label) +
-                "</span><strong>" +
-                escapeHtml(value) +
-                "</strong></li>"
-            );
-        }
-
-        function renderSparkline(series) {
-            if (!Array.isArray(series) || !series.length) {
-                return renderEmptyBlock("暂无趋势数据。");
-            }
-
-            var values = series.map(function (item) {
-                return Number(item.value) || 0;
-            });
-            var width = 760;
-            var height = 280;
-            var paddingX = 22;
-            var paddingY = 28;
-            var sparklineGeometry = buildSparklineGeometry(values, {
-                width: width,
-                height: height,
-                paddingX: paddingX,
-                paddingY: paddingY,
-            });
-            var points = sparklineGeometry.points;
-            var areaPoints = sparklineGeometry.areaPoints;
-
-            return (
-                '<svg class="sparkline-chart" viewBox="0 0 ' +
-                    width +
-                    " " +
-                    height +
-                    '" role="img" aria-label="趋势图">' +
-                    '<polygon points="' +
-                    areaPoints +
-                    '" fill="rgba(47, 107, 99, 0.10)" stroke="none"></polygon>' +
-                    '<polyline points="' +
-                    points +
-                    '" fill="none" stroke="#2f6b63" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></polyline>' +
-                    values
-                        .map(function (_, index) {
-                            var point = points.split(" ")[index].split(",");
-                            return (
-                                '<circle cx="' +
-                                point[0] +
-                                '" cy="' +
-                                point[1] +
-                                '" r="5" fill="#ffffff" stroke="#2f6b63" stroke-width="2"></circle>'
-                            );
-                        })
-                        .join("") +
-                "</svg>" +
-                '<div class="sparkline-axis"><span>' +
-                    escapeHtml(getSeriesLabel(series[0])) +
-                    "</span><span>" +
-                    escapeHtml(getSeriesLabel(series[series.length - 1])) +
-                    "</span></div>"
-            );
-        }
-
-        function buildSparklineGeometry(values, options) {
-            var settings = options || {};
-            var width = settings.width || 760;
-            var height = settings.height || 280;
-            var paddingX = settings.paddingX || 22;
-            var paddingY = settings.paddingY || 28;
-            var baselineY = height - paddingY;
-            var chartWidth = width - paddingX * 2;
-            var chartHeight = height - paddingY * 2;
-            var denominator = values.length > 1 ? values.length - 1 : 1;
-            var maxValue = Math.max.apply(null, values);
-            var minValue = Math.min.apply(null, values);
-            var hasFlatSeries = maxValue === minValue;
-            var flatLineY = maxValue > 0 ? baselineY - chartHeight / 2 : baselineY;
-
-            var pointList = values.map(function (value, index) {
-                var x = paddingX + (chartWidth * index) / denominator;
-                var y = hasFlatSeries
-                    ? flatLineY
-                    : baselineY - ((value - minValue) / (maxValue - minValue)) * chartHeight;
-                return {
-                    x: x.toFixed(2),
-                    y: y.toFixed(2),
-                };
-            });
-
-            return {
-                points: pointList
-                    .map(function (point) {
-                        return point.x + "," + point.y;
-                    })
-                    .join(" "),
-                areaPoints:
-                    paddingX +
-                    "," +
-                    baselineY +
-                    " " +
-                    pointList
-                        .map(function (point) {
-                            return point.x + "," + point.y;
-                        })
-                        .join(" ") +
-                    " " +
-                    (paddingX + chartWidth) +
-                    "," +
-                    baselineY,
-            };
-        }
-
-        function setStatus(kind, title, description, showRetry) {
-            var className = "analytics-status";
-            if (kind === "loading") {
-                className += " analytics-status--loading";
-            } else if (kind === "error") {
-                className += " analytics-status--error";
-            } else if (kind === "empty") {
-                className += " analytics-status--empty";
-            }
-
-            statusElement.className = className;
-            statusElement.innerHTML =
-                '<div class="analytics-status__copy">' +
-                    "<strong>" +
-                    escapeHtml(title) +
-                    "</strong>" +
-                    "<p>" +
-                    description +
-                    "</p>" +
-                "</div>" +
-                (showRetry
-                    ? '<button type="button" class="analytics-action" data-overview-action="retry">重新获取</button>'
-                    : "");
-        }
-
         function resizeCharts() {
             Object.keys(chartRegistry).forEach(function (key) {
                 if (chartRegistry[key] && typeof chartRegistry[key].resize === "function") {
@@ -888,71 +690,12 @@
 
         function isOverviewEmpty(payload) {
             return (
-                !hasUsefulContent(payload.metrics) &&
-                !hasUsefulContent(payload.trends) &&
-                !hasUsefulContent(payload.category_share) &&
-                !hasUsefulContent(payload.hot_products) &&
-                !hasUsefulContent(payload.alerts)
+                !shared.hasUsefulContent(payload.metrics) &&
+                !shared.hasUsefulContent(payload.trends) &&
+                !shared.hasUsefulContent(payload.category_share) &&
+                !shared.hasUsefulContent(payload.hot_products) &&
+                !shared.hasUsefulContent(payload.alerts)
             );
-        }
-
-        function hasUsefulContent(value) {
-            if (Array.isArray(value)) {
-                return value.some(function (item) {
-                    return hasUsefulContent(item);
-                });
-            }
-
-            if (!value || typeof value !== "object") {
-                return isMeaningfulScalar(value);
-            }
-
-            if (isSeriesPoint(value) || isNamedMetric(value)) {
-                return isMeaningfulScalar(value.value);
-            }
-
-            return Object.keys(value).some(function (key) {
-                return hasUsefulContent(value[key]);
-            });
-        }
-
-        function isSeriesPoint(value) {
-            return hasOwn(value, "date") && hasOwn(value, "value") && Object.keys(value).length === 2;
-        }
-
-        function isNamedMetric(value) {
-            return hasOwn(value, "name") && hasOwn(value, "value") && Object.keys(value).length === 2;
-        }
-
-        function isMeaningfulScalar(value) {
-            if (value === null || value === undefined || value === "") {
-                return false;
-            }
-            if (typeof value === "number") {
-                return value !== 0;
-            }
-            if (typeof value === "string") {
-                var numeric = Number(value);
-                return Number.isNaN(numeric) ? true : numeric !== 0;
-            }
-            return Boolean(value);
-        }
-
-        function sortItems(items) {
-            if (!Array.isArray(items)) {
-                return [];
-            }
-            return items.slice().sort(function (left, right) {
-                return (Number(right.value) || 0) - (Number(left.value) || 0);
-            });
-        }
-
-        function percentageWidth(value, maxValue) {
-            var numericValue = Number(value) || 0;
-            if (!maxValue || !numericValue) {
-                return 0;
-            }
-            return Math.max(6, Math.round((numericValue / maxValue) * 100));
         }
 
         function sharePercentage(value, totalValue) {
@@ -964,54 +707,12 @@
             return Number(((numericValue / total) * 100).toFixed(2));
         }
 
-        function formatCurrency(value) {
-            var amount = Number(value) || 0;
-            return "¥" + amount.toLocaleString("zh-CN", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-            });
-        }
-
-        function formatNumber(value) {
-            return (Number(value) || 0).toLocaleString("zh-CN");
-        }
-
         function formatCompactNumber(value) {
             var amount = Number(value) || 0;
             if (Math.abs(amount) >= 10000) {
                 return (amount / 10000).toFixed(1) + "万";
             }
             return formatNumber(amount);
-        }
-
-        function getSeriesLabel(item) {
-            if (!item || !item.date) {
-                return "暂无";
-            }
-            return String(item.date).slice(5).replace("-", ".");
-        }
-
-        function hasOwn(value, key) {
-            return Object.prototype.hasOwnProperty.call(value, key);
-        }
-
-        function debounce(callback, wait) {
-            var timer = null;
-            return function () {
-                if (timer) {
-                    window.clearTimeout(timer);
-                }
-                timer = window.setTimeout(callback, wait);
-            };
-        }
-
-        function escapeHtml(value) {
-            return String(value === null || value === undefined ? "" : value)
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/\"/g, "&quot;")
-                .replace(/'/g, "&#39;");
         }
     });
 })();

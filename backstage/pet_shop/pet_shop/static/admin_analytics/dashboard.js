@@ -1,13 +1,29 @@
 (function () {
-    function onReady(callback) {
-        if (document.readyState === "loading") {
-            document.addEventListener("DOMContentLoaded", callback);
-            return;
-        }
-        callback();
+    var shared = window.AdminAnalyticsShared;
+    if (!shared) {
+        return;
     }
 
-    onReady(function () {
+    var escapeHtml = shared.escapeHtml;
+    var formatCurrency = shared.formatCurrency;
+    var formatNumber = shared.formatNumber;
+    var sortItems = shared.sortItems;
+    var renderKpiCard = shared.renderKpiCard;
+    var renderEmptyBlock = shared.renderEmptyBlock;
+    var renderBarList = shared.renderBarList;
+    var renderNoteItem = shared.renderNoteItem;
+    var renderSparkline = function (series) {
+        return shared.renderSparkline(series, {
+            width: 520,
+            height: 180,
+            paddingX: 18,
+            paddingY: 20,
+            lineWidth: 3,
+            dotRadius: 4,
+        });
+    };
+
+    shared.onReady(function () {
         var page = document.querySelector(".admin-analytics-page");
         if (!page) {
             return;
@@ -28,6 +44,9 @@
             salesWindow: "30d",
             ordersWindow: "30d",
         };
+        var setStatus = shared.createStatusUpdater(statusElement, {
+            actionAttribute: "data-dashboard-action",
+        });
 
         if (!dashboardUrl || !statusElement || !root) {
             return;
@@ -178,7 +197,7 @@
                         ? "当前支付偏好与履约节奏"
                         : "等待更多支付数据",
                     '<ul class="note-list">' +
-                        renderNoteItem("主力支付方式", leadPayment ? escapeHtml(leadPayment.name) : "暂无") +
+                        renderNoteItem("主力支付方式", leadPayment ? leadPayment.name : "暂无") +
                         renderNoteItem("支付渠道数", formatNumber(distribution.length || 0)) +
                         renderNoteItem("建议关注", "持续观察高峰日支付方式变化与订单转化") +
                     "</ul>"
@@ -344,21 +363,7 @@
             if (!panel) {
                 return;
             }
-            panel.innerHTML =
-                '<div class="analytics-panel__header">' +
-                "<div>" +
-                '<p class="analytics-panel__eyebrow">' +
-                escapeHtml(eyebrow) +
-                "</p>" +
-                "<h2>" +
-                escapeHtml(title) +
-                "</h2>" +
-                "</div>" +
-                '<p class="analytics-panel__caption">' +
-                escapeHtml(caption) +
-                "</p>" +
-                "</div>" +
-                bodyHtml;
+            panel.innerHTML = shared.renderPanelShell(eyebrow, title, caption, bodyHtml);
         }
 
         function renderSubcard(title, caption, bodyHtml) {
@@ -376,22 +381,6 @@
                 "</p>" +
                 "</div>" +
                 bodyHtml +
-                "</article>"
-            );
-        }
-
-        function renderKpiCard(label, value, footnote) {
-            return (
-                '<article class="kpi-card">' +
-                '<span class="kpi-card__label">' +
-                escapeHtml(label) +
-                "</span>" +
-                '<strong class="kpi-card__value">' +
-                escapeHtml(value) +
-                "</strong>" +
-                '<p class="kpi-card__footnote">' +
-                escapeHtml(footnote) +
-                "</p>" +
                 "</article>"
             );
         }
@@ -446,50 +435,6 @@
                 '">' +
                 escapeHtml(value) +
                 "</button>"
-            );
-        }
-
-        function renderBarList(items, options) {
-            var list = Array.isArray(items) ? items : [];
-            var settings = options || {};
-            if (!list.length) {
-                return renderEmptyBlock(settings.emptyText || "暂无数据。");
-            }
-
-            var maxValue = list.reduce(function (current, item) {
-                return Math.max(current, Number(item.value) || 0);
-            }, 0);
-
-            return (
-                '<ul class="bar-list">' +
-                list
-                    .map(function (item, index) {
-                        var toneClass = "";
-                        if (settings.tone === "highlight") {
-                            toneClass = " bar-fill--highlight";
-                        } else if (settings.tone === "danger") {
-                            toneClass = " bar-fill--danger";
-                        } else if (settings.highlightFirst && index === 0) {
-                            toneClass = " bar-fill--highlight";
-                        }
-
-                        return (
-                            "<li>" +
-                            '<div class="bar-list__meta"><span>' +
-                            escapeHtml(item.name) +
-                            '</span><span class="bar-list__value">' +
-                            formatNumber(item.value) +
-                            "</span></div>" +
-                            '<div class="bar-track"><div class="bar-fill' +
-                            toneClass +
-                            '" style="width:' +
-                            percentageWidth(item.value, maxValue) +
-                            '%"></div></div>' +
-                            "</li>"
-                        );
-                    })
-                    .join("") +
-                "</ul>"
             );
         }
 
@@ -566,99 +511,6 @@
             );
         }
 
-        function renderSparkline(series) {
-            if (!Array.isArray(series) || !series.length) {
-                return renderEmptyBlock("暂无趋势数据。");
-            }
-
-            var values = series.map(function (item) {
-                return Number(item.value) || 0;
-            });
-            var width = 520;
-            var height = 180;
-            var paddingX = 18;
-            var paddingY = 20;
-            var sparklineGeometry = buildSparklineGeometry(values, {
-                width: width,
-                height: height,
-                paddingX: paddingX,
-                paddingY: paddingY,
-            });
-            var points = sparklineGeometry.points;
-            var areaPoints = sparklineGeometry.areaPoints;
-
-            return (
-                '<svg class="sparkline-chart" viewBox="0 0 ' +
-                width +
-                " " +
-                height +
-                '" role="img" aria-label="趋势图">' +
-                '<polygon points="' +
-                areaPoints +
-                '" fill="rgba(47, 107, 99, 0.10)" stroke="none"></polygon>' +
-                '<polyline points="' +
-                points +
-                '" fill="none" stroke="#2f6b63" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>' +
-                values
-                    .map(function (value, index) {
-                        var point = points.split(" ")[index].split(",");
-                        return (
-                            '<circle cx="' +
-                            point[0] +
-                            '" cy="' +
-                            point[1] +
-                            '" r="4" fill="#ffffff" stroke="#2f6b63" stroke-width="2"></circle>'
-                        );
-                    })
-                    .join("") +
-                "</svg>" +
-                '<div class="sparkline-axis"><span>' +
-                escapeHtml(getSeriesLabel(series[0])) +
-                "</span><span>" +
-                escapeHtml(getSeriesLabel(series[series.length - 1])) +
-                "</span></div>"
-            );
-        }
-
-        function renderNoteItem(label, value) {
-            return "<li><span>" + escapeHtml(label) + "</span><strong>" + escapeHtml(value) + "</strong></li>";
-        }
-
-        function renderEmptyBlock(message) {
-            return (
-                '<div class="empty-block">' +
-                "<p>" +
-                escapeHtml(message) +
-                "</p>" +
-                "</div>"
-            );
-        }
-
-        function setStatus(kind, title, description, showRetry) {
-            var className = "analytics-status";
-            if (kind === "loading") {
-                className += " analytics-status--loading";
-            } else if (kind === "error") {
-                className += " analytics-status--error";
-            } else if (kind === "empty") {
-                className += " analytics-status--empty";
-            }
-
-            statusElement.className = className;
-            statusElement.innerHTML =
-                '<div class="analytics-status__copy">' +
-                "<strong>" +
-                escapeHtml(title) +
-                "</strong>" +
-                "<p>" +
-                description +
-                "</p>" +
-                "</div>" +
-                (showRetry
-                    ? '<button type="button" class="analytics-action" data-dashboard-action="retry">重新获取</button>'
-                    : "");
-        }
-
         function updateWindowState(trigger) {
             if (!state.payload || !state.payload.sections) {
                 return;
@@ -683,156 +535,10 @@
         }
 
         function isDashboardEmpty(sections) {
-            return !hasUsefulContent(sections.operations) &&
-                !hasUsefulContent(sections.catalog) &&
-                !hasUsefulContent(sections.users) &&
-                !hasUsefulContent(sections.orders);
-        }
-
-        function hasUsefulContent(value) {
-            if (Array.isArray(value)) {
-                return value.some(function (item) {
-                    return hasUsefulContent(item);
-                });
-            }
-
-            if (!value || typeof value !== "object") {
-                return isMeaningfulScalar(value);
-            }
-
-            if (isSeriesPoint(value) || isNamedMetric(value)) {
-                return isMeaningfulScalar(value.value);
-            }
-
-            return Object.keys(value).some(function (key) {
-                return hasUsefulContent(value[key]);
-            });
-        }
-
-        function isSeriesPoint(value) {
-            return hasOwn(value, "date") &&
-                hasOwn(value, "value") &&
-                Object.keys(value).length === 2;
-        }
-
-        function isNamedMetric(value) {
-            return hasOwn(value, "name") &&
-                hasOwn(value, "value") &&
-                Object.keys(value).length === 2;
-        }
-
-        function buildSparklineGeometry(values, options) {
-            var settings = options || {};
-            var width = settings.width || 520;
-            var height = settings.height || 180;
-            var paddingX = settings.paddingX || 18;
-            var paddingY = settings.paddingY || 20;
-            var baselineY = height - paddingY;
-            var chartWidth = width - paddingX * 2;
-            var chartHeight = height - paddingY * 2;
-            var denominator = values.length > 1 ? values.length - 1 : 1;
-            var maxValue = Math.max.apply(null, values);
-            var minValue = Math.min.apply(null, values);
-            var hasFlatSeries = maxValue === minValue;
-            var flatLineY = maxValue > 0
-                ? baselineY - chartHeight / 2
-                : baselineY;
-
-            var pointList = values.map(function (value, index) {
-                var x = paddingX + (chartWidth * index) / denominator;
-                var y = hasFlatSeries
-                    ? flatLineY
-                    : baselineY - ((value - minValue) / (maxValue - minValue)) * chartHeight;
-                return {
-                    x: x.toFixed(2),
-                    y: y.toFixed(2),
-                };
-            });
-
-            return {
-                points: pointList
-                    .map(function (point) {
-                        return point.x + "," + point.y;
-                    })
-                    .join(" "),
-                areaPoints:
-                    paddingX +
-                    "," +
-                    baselineY +
-                    " " +
-                    pointList
-                        .map(function (point) {
-                            return point.x + "," + point.y;
-                        })
-                        .join(" ") +
-                    " " +
-                    (paddingX + chartWidth) +
-                    "," +
-                    baselineY,
-            };
-        }
-
-        function isMeaningfulScalar(value) {
-            if (value === null || value === undefined || value === "") {
-                return false;
-            }
-            if (typeof value === "number") {
-                return value !== 0;
-            }
-            if (typeof value === "string") {
-                var numeric = Number(value);
-                return Number.isNaN(numeric) ? true : numeric !== 0;
-            }
-            return Boolean(value);
-        }
-
-        function sortItems(items) {
-            if (!Array.isArray(items)) {
-                return [];
-            }
-            return items.slice().sort(function (left, right) {
-                return (Number(right.value) || 0) - (Number(left.value) || 0);
-            });
-        }
-
-        function percentageWidth(value, maxValue) {
-            var numericValue = Number(value) || 0;
-            if (!maxValue || !numericValue) {
-                return 0;
-            }
-            return Math.max(6, Math.round((numericValue / maxValue) * 100));
-        }
-
-        function formatCurrency(value) {
-            var amount = Number(value) || 0;
-            return "¥" + amount.toLocaleString("zh-CN", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-            });
-        }
-
-        function formatNumber(value) {
-            return (Number(value) || 0).toLocaleString("zh-CN");
-        }
-
-        function getSeriesLabel(item) {
-            if (!item || !item.date) {
-                return "暂无";
-            }
-            return String(item.date).slice(5).replace("-", ".");
-        }
-
-        function hasOwn(value, key) {
-            return Object.prototype.hasOwnProperty.call(value, key);
-        }
-
-        function escapeHtml(value) {
-            return String(value === null || value === undefined ? "" : value)
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/\"/g, "&quot;")
-                .replace(/'/g, "&#39;");
+            return !shared.hasUsefulContent(sections.operations) &&
+                !shared.hasUsefulContent(sections.catalog) &&
+                !shared.hasUsefulContent(sections.users) &&
+                !shared.hasUsefulContent(sections.orders);
         }
     });
 })();
