@@ -574,38 +574,18 @@
             var values = series.map(function (item) {
                 return Number(item.value) || 0;
             });
-            var maxValue = Math.max.apply(null, values);
-            var minValue = Math.min.apply(null, values);
             var width = 520;
             var height = 180;
             var paddingX = 18;
             var paddingY = 20;
-            var chartWidth = width - paddingX * 2;
-            var chartHeight = height - paddingY * 2;
-            var denominator = values.length > 1 ? values.length - 1 : 1;
-            var valueRange = maxValue - minValue || 1;
-
-            var points = values
-                .map(function (value, index) {
-                    var x = paddingX + (chartWidth * index) / denominator;
-                    var y =
-                        height -
-                        paddingY -
-                        ((value - minValue) / valueRange) * chartHeight;
-                    return x.toFixed(2) + "," + y.toFixed(2);
-                })
-                .join(" ");
-
-            var areaPoints =
-                paddingX +
-                "," +
-                (height - paddingY) +
-                " " +
-                points +
-                " " +
-                (paddingX + chartWidth) +
-                "," +
-                (height - paddingY);
+            var sparklineGeometry = buildSparklineGeometry(values, {
+                width: width,
+                height: height,
+                paddingX: paddingX,
+                paddingY: paddingY,
+            });
+            var points = sparklineGeometry.points;
+            var areaPoints = sparklineGeometry.areaPoints;
 
             return (
                 '<svg class="sparkline-chart" viewBox="0 0 ' +
@@ -711,16 +691,85 @@
 
         function hasUsefulContent(value) {
             if (Array.isArray(value)) {
-                return value.length > 0;
+                return value.some(function (item) {
+                    return hasUsefulContent(item);
+                });
             }
 
             if (!value || typeof value !== "object") {
                 return isMeaningfulScalar(value);
             }
 
+            if (isSeriesPoint(value) || isNamedMetric(value)) {
+                return isMeaningfulScalar(value.value);
+            }
+
             return Object.keys(value).some(function (key) {
                 return hasUsefulContent(value[key]);
             });
+        }
+
+        function isSeriesPoint(value) {
+            return hasOwn(value, "date") &&
+                hasOwn(value, "value") &&
+                Object.keys(value).length === 2;
+        }
+
+        function isNamedMetric(value) {
+            return hasOwn(value, "name") &&
+                hasOwn(value, "value") &&
+                Object.keys(value).length === 2;
+        }
+
+        function buildSparklineGeometry(values, options) {
+            var settings = options || {};
+            var width = settings.width || 520;
+            var height = settings.height || 180;
+            var paddingX = settings.paddingX || 18;
+            var paddingY = settings.paddingY || 20;
+            var baselineY = height - paddingY;
+            var chartWidth = width - paddingX * 2;
+            var chartHeight = height - paddingY * 2;
+            var denominator = values.length > 1 ? values.length - 1 : 1;
+            var maxValue = Math.max.apply(null, values);
+            var minValue = Math.min.apply(null, values);
+            var hasFlatSeries = maxValue === minValue;
+            var flatLineY = maxValue > 0
+                ? baselineY - chartHeight / 2
+                : baselineY;
+
+            var pointList = values.map(function (value, index) {
+                var x = paddingX + (chartWidth * index) / denominator;
+                var y = hasFlatSeries
+                    ? flatLineY
+                    : baselineY - ((value - minValue) / (maxValue - minValue)) * chartHeight;
+                return {
+                    x: x.toFixed(2),
+                    y: y.toFixed(2),
+                };
+            });
+
+            return {
+                points: pointList
+                    .map(function (point) {
+                        return point.x + "," + point.y;
+                    })
+                    .join(" "),
+                areaPoints:
+                    paddingX +
+                    "," +
+                    baselineY +
+                    " " +
+                    pointList
+                        .map(function (point) {
+                            return point.x + "," + point.y;
+                        })
+                        .join(" ") +
+                    " " +
+                    (paddingX + chartWidth) +
+                    "," +
+                    baselineY,
+            };
         }
 
         function isMeaningfulScalar(value) {
@@ -771,6 +820,10 @@
                 return "暂无";
             }
             return String(item.date).slice(5).replace("-", ".");
+        }
+
+        function hasOwn(value, key) {
+            return Object.prototype.hasOwnProperty.call(value, key);
         }
 
         function escapeHtml(value) {
