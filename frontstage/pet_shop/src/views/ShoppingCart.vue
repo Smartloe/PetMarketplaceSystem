@@ -1,52 +1,68 @@
 <template>
-	<div class="shopping-cart-container">
-		<el-card class="shopping-cart-list-card">
-			<div class="table-header">
-				<h2>购物车</h2>
+	<div class="shopping-cart-page">
+		<section class="shopping-cart-panel shell-surface shell-section">
+			<div class="section-header">
+				<div>
+					<h2>购物车</h2>
+					<p>核对商品、调整数量并完成结算。</p>
+				</div>
 			</div>
-			<el-table
-				:data="cartItems"
-				style="width: 100%"
-				@selection-change="handleSelectionChange"
-			>
-				<el-table-column type="selection" width="55"></el-table-column>
-				<el-table-column label="商品主图">
-					<template #default="{ row }">
-						<a :href="`/commodity/detail/${row.commodityId}`" target="_blank">
-							<img :src="getFullImageUrl(row.main_image)" alt="商品主图" style="width: 50px; height: 50px;">
-						</a>
-					</template>
-				</el-table-column>
-				<el-table-column label="商品名称">
-					<template #default="{ row }">
-						<a :href="`/commodity/detail/${row.commodityId}`" target="_blank">{{ row.sku_title }}</a>
-					</template>
-				</el-table-column>
-				<el-table-column prop="price" label="价格"></el-table-column>
-				<el-table-column prop="quantity" label="数量">
-					<template #default="{ row }">
-						<el-input-number v-model="row.quantity" @change="updateQuantity(row)" :min="1"></el-input-number>
-					</template>
-				</el-table-column>
-				<el-table-column prop="total" label="总价">
-					<template #default="{ row }">
-						{{ (row.price * row.quantity).toFixed(2) }}
-					</template>
-				</el-table-column>
-				<el-table-column label="操作">
-					<template #default="{ row }">
-						<el-button size="mini" type="danger" @click="removeFromCart(row.cartId)">移除</el-button>
-					</template>
-				</el-table-column>
-			</el-table>
-			<div class="total-price">
-				总价: {{ totalPrice.toFixed(2) }} 元
+
+			<div v-if="cartItems.length === 0" class="app-empty-state cart-empty">
+				<p>购物车还是空的，先去挑选喜欢的商品吧。</p>
 			</div>
-			<el-button type="primary" @click="openPayDialog">去下单</el-button>
-		</el-card>
+			<div v-else class="table-scroll-wrap">
+				<p class="table-scroll-hint">左右滑动查看更多列和操作</p>
+				<el-table
+					:data="cartItems"
+					@selection-change="handleSelectionChange"
+				>
+					<el-table-column type="selection" width="55"></el-table-column>
+					<el-table-column label="商品主图" min-width="110">
+						<template #default="{ row }">
+							<a :href="`/commodity/detail/${row.commodityId}`" target="_blank" class="commodity-link">
+								<img :src="getFullImageUrl(row.main_image)" alt="商品主图" class="commodity-image">
+							</a>
+						</template>
+					</el-table-column>
+					<el-table-column label="商品名称" min-width="230">
+						<template #default="{ row }">
+							<a :href="`/commodity/detail/${row.commodityId}`" target="_blank" class="commodity-link">
+								{{ row.sku_title }}
+							</a>
+						</template>
+					</el-table-column>
+					<el-table-column prop="price" label="价格" min-width="120"></el-table-column>
+					<el-table-column prop="quantity" label="数量" min-width="170">
+						<template #default="{ row }">
+							<el-input-number v-model="row.quantity" @change="updateQuantity(row)" :min="1"></el-input-number>
+						</template>
+					</el-table-column>
+					<el-table-column prop="total" label="总价" min-width="120">
+						<template #default="{ row }">
+							{{ (row.price * row.quantity).toFixed(2) }}
+						</template>
+					</el-table-column>
+					<el-table-column label="操作" min-width="120">
+						<template #default="{ row }">
+							<el-button size="small" type="danger" plain @click="removeFromCart(row.cartId)">移除</el-button>
+						</template>
+					</el-table-column>
+				</el-table>
+			</div>
+
+			<div class="checkout-bar">
+				<div class="total-price">总价: {{ totalPrice.toFixed(2) }} 元</div>
+				<el-button type="primary" @click="openPayDialog">去下单</el-button>
+			</div>
+		</section>
 
 		<!-- 支付对话框 -->
-		<el-dialog title="选择支付方式" v-model="payDialogVisible">
+		<el-dialog
+			v-model="payDialogVisible"
+			title="选择支付方式"
+			width="min(760px, 94vw)"
+		>
 			<el-form label-position="top">
 				<el-form-item label="选择收货地址">
 					<div v-if="addresses.length" class="address-list">
@@ -71,20 +87,24 @@
 					</div>
 				</el-form-item>
 				<el-form-item label="支付方式">
-					<el-button type="primary" @click="mockPay('微信')" class="pay-button">
-						<img src="/img/微信.png" alt="微信" class="pay-icon"/> 微信
-					</el-button>
-					<el-button type="primary" @click="mockPay('支付宝')" class="pay-button">
-						<img src="/img/支付宝.png" alt="支付宝" class="pay-icon"/> 支付宝
-					</el-button>
-					<el-button type="primary" @click="mockPay('银联')" class="pay-button">
-						<img src="/img/银联.png" alt="银联" class="pay-icon"/> 银联
-					</el-button>
+					<div class="pay-methods">
+						<el-button type="primary" plain @click="mockPay('微信')" class="pay-button">
+							<img src="/img/微信.png" alt="微信" class="pay-icon"> 微信
+						</el-button>
+						<el-button type="primary" plain @click="mockPay('支付宝')" class="pay-button">
+							<img src="/img/支付宝.png" alt="支付宝" class="pay-icon"> 支付宝
+						</el-button>
+						<el-button type="primary" plain @click="mockPay('银联')" class="pay-button">
+							<img src="/img/银联.png" alt="银联" class="pay-icon"> 银联
+						</el-button>
+					</div>
 				</el-form-item>
+			</el-form>
+			<template #footer>
 				<div class="dialog-footer">
 					<el-button @click="closePayDialog">关闭</el-button>
 				</div>
-			</el-form>
+			</template>
 		</el-dialog>
 	</div>
 </template>
@@ -293,72 +313,169 @@ export default {
 </script>
 
 <style scoped>
-.shopping-cart-container {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	padding: 20px;
+.shopping-cart-page {
+	width: 100%;
 }
 
-.table-header {
+.shopping-cart-panel {
+	width: min(100%, var(--content-max));
+	margin: 0 auto;
 	display: flex;
-	justify-content: flex-start;
-	margin-bottom: 10px;
+	flex-direction: column;
+	gap: var(--space-5);
+}
+
+.section-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--space-4);
+}
+
+.section-header h2 {
+	font-size: clamp(1.55rem, 2.2vw, 1.85rem);
+}
+
+.section-header p {
+	margin-top: var(--space-2);
+	color: var(--text-muted);
+}
+
+.cart-empty {
+	min-height: 200px;
 }
 
 .address-list {
 	max-height: 220px;
 	overflow-y: auto;
-	padding: 6px 0;
+	padding: var(--space-2) 0;
+	border: 1px solid var(--line-soft);
+	border-radius: var(--radius-sm);
+	background: rgba(255, 255, 255, 0.62);
 }
 
 .address-radio {
 	display: block;
 	line-height: 1.6;
-	margin-bottom: 6px;
+	margin: 0;
+	padding: var(--space-2) var(--space-3);
 }
 
 .address-actions {
-	margin-top: 8px;
+	margin-top: var(--space-2);
 }
 
 .address-empty {
 	width: 100%;
 }
 
-.shopping-cart-list-card {
+.table-scroll-wrap {
+	position: relative;
 	width: 100%;
-	max-width: 1200px;
-	margin-bottom: 20px;
+	overflow-x: auto;
+	padding-bottom: var(--space-2);
+}
+
+.table-scroll-hint {
+	display: none;
+	margin: 0 0 var(--space-2);
+	color: var(--text-subtle);
+	font-size: var(--font-size-xs);
+	line-height: 1.4;
+}
+
+.table-scroll-hint::before {
+	content: "↔";
+	display: inline-block;
+	margin-right: var(--space-1);
+	color: var(--brand-accent-strong);
+}
+
+.table-scroll-wrap :deep(.el-table) {
+	min-width: 980px;
+	border-radius: var(--radius-sm);
+}
+
+.commodity-link {
+	color: var(--brand-primary-strong);
+	font-weight: 600;
+}
+
+.commodity-link:hover {
+	color: var(--brand-primary);
+}
+
+.commodity-image {
+	width: 56px;
+	height: 56px;
+	border-radius: var(--radius-sm);
+	object-fit: cover;
+	border: 1px solid var(--line-soft);
+}
+
+.checkout-bar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-3);
+	flex-wrap: wrap;
+	padding-top: var(--space-2);
 }
 
 .total-price {
-	text-align: right;
-	margin-top: 20px;
-	font-size: 18px;
-	font-weight: bold;
+	color: var(--text-strong);
+	font-size: var(--font-size-lg);
+	font-weight: 700;
 }
 
 .dialog-footer {
-	text-align: right;
-	margin-top: 20px;
+	display: flex;
+	justify-content: flex-end;
+	gap: var(--space-2);
+}
+
+.pay-methods {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-3);
 }
 
 .pay-icon {
-	width: 20px;
-	height: 20px;
-	margin-right: 5px;
+	width: 18px;
+	height: 18px;
+	margin-right: var(--space-1);
 }
 
 .pay-button {
-	background-color: #f5f5f5;
-	border: 1px solid #dcdcdc;
-	color: #606266;
-	margin-right: 10px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 110px;
+	padding-inline: var(--space-4);
 }
 
-.pay-button:hover {
-	background-color: #e0e0e0;
-	border-color: #c0c0c0;
+@media (max-width: 768px) {
+	.shopping-cart-panel {
+		gap: var(--space-4);
+	}
+
+	.table-scroll-hint {
+		display: block;
+	}
+
+	.table-scroll-wrap::after {
+		content: "";
+		position: absolute;
+		top: 0;
+		right: 0;
+		width: 28px;
+		height: calc(100% - var(--space-2));
+		pointer-events: none;
+		background: linear-gradient(270deg, rgba(247, 243, 237, 0.95) 0%, rgba(247, 243, 237, 0) 100%);
+	}
+
+	.table-scroll-wrap :deep(.el-table) {
+		min-width: 840px;
+	}
 }
 </style>

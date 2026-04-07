@@ -1,0 +1,82 @@
+{% extends "admin/base.html" %}
+{% load i18n static %}
+
+{% block title %}{{ title }} | 吉祥宠物商城管理后台{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+  #header {
+    background: linear-gradient(135deg, #f7ede6 0%, #f1e0d5 100%);
+    color: #4a2f24;
+  }
+
+  #header a:link,
+  #header a:visited {
+    color: inherit;
+  }
+
+  #branding {
+    float: none;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  #branding .brand-logo {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.72);
+    object-fit: contain;
+    box-shadow: 0 8px 20px rgba(110, 73, 57, 0.14);
+    padding: 6px;
+  }
+
+  #branding .brand-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  #site-name {
+    margin: 0;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+
+  #branding .brand-subtitle {
+    margin: 0;
+    color: rgba(74, 47, 36, 0.72);
+    font-size: 12px;
+  }
+
+  @media (max-width: 767px) {
+    #branding {
+      gap: 10px;
+    }
+
+    #branding .brand-logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+    }
+
+    #branding .brand-subtitle {
+      display: none;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block branding %}
+<div id="branding">
+  <img src="{% static 'admin_brand/logo.png' %}" alt="吉祥宠物商城" class="brand-logo">
+  <div class="brand-copy">
+    <h1 id="site-name">
+      <a href="{% url 'admin:index' %}">吉祥宠物商城管理后台</a>
+    </h1>
+    <p class="brand-subtitle">与前台统一品牌标识</p>
+  </div>
+</div>
+{% endblock %}

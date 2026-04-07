@@ -1,20 +1,34 @@
 import axios from 'axios';
 
+const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || '/api';
+
 // 创建 axios 实例
 const instance = axios.create({
-    baseURL: 'http://localhost:8000/api',
+    baseURL: API_BASE_URL,
     headers: {
         'Content-Type': 'application/json'
     },
     withCredentials: true
 });
 
+function isLatin1Encodable(value = '') {
+    return Array.from(value).every((char) => char.codePointAt(0) <= 0xFF);
+}
+
 // 获取 Basic Auth 头部的工具函数
 export function getBasicAuthHeader() {
     const username = localStorage.getItem('username');
     const password = localStorage.getItem('password');
-    // 注意：确保username和password存在，否则btoa将抛出异常
-    return username && password ? 'Basic ' + btoa(`${username}:${password}`) : null;
+    if (!username || !password) {
+        return null;
+    }
+
+    // 非 Latin1 凭证交给 session cookie 认证，避免 btoa 在浏览器里直接抛错。
+    if (!isLatin1Encodable(username) || !isLatin1Encodable(password)) {
+        return null;
+    }
+
+    return 'Basic ' + btoa(`${username}:${password}`);
 }
 
 instance.interceptors.request.use((config) => {

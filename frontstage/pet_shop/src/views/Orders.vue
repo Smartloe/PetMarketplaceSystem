@@ -1,63 +1,72 @@
 <template>
-	<div class="orders-container">
-		<!-- 订单列表 -->
-		<el-card class="orders-list-card">
-			<div class="table-header">
-				<h2>我的订单</h2>
+	<div class="orders-page">
+		<section class="orders-panel shell-surface shell-section">
+			<div class="section-header">
+				<div>
+					<h2>我的订单</h2>
+					<p>管理付款、收货、退款和评价，快速跟踪当前订单状态。</p>
+				</div>
 			</div>
-			<el-table :data="orders" style="width: 100%">
-				<el-table-column prop="order_sn" label="订单号"></el-table-column>
-				<el-table-column prop="total_price" label="总金额"></el-table-column>
-				<el-table-column prop="payable_price" label="应付金额"></el-table-column>
-				<el-table-column prop="order_status" label="订单状态">
-					<template #default="{ row }">
-						{{ orderStatusMap[row.order_status] }}
-					</template>
-				</el-table-column>
-				<el-table-column prop="created_time" label="创建时间">
-					<template #default="{ row }">
-						{{ formatDate(row.created_time) }}
-					</template>
-				</el-table-column>
-				<el-table-column label="详情">
-					<template #default="{ row }">
-						<el-button size="mini" type="primary" @click="viewOrderDetail(row.id)">查看</el-button>
-					</template>
-				</el-table-column>
-				<el-table-column label="操作">
+
+			<div v-if="orders.length === 0" class="app-empty-state orders-empty">
+				<p>你还没有订单记录，去商城挑选心仪宠物用品吧。</p>
+			</div>
+			<div v-else class="table-scroll-wrap">
+				<p class="table-scroll-hint">左右滑动查看更多列和操作</p>
+				<el-table :data="orders">
+					<el-table-column prop="order_sn" label="订单号" min-width="180"></el-table-column>
+					<el-table-column prop="total_price" label="总金额" min-width="120"></el-table-column>
+					<el-table-column prop="payable_price" label="应付金额" min-width="120"></el-table-column>
+					<el-table-column prop="order_status" label="订单状态" min-width="120">
 						<template #default="{ row }">
-							<div v-if="row.order_status === 0">
-								<el-button size="mini" type="primary" @click="payOrder(row.id)">马上支付</el-button>
-								<br>
-								<el-button size="mini" type="danger" @click="deleteOrders(row.id)">取消订单</el-button>
-							</div>
-							<div v-else-if="row.order_status === 1">
-								<span style="color: #909399;">等待发货</span>
-							</div>
-							<div v-else-if="row.order_status === 2">
-								<el-button size="mini" type="success" @click="confirmReceipt(row.id)">确认收货</el-button>
-								<br style="margin: 4px 0;">
-								<el-button size="mini" type="warning" @click="requestRefund(row.id)">申请退货</el-button>
-							</div>
-							<div v-else-if="row.order_status === 3">
-								<el-button size="mini" type="warning" @click="requestRefund(row.id)">申请退货</el-button>
-							</div>
-							<div v-else-if="row.order_status === 4">
-								<el-button size="mini" type="danger" @click="cancelRefund(row.id)">撤销退货</el-button>
-							</div>
-							<div v-else-if="row.order_status === 5">
-								<span style="color: #67C23A;">已退货</span>
-							</div>
-							<div v-else>
-								无操作
-							</div>
+							{{ orderStatusMap[row.order_status] }}
 						</template>
 					</el-table-column>
-			</el-table>
-		</el-card>
+					<el-table-column prop="created_time" label="创建时间" min-width="200">
+						<template #default="{ row }">
+							{{ formatDate(row.created_time) }}
+						</template>
+					</el-table-column>
+					<el-table-column label="详情" min-width="120">
+						<template #default="{ row }">
+							<el-button size="small" type="primary" plain @click="viewOrderDetail(row.id)">查看</el-button>
+						</template>
+					</el-table-column>
+					<el-table-column label="操作" min-width="180">
+						<template #default="{ row }">
+							<div v-if="row.order_status === 0" class="order-row-actions">
+								<el-button size="small" type="primary" @click="payOrder(row.id)">马上支付</el-button>
+								<el-button size="small" type="danger" plain @click="deleteOrders(row.id)">取消订单</el-button>
+							</div>
+							<div v-else-if="row.order_status === 1" class="status-note status-note--waiting">
+								等待发货
+							</div>
+							<div v-else-if="row.order_status === 2" class="order-row-actions">
+								<el-button size="small" type="success" @click="confirmReceipt(row.id)">确认收货</el-button>
+								<el-button size="small" type="warning" plain @click="requestRefund(row.id)">申请退货</el-button>
+							</div>
+							<div v-else-if="row.order_status === 3" class="order-row-actions">
+								<el-button size="small" type="warning" plain @click="requestRefund(row.id)">申请退货</el-button>
+							</div>
+							<div v-else-if="row.order_status === 4" class="order-row-actions">
+								<el-button size="small" type="danger" plain @click="cancelRefund(row.id)">撤销退货</el-button>
+							</div>
+							<div v-else-if="row.order_status === 5" class="status-note status-note--success">
+								已退货
+							</div>
+							<div v-else class="status-note">无操作</div>
+						</template>
+					</el-table-column>
+				</el-table>
+			</div>
+		</section>
 
 		<!-- 查看订单详情对话框 -->
-		<el-dialog title="订单详情" v-model="orderDetailDialogVisible">
+		<el-dialog
+			v-model="orderDetailDialogVisible"
+			title="订单详情"
+			width="min(900px, 94vw)"
+		>
 			<el-form label-position="top">
 				<el-form-item label="订单号">
 					<el-input :value="currentOrder.order_sn" disabled></el-input>
@@ -77,50 +86,69 @@
 				<el-form-item label="收件地址">
 					<el-input :value="address" disabled></el-input>
 				</el-form-item>
-				<el-table :data="currentOrder.goods" style="width: 100%">
-					<el-table-column prop="goods_name" label="商品名称"></el-table-column>
-					<el-table-column prop="goods_num" label="数量"></el-table-column>
-					<el-table-column label="操作" width="120">
-						<template #default="{ row }">
-							<el-button
-								v-if="Number(currentOrder.order_status) >= 3 && !row.commented"
-								type="primary"
-								size="mini"
-								@click="openCommentDialog(row)"
-							>评价</el-button>
-							<span v-else-if="row.commented">已评价</span>
-							<span v-else>-</span>
-						</template>
-					</el-table-column>
-				</el-table>
+				<div class="detail-table-wrap">
+					<el-table :data="currentOrder.goods">
+						<el-table-column prop="goods_name" label="商品名称" min-width="160"></el-table-column>
+						<el-table-column prop="goods_num" label="数量" min-width="90"></el-table-column>
+						<el-table-column label="操作" width="130">
+							<template #default="{ row }">
+								<el-button
+									v-if="Number(currentOrder.order_status) >= 3 && !row.commented"
+									type="primary"
+									size="small"
+									plain
+									@click="openCommentDialog(row)"
+								>
+									评价
+								</el-button>
+								<span v-else-if="row.commented" class="status-note status-note--success">已评价</span>
+								<span v-else class="status-note">-</span>
+							</template>
+						</el-table-column>
+					</el-table>
+				</div>
+			</el-form>
+			<template #footer>
 				<div class="dialog-footer">
 					<el-button @click="closeOrderDetailDialog">关闭</el-button>
 				</div>
-			</el-form>
+			</template>
 		</el-dialog>
 
 		<!-- 支付对话框 -->
-		<el-dialog title="选择支付方式" v-model="payDialogVisible">
+		<el-dialog
+			v-model="payDialogVisible"
+			title="选择支付方式"
+			width="min(680px, 90vw)"
+		>
 			<el-form label-position="top">
 				<el-form-item>
-					<el-button type="primary" @click="mockPay('微信')" class="pay-button">
-						<img src="/img/微信.png" alt="微信" class="pay-icon"/> 微信
-					</el-button>
-					<el-button type="primary" @click="mockPay('支付宝')" class="pay-button">
-						<img src="/img/支付宝.png" alt="支付宝" class="pay-icon"/> 支付宝
-					</el-button>
-					<el-button type="primary" @click="mockPay('银联')" class="pay-button">
-						<img src="/img/银联.png" alt="银联" class="pay-icon"/> 银联
-					</el-button>
+					<div class="pay-methods">
+						<el-button type="primary" plain @click="mockPay('微信')" class="pay-button">
+							<img src="/img/微信.png" alt="微信" class="pay-icon"> 微信
+						</el-button>
+						<el-button type="primary" plain @click="mockPay('支付宝')" class="pay-button">
+							<img src="/img/支付宝.png" alt="支付宝" class="pay-icon"> 支付宝
+						</el-button>
+						<el-button type="primary" plain @click="mockPay('银联')" class="pay-button">
+							<img src="/img/银联.png" alt="银联" class="pay-icon"> 银联
+						</el-button>
+					</div>
 				</el-form-item>
+			</el-form>
+			<template #footer>
 				<div class="dialog-footer">
 					<el-button @click="closePayDialog">关闭</el-button>
 				</div>
-			</el-form>
+			</template>
 		</el-dialog>
 
 		<!-- 退货对话框 -->
-		<el-dialog title="申请退款" v-model="refundDialogVisible">
+		<el-dialog
+			v-model="refundDialogVisible"
+			title="申请退款"
+			width="min(640px, 92vw)"
+		>
 			<el-form label-position="top">
 				<el-form-item label="退款类型">
 					<el-select v-model="refundForm.type" placeholder="请选择退款类型">
@@ -136,14 +164,20 @@
 						placeholder="请描述退款原因，便于管理员审核"
 					/>
 				</el-form-item>
-				<div class="dialog-footer">
-					<el-button type="primary" @click="submitRefund">提交申请</el-button>
-					<el-button @click="closeRefundDialog">取消</el-button>
-				</div>
 			</el-form>
+			<template #footer>
+				<div class="dialog-footer">
+					<el-button @click="closeRefundDialog">取消</el-button>
+					<el-button type="primary" @click="submitRefund">提交申请</el-button>
+				</div>
+			</template>
 		</el-dialog>
 
-		<el-dialog title="发布评价" v-model="commentDialogVisible">
+		<el-dialog
+			v-model="commentDialogVisible"
+			title="发布评价"
+			width="min(640px, 92vw)"
+		>
 			<el-form label-position="top">
 				<el-form-item label="评分">
 					<el-rate v-model="commentForm.rating" :max="5"></el-rate>
@@ -156,11 +190,13 @@
 						placeholder="请填写本次购买体验"
 					/>
 				</el-form-item>
-				<div class="dialog-footer">
-					<el-button type="primary" @click="submitComment">提交</el-button>
-					<el-button @click="commentDialogVisible = false">取消</el-button>
-				</div>
 			</el-form>
+			<template #footer>
+				<div class="dialog-footer">
+					<el-button @click="commentDialogVisible = false">取消</el-button>
+					<el-button type="primary" @click="submitComment">提交</el-button>
+				</div>
+			</template>
 		</el-dialog>
 	</div>
 </template>
@@ -396,45 +432,145 @@ export default {
 </script>
 
 <style scoped>
-.orders-container {
+.orders-page {
+	width: 100%;
+}
+
+.orders-panel {
+	width: min(100%, var(--content-max));
+	margin: 0 auto;
 	display: flex;
 	flex-direction: column;
-	align-items: center;
-	padding: 20px;
+	gap: var(--space-5);
 }
 
-.table-header {
-	display: flex;
-	justify-content: flex-start;
-	margin-bottom: 10px;
-}
-
-.orders-list-card {
+.section-header {
 	width: 100%;
-	max-width: 1200px;
-	margin-bottom: 20px;
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--space-4);
+}
+
+.section-header h2 {
+	font-size: clamp(1.55rem, 2.2vw, 1.85rem);
+}
+
+.section-header p {
+	margin-top: var(--space-2);
+	color: var(--text-muted);
+}
+
+.orders-empty {
+	min-height: 200px;
+}
+
+.table-scroll-wrap {
+	position: relative;
+	width: 100%;
+	overflow-x: auto;
+	padding-bottom: var(--space-2);
+}
+
+.table-scroll-hint {
+	display: none;
+	margin: 0 0 var(--space-2);
+	color: var(--text-subtle);
+	font-size: var(--font-size-xs);
+	line-height: 1.4;
+	font-weight: 600;
+}
+
+.table-scroll-hint::before {
+	content: "↔";
+	display: inline-block;
+	margin-right: var(--space-1);
+	color: var(--brand-accent-strong);
+}
+
+.table-scroll-wrap :deep(.el-table) {
+	min-width: 1060px;
+	border-radius: var(--radius-sm);
+}
+
+.order-row-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+}
+
+.status-note {
+	color: var(--text-muted);
+	font-size: var(--font-size-sm);
+}
+
+.status-note--waiting {
+	color: var(--text-subtle);
+}
+
+.status-note--success {
+	color: var(--state-success);
+	font-weight: 600;
+}
+
+.detail-table-wrap {
+	width: 100%;
+	overflow-x: auto;
+	padding-top: var(--space-1);
+}
+
+.detail-table-wrap :deep(.el-table) {
+	min-width: 520px;
+}
+
+.pay-methods {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-3);
 }
 
 .dialog-footer {
-	text-align: right;
-	margin-top: 20px;
+	display: flex;
+	justify-content: flex-end;
+	gap: var(--space-2);
 }
 
 .pay-icon {
-	width: 20px;
-	height: 20px;
-	margin-right: 5px;
+	width: 18px;
+	height: 18px;
+	margin-right: var(--space-1);
 }
 
 .pay-button {
-	background-color: #f5f5f5;
-	border: 1px solid #dcdcdc;
-	color: #606266;
-	margin-right: 10px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 110px;
+	padding-inline: var(--space-4);
 }
 
-.pay-button:hover {
-	background-color: #e0e0e0;
-	border-color: #c0c0c0;
+@media (max-width: 768px) {
+	.orders-panel {
+		gap: var(--space-4);
+	}
+
+	.table-scroll-hint {
+		display: block;
+	}
+
+	.table-scroll-wrap::after {
+		content: "";
+		position: absolute;
+		top: 0;
+		right: 0;
+		width: 28px;
+		height: calc(100% - var(--space-2));
+		pointer-events: none;
+		background: linear-gradient(270deg, rgba(247, 243, 237, 0.95) 0%, rgba(247, 243, 237, 0) 100%);
+	}
+
+	.table-scroll-wrap :deep(.el-table) {
+		min-width: 860px;
+	}
 }
 </style>

@@ -1,250 +1,917 @@
 <template>
-	<el-row :gutter="20">
-		<!-- 左侧分类栏 -->
-		<el-col :span="6">
-			<el-collapse v-model="activeNames" accordion>
-				<el-collapse-item
-					v-for="(category, categoryName) in commodities"
-					:key="categoryName"
-					:name="categoryName"
-				>
-					<template #title>
-						<h2>{{ categoryName }}</h2>
-					</template>
-					<div
-						v-for="subCategory in category.sub_categories"
-						:key="subCategory.title"
-						@click.stop="showCommodities(subCategory.commodities)"
-					>
-						<p>{{ subCategory.title }}</p>
-					</div>
-				</el-collapse-item>
-			</el-collapse>
-		</el-col>
+  <div class="commodity-directory">
+    <section class="directory-intro shell-surface shell-section">
+      <div class="intro-copy">
+        <p class="intro-kicker">在售目录</p>
+        <h1 class="intro-title">先浏览真实在售内容，再决定是否解锁完整目录</h1>
+        <p class="intro-description">
+          我们会优先展示真实商品，再根据登录状态提供完整目录。你可以先搜索、先看分类，再决定下一步。
+        </p>
+        <div class="intro-meta">
+          <span class="meta-chip">当前范围：{{ selectedContextLabel }}</span>
+          <span class="meta-chip">已展示 {{ totalCommodities }} 条</span>
+          <span v-if="isGuestPreview" class="meta-chip">
+            游客预览上限 {{ previewLimitDisplay }} 条
+          </span>
+          <span v-else class="meta-chip">已登录，可查看完整目录</span>
+        </div>
+      </div>
+      <div class="intro-feedback">
+        <p v-if="isGuestPreview" class="feedback-text">
+          游客浏览会保留真实预览节奏，继续向下可看到完整目录解锁入口。
+        </p>
+        <p v-else class="feedback-text">
+          你已进入完整目录模式，搜索与分类筛选均基于全量在售数据。
+        </p>
+      </div>
+    </section>
 
-		<!-- 右侧商品展示栏 -->
-		<el-col :span="18">
-			<el-alert
-				v-if="!isLoggedIn"
-				type="warning"
-				show-icon
-				class="login-alert"
-				title="请登录后查看全部商品"
-				description="为了保护商家权益，未登录用户仅可浏览部分精选商品。登录后即可解锁完整列表。"
-			/>
-			<div class="search-container">
-				<el-input
-					v-model="searchQuery"
-					placeholder="搜索商品"
-					clearable
-					@clear="fetchCommodities"
-					@keyup.enter="searchCommoditiesAction"
-					class="search-input"
-				>
-					<template #append>
-						<el-button :icon="Search" @click="searchCommoditiesAction"></el-button>
-					</template>
-				</el-input>
-			</div>
+    <div class="directory-layout">
+      <aside class="category-panel shell-surface">
+        <header class="panel-header">
+          <h2>分类导览</h2>
+          <p>先按品类缩小范围，再看具体商品细节。</p>
+        </header>
+        <button
+          type="button"
+          class="category-reset"
+          :class="{ active: selectedContextLabel === '全部在售目录' }"
+          @click="resetToAllCommodities"
+        >
+          查看全部在售
+        </button>
+        <el-collapse v-model="activeNames" accordion class="category-collapse">
+          <el-collapse-item
+            v-for="section in categoryPanels"
+            :key="section.parentTitle"
+            :name="section.parentTitle"
+          >
+            <template #title>
+              <div class="category-title">
+                <strong>{{ section.parentTitle }}</strong>
+                <span>{{ section.subCategories.length }} 个细分</span>
+              </div>
+            </template>
+            <button
+              v-for="subCategory in section.subCategories"
+              :key="subCategory.title"
+              type="button"
+              class="subcategory-item"
+              @click.stop="showCommodities(subCategory.commodities, section.parentTitle, subCategory.title)"
+            >
+              <span>{{ subCategory.title }}</span>
+              <em>{{ (subCategory.commodities || []).length }}</em>
+            </button>
+          </el-collapse-item>
+        </el-collapse>
+      </aside>
 
-			<el-row :gutter="20">
-				<el-col
-					v-for="commodity in paginatedCommodities"
-					:key="commodity.id"
-					:span="8"
-				>
-					<el-card class="commodity-card" @click="getCommodityDetail(commodity.id)">
-						<img
-							:src="getFullImageUrl(commodity.main_image)"
-							alt="Commodity"
-							class="commodity-image"
-						/>
-						<div class="commodity-info">
-							<h4>{{ commodity.sku_title }}</h4>
-							<p class="commodity-price">秒杀价: ￥{{ commodity.price }}</p>
-						</div>
-					</el-card>
-				</el-col>
-			</el-row>
-			<el-pagination
-				@current-change="handleCurrentChange"
-				:current-page="currentPage"
-				:page-size="pageSize"
-				layout="prev, pager, next"
-				:total="totalCommodities">
-			</el-pagination>
-		</el-col>
-	</el-row>
+      <section class="directory-main">
+        <div class="search-summary shell-surface">
+          <el-input
+            v-model="searchQuery"
+            placeholder="搜索宠物或用品名称"
+            clearable
+            class="search-input"
+            @clear="fetchCommodities"
+            @keyup.enter="searchCommoditiesAction"
+          >
+            <template #append>
+              <el-button :icon="Search" @click="searchCommoditiesAction" />
+            </template>
+          </el-input>
+          <div class="summary-copy">
+            <p class="summary-title">{{ selectedContextLabel }}</p>
+            <p class="summary-description">{{ resultSummary }}</p>
+            <div
+              v-if="isLoading || hasLoadError"
+              class="summary-inline-status"
+              :class="{
+                'status-loading': isLoading,
+                'status-error': hasLoadError && !isLoading
+              }"
+            >
+              <span v-if="isLoading">正在更新结果…</span>
+              <template v-else>
+                <span>{{ loadErrorMessage }}</span>
+                <el-button link type="danger" @click="retryCurrentContext">重试</el-button>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <transition name="fade-slide">
+          <div v-if="showUnlockFeedback" class="unlocked-feedback shell-surface">
+            已解锁完整目录，当前筛选将基于全量在售内容。
+          </div>
+        </transition>
+
+        <div v-if="isLoading && !hasAnyCommodities" class="app-loading-state list-state">
+          正在整理在售目录，请稍候。
+        </div>
+        <div v-else-if="hasLoadError && !hasAnyCommodities" class="app-notice-state list-state">
+          <p>{{ loadErrorMessage }}</p>
+          <el-button type="primary" @click="retryCurrentContext">重新加载</el-button>
+        </div>
+        <div v-else-if="!hasAnyCommodities" class="app-empty-state list-state">
+          <h3>当前条件下暂无在售内容</h3>
+          <p>建议切换分类或清空关键词后重试。</p>
+          <el-button type="primary" @click="resetToAllCommodities">返回全部目录</el-button>
+        </div>
+        <template v-else>
+          <div class="commodity-grid">
+            <article
+              v-for="commodity in paginatedCommodities"
+              :key="commodity.id"
+              class="commodity-card shell-surface"
+              tabindex="0"
+              @click="getCommodityDetail(commodity.id)"
+              @keyup.enter="getCommodityDetail(commodity.id)"
+            >
+              <div class="card-image-wrap">
+                <img
+                  :src="getFullImageUrl(commodity.main_image)"
+                  :alt="commodity.sku_title"
+                  class="commodity-image"
+                  loading="lazy"
+                  decoding="async"
+                >
+              </div>
+              <div class="card-content">
+                <p class="card-title">{{ commodity.sku_title }}</p>
+                <p class="card-price">￥{{ formatPrice(commodity.price) }}</p>
+                <div class="card-hints">
+                  <span>{{ resolveCategoryHint(commodity) }}</span>
+                  <span>{{ resolveDecisionHint(commodity) }}</span>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <section v-if="showGuestUnlockCue" class="unlock-cue shell-surface">
+            <h3>已浏览游客可见内容</h3>
+            <p>
+              登录后可继续查看完整在售目录、使用全量筛选结果，并保持从当前页面继续浏览。
+            </p>
+            <router-link to="/accounts/login" class="unlock-link">
+              登录查看完整目录
+            </router-link>
+          </section>
+
+          <el-pagination
+            v-if="totalCommodities > pageSize"
+            class="commodity-pagination"
+            :current-page="currentPage"
+            :page-size="pageSize"
+            layout="prev, pager, next"
+            :total="totalCommodities"
+            @current-change="handleCurrentChange"
+          />
+        </template>
+      </section>
+    </div>
+  </div>
 </template>
 
 <script>
-import {ref, computed, watch} from 'vue';
-import {useRouter} from 'vue-router';
-import {useStore} from 'vuex';
-import {getCommodities, searchCommodities} from "@/api";
-import {Search} from '@element-plus/icons-vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
+import { useStore } from 'vuex';
+import { Search } from '@element-plus/icons-vue';
+import { getCommodities, searchCommodities } from '@/api';
 
 export default {
-	name: 'CommodityList',
-	setup() {
-		const commodities = ref({});
-		const filteredCommodities = ref([]);
-		const activeNames = ref([]);
-		const searchQuery = ref("");
-		const currentPage = ref(1);
-		const pageSize = ref(6);
-		const guestPreviewLimit = ref(6);
-		const router = useRouter();
-		const store = useStore();
-		const isLoggedIn = computed(() => store.state.isLoggedIn);
+  name: 'CommodityList',
+  setup() {
+    const commodities = ref({});
+    const filteredCommodities = ref([]);
+    const activeNames = ref([]);
+    const searchQuery = ref('');
+    const currentPage = ref(1);
+    const pageSize = ref(6);
+    const guestPreviewLimit = ref(6);
+    const selectedContextLabel = ref('全部在售目录');
+    const isLoading = ref(false);
+    const hasLoadError = ref(false);
+    const loadErrorMessage = ref('商品目录加载失败，请稍后重试。');
+    const showUnlockFeedback = ref(false);
+    const router = useRouter();
+    const store = useStore();
+    const isLoggedIn = computed(() => store.state.isLoggedIn);
+    let unlockFeedbackTimer = null;
 
-		const flattenCommodities = (data) => {
-			return Object.values(data || {}).flatMap(category =>
-				category.sub_categories.flatMap(subCategory => subCategory.commodities)
-			);
-		};
+    const applyCategoryMeta = (commoditiesToShow = [], meta = {}) => {
+      return (commoditiesToShow || []).map((commodity) => ({
+        ...commodity,
+        __parentCategory: meta.parentCategory || commodity.__parentCategory || '',
+        __subCategory: meta.subCategory || commodity.__subCategory || '',
+      }));
+    };
 
-		const updateLimitMeta = (payload = {}) => {
-			if (typeof payload.preview_limit === 'number') {
-				guestPreviewLimit.value = payload.preview_limit;
-			}
-		};
+    const flattenCommodities = (categoryMap = {}) => {
+      return Object.entries(categoryMap || {}).flatMap(([parentCategory, categoryInfo]) => (
+        (categoryInfo?.sub_categories || []).flatMap((subCategory) => (
+          applyCategoryMeta(subCategory.commodities, {
+            parentCategory,
+            subCategory: subCategory.title || '',
+          })
+        ))
+      ));
+    };
 
-		const fetchCommodities = () => {
-			getCommodities().then(response => {
-				updateLimitMeta(response.data);
-				const categoryData = response.data.categories || response.data;
-				commodities.value = categoryData;
-				filteredCommodities.value = flattenCommodities(categoryData);
-			});
-		};
+    const clearUnlockFeedbackTimer = () => {
+      if (unlockFeedbackTimer) {
+        window.clearTimeout(unlockFeedbackTimer);
+        unlockFeedbackTimer = null;
+      }
+    };
 
-		const showCommodities = (commoditiesToShow) => {
-			filteredCommodities.value = commoditiesToShow;
-			currentPage.value = 1; // 重置到第一页
-		};
+    const triggerUnlockFeedback = () => {
+      clearUnlockFeedbackTimer();
+      showUnlockFeedback.value = true;
+      unlockFeedbackTimer = window.setTimeout(() => {
+        showUnlockFeedback.value = false;
+      }, 4200);
+    };
 
-		const searchCommoditiesAction = () => {
-			if (!searchQuery.value) {
-				fetchCommodities();
-				return;
-			}
-			searchCommodities(searchQuery.value).then(response => {
-				updateLimitMeta(response.data);
-				filteredCommodities.value = response.data.results || response.data;
-				currentPage.value = 1; // 重置到第一页
-			});
-		};
+    const isPostLoginRedirectVisit = () => {
+      if (!isLoggedIn.value || typeof window === 'undefined') {
+        return false;
+      }
+      const historyState = window.history?.state || {};
+      const backPath = typeof historyState.back === 'string' ? historyState.back : '';
+      const currentPath = typeof historyState.current === 'string' ? historyState.current : '';
+      return backPath.includes('/accounts/login') && currentPath.includes('/commodity');
+    };
 
-		const getCommodityDetail = (commodityId) => {
-			router.push({name: 'CommodityDetail', params: {id: commodityId}});
-		};
+    const updateLimitMeta = (payload = {}) => {
+      if (typeof payload.preview_limit === 'number') {
+        guestPreviewLimit.value = payload.preview_limit;
+      }
+      if (!guestPreviewLimit.value) {
+        guestPreviewLimit.value = 6;
+      }
+    };
 
-		const getFullImageUrl = (relativeUrl) => relativeUrl.startsWith('http') ? relativeUrl : `/api${relativeUrl}`;
+    const fetchCommodities = async ({ showUnlockState = false } = {}) => {
+      isLoading.value = true;
+      hasLoadError.value = false;
+      try {
+        const response = await getCommodities();
+        const payload = response.data || {};
+        updateLimitMeta(payload);
+        const categoryData = payload.categories || payload;
+        commodities.value = categoryData;
+        filteredCommodities.value = flattenCommodities(categoryData);
+        selectedContextLabel.value = '全部在售目录';
+        currentPage.value = 1;
+        if (showUnlockState) {
+          triggerUnlockFeedback();
+        }
+      } catch (error) {
+        hasLoadError.value = true;
+        loadErrorMessage.value = '商品目录加载失败，请稍后重试。';
+      } finally {
+        isLoading.value = false;
+      }
+    };
 
-		const effectiveCommodities = computed(() => {
-			const base = filteredCommodities.value || [];
-			if (isLoggedIn.value) {
-				return base;
-			}
-			return base.slice(0, guestPreviewLimit.value);
-		});
+    const resetToAllCommodities = () => {
+      activeNames.value = [];
+      searchQuery.value = '';
+      hasLoadError.value = false;
+      fetchCommodities();
+    };
 
-		const paginatedCommodities = computed(() => {
-			const start = (currentPage.value - 1) * pageSize.value;
-			return effectiveCommodities.value.slice(start, start + pageSize.value);
-		});
+    const showCommodities = (commoditiesToShow, parentCategory, subCategory) => {
+      filteredCommodities.value = applyCategoryMeta(commoditiesToShow, {
+        parentCategory,
+        subCategory,
+      });
+      searchQuery.value = '';
+      hasLoadError.value = false;
+      selectedContextLabel.value = parentCategory && subCategory
+        ? `${parentCategory} / ${subCategory}`
+        : subCategory || parentCategory || '分类筛选';
+      currentPage.value = 1;
+    };
 
-		const totalCommodities = computed(() => effectiveCommodities.value.length);
+    const searchCommoditiesAction = async () => {
+      const query = searchQuery.value.trim();
+      if (!query) {
+        fetchCommodities();
+        return;
+      }
 
-		const handleCurrentChange = val => {
-			currentPage.value = val;
-		};
+      isLoading.value = true;
+      hasLoadError.value = false;
+      activeNames.value = [];
+      try {
+        const response = await searchCommodities(query);
+        const payload = response.data || {};
+        updateLimitMeta(payload);
+        filteredCommodities.value = applyCategoryMeta(payload.results || payload);
+        selectedContextLabel.value = `搜索：${query}`;
+        currentPage.value = 1;
+      } catch (error) {
+        hasLoadError.value = true;
+        loadErrorMessage.value = '搜索失败，请稍后重试。';
+      } finally {
+        isLoading.value = false;
+      }
+    };
 
-		watch(isLoggedIn, (loggedIn) => {
-			if (loggedIn) {
-				fetchCommodities();
-			}
-		});
+    const retryCurrentContext = () => {
+      if (searchQuery.value.trim()) {
+        searchCommoditiesAction();
+        return;
+      }
+      fetchCommodities();
+    };
 
-		fetchCommodities();
+    const getCommodityDetail = (commodityId) => {
+      router.push({ name: 'CommodityDetail', params: { id: commodityId } });
+    };
 
-		return {
-			commodities,
-			filteredCommodities,
-			activeNames,
-			searchQuery,
-			Search,
-			currentPage,
-			pageSize,
-			paginatedCommodities,
-			totalCommodities,
-			isLoggedIn,
-			showCommodities,
-			searchCommoditiesAction,
-			getCommodityDetail,
-			getFullImageUrl,
-			handleCurrentChange,
-		};
-	},
+    const getFullImageUrl = (relativeUrl = '') => {
+      if (!relativeUrl) {
+        return '/img/index/p3.png';
+      }
+      return relativeUrl.startsWith('http')
+        ? relativeUrl
+        : `/api${relativeUrl.startsWith('/') ? relativeUrl : `/${relativeUrl}`}`;
+    };
+
+    const formatPrice = (price) => {
+      const numericPrice = Number(price);
+      if (Number.isNaN(numericPrice)) {
+        return price || '--';
+      }
+      return numericPrice.toLocaleString('zh-CN', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      });
+    };
+
+    const resolveCategoryHint = (commodity) => {
+      return commodity.__subCategory || commodity.__parentCategory || '在售精选';
+    };
+
+    const formatShortDate = (dateString) => {
+      if (!dateString) {
+        return '';
+      }
+      const date = new Date(dateString);
+      if (Number.isNaN(date.getTime())) {
+        return '';
+      }
+      return `${date.getMonth() + 1}月${date.getDate()}日`;
+    };
+
+    const resolveDecisionHint = (commodity) => {
+      const stockQuantity = Number(commodity.stock_quantity);
+      if (!Number.isNaN(stockQuantity)) {
+        if (stockQuantity === 0) {
+          return '暂时售罄';
+        }
+        if (stockQuantity <= 5) {
+          return `库存 ${stockQuantity} 件`;
+        }
+      }
+
+      const sold = Number(commodity.sold);
+      if (!Number.isNaN(sold) && sold > 0) {
+        return `已售 ${sold} 件`;
+      }
+
+      const latestUpdate = formatShortDate(commodity.updated_time || commodity.created_time);
+      if (latestUpdate) {
+        return `最近更新 ${latestUpdate}`;
+      }
+
+      return '支持在线咨询';
+    };
+
+    const effectiveCommodities = computed(() => {
+      if (isLoggedIn.value) return filteredCommodities.value || [];
+      return (filteredCommodities.value || []).slice(0, guestPreviewLimit.value || 6);
+    });
+
+    const paginatedCommodities = computed(() => {
+      const start = (currentPage.value - 1) * pageSize.value;
+      return effectiveCommodities.value.slice(start, start + pageSize.value);
+    });
+
+    const totalCommodities = computed(() => effectiveCommodities.value.length);
+    const hasAnyCommodities = computed(() => totalCommodities.value > 0);
+    const previewLimitDisplay = computed(() => guestPreviewLimit.value || 6);
+    const isGuestPreview = computed(() => !isLoggedIn.value);
+    const hasMoreContentBehindLogin = computed(() => {
+      if (!isGuestPreview.value) {
+        return false;
+      }
+      const sourceCount = (filteredCommodities.value || []).length;
+      const previewedCount = effectiveCommodities.value.length;
+      return sourceCount > previewedCount;
+    });
+    const hasReachedPreviewTail = computed(() => {
+      if (!isGuestPreview.value || !totalCommodities.value) {
+        return false;
+      }
+      const pageCount = Math.ceil(totalCommodities.value / pageSize.value);
+      return currentPage.value >= pageCount;
+    });
+    const showGuestUnlockCue = computed(() => {
+      return isGuestPreview.value
+        && hasAnyCommodities.value
+        && hasMoreContentBehindLogin.value
+        && hasReachedPreviewTail.value;
+    });
+    const categoryPanels = computed(() => {
+      return Object.entries(commodities.value || {}).map(([parentTitle, categoryInfo]) => ({
+        parentTitle,
+        subCategories: categoryInfo?.sub_categories || [],
+      }));
+    });
+    const resultSummary = computed(() => {
+      if (isGuestPreview.value) {
+        if (hasMoreContentBehindLogin.value) {
+          return `当前先展示 ${totalCommodities.value} 条真实内容（预览上限 ${previewLimitDisplay.value} 条），登录后可继续查看完整目录。`;
+        }
+        return `当前共展示 ${totalCommodities.value} 条结果，你可以继续筛选；登录后可同步收藏、下单与账户操作。`;
+      }
+      return `当前共 ${totalCommodities.value} 条结果，可继续搜索或切换分类。`;
+    });
+
+    const handleCurrentChange = (value) => {
+      currentPage.value = value;
+    };
+
+    watch(isLoggedIn, (loggedIn, previousLoggedIn) => {
+      if (loggedIn && !previousLoggedIn) {
+        fetchCommodities({ showUnlockState: true });
+        return;
+      }
+
+      if (!loggedIn && previousLoggedIn) {
+        showUnlockFeedback.value = false;
+        fetchCommodities();
+      }
+    });
+
+    onMounted(() => {
+      fetchCommodities({ showUnlockState: isPostLoginRedirectVisit() });
+    });
+
+    onBeforeUnmount(() => {
+      clearUnlockFeedbackTimer();
+    });
+
+    return {
+      activeNames,
+      categoryPanels,
+      currentPage,
+      Search,
+      fetchCommodities,
+      formatPrice,
+      getCommodityDetail,
+      getFullImageUrl,
+      handleCurrentChange,
+      hasAnyCommodities,
+      hasLoadError,
+      isGuestPreview,
+      isLoading,
+      loadErrorMessage,
+      pageSize,
+      paginatedCommodities,
+      previewLimitDisplay,
+      resetToAllCommodities,
+      resolveCategoryHint,
+      resolveDecisionHint,
+      retryCurrentContext,
+      resultSummary,
+      searchCommoditiesAction,
+      searchQuery,
+      selectedContextLabel,
+      showCommodities,
+      showGuestUnlockCue,
+      showUnlockFeedback,
+      totalCommodities,
+    };
+  },
 };
 </script>
 
 <style scoped>
-.login-alert {
-	margin-bottom: 16px;
+.commodity-directory {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding-bottom: var(--space-8);
 }
 
-.search-container {
-	display: flex;
-	justify-content: flex-end; /* 使搜索框靠右对齐 */
-	margin-bottom: 20px; /* 添加一些底部外边距 */
+.directory-intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(260px, 0.85fr);
+  gap: var(--space-6);
+  align-items: stretch;
+}
+
+.intro-kicker {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
+  background: rgba(127, 162, 166, 0.14);
+  color: var(--brand-accent-strong);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.08em;
+}
+
+.intro-title {
+  margin-top: var(--space-4);
+  max-width: 18em;
+}
+
+.intro-description {
+  margin-top: var(--space-4);
+  max-width: 44ch;
+  color: var(--text-muted);
+  line-height: var(--line-height-relaxed);
+}
+
+.intro-meta {
+  margin-top: var(--space-5);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.meta-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-sm);
+  color: var(--text-default);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.intro-feedback {
+  display: flex;
+  align-items: center;
+  padding: var(--space-5);
+  border-radius: var(--radius-md);
+  border: 1px dashed rgba(127, 162, 166, 0.38);
+  background: rgba(127, 162, 166, 0.1);
+}
+
+.feedback-text {
+  color: var(--text-default);
+  line-height: var(--line-height-relaxed);
+}
+
+.directory-layout {
+  display: grid;
+  grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.category-panel {
+  position: sticky;
+  top: calc(var(--space-5) + 72px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.panel-header h2 {
+  font-size: var(--font-size-lg);
+}
+
+.panel-header p {
+  margin-top: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.category-reset {
+  border: 1px solid var(--line-soft);
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--text-default);
+  border-radius: var(--radius-pill);
+  padding: 10px var(--space-4);
+  cursor: pointer;
+  transition: border-color var(--motion-standard), color var(--motion-standard), transform var(--motion-standard);
+}
+
+.category-reset:hover {
+  border-color: rgba(219, 124, 93, 0.5);
+  color: var(--brand-primary-strong);
+  transform: translateY(-1px);
+}
+
+.category-reset.active {
+  border-color: rgba(219, 124, 93, 0.4);
+  color: var(--brand-primary-strong);
+  background: rgba(219, 124, 93, 0.12);
+}
+
+.category-collapse {
+  border-top: 1px solid var(--line-soft);
+  padding-top: var(--space-3);
+}
+
+:deep(.category-collapse .el-collapse-item__wrap) {
+  background: transparent;
+}
+
+:deep(.category-collapse .el-collapse-item__header) {
+  background: transparent;
+  border: none;
+  min-height: 42px;
+}
+
+.category-title {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.category-title strong {
+  font-size: var(--font-size-sm);
+  color: var(--text-strong);
+}
+
+.category-title span {
+  font-size: var(--font-size-xs);
+  color: var(--text-subtle);
+}
+
+.subcategory-item {
+  width: 100%;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-2);
+  cursor: pointer;
+  color: var(--text-default);
+  transition: border-color var(--motion-standard), background-color var(--motion-standard), transform var(--motion-standard);
+}
+
+.subcategory-item:hover {
+  border-color: rgba(127, 162, 166, 0.35);
+  background: rgba(127, 162, 166, 0.08);
+  transform: translateX(2px);
+}
+
+.subcategory-item em {
+  font-style: normal;
+  font-size: var(--font-size-xs);
+  color: var(--text-subtle);
+}
+
+.directory-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.search-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: center;
+  padding: var(--space-4);
 }
 
 .search-input {
-	width: 50%; /* 调整搜索框的宽度 */
-	max-width: 300px; /* 设置搜索框的最大宽度 */
-	height: 40px; /* 调整搜索框的高度 */
+  width: 100%;
+}
+
+.summary-copy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.summary-title {
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.summary-description {
+  color: var(--text-muted);
+  line-height: var(--line-height-base);
+  font-size: var(--font-size-sm);
+}
+
+.summary-inline-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  font-size: var(--font-size-xs);
+}
+
+.summary-inline-status.status-loading {
+  color: var(--text-subtle);
+}
+
+.summary-inline-status.status-error {
+  color: var(--state-danger);
+}
+
+.summary-inline-status :deep(.el-button) {
+  min-height: auto;
+  padding: 0;
+}
+
+.unlocked-feedback {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(95, 154, 122, 0.35);
+  background: rgba(95, 154, 122, 0.12);
+  color: #3f7557;
+  font-weight: 500;
+}
+
+.list-state {
+  min-height: 220px;
+}
+
+.commodity-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
 }
 
 .commodity-card {
-	margin-top: 20px;
-	max-width: 300px;
-	height: 400px;
-	display: flex;
-	flex-direction: column;
-	justify-content: space-between;
+  border: 1px solid var(--line-soft);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform var(--motion-standard), box-shadow var(--motion-standard), border-color var(--motion-standard);
+}
+
+.commodity-card:hover,
+.commodity-card:focus-visible {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-medium);
+  border-color: rgba(219, 124, 93, 0.35);
+  outline: none;
+}
+
+.card-image-wrap {
+  position: relative;
+  height: 220px;
+  overflow: hidden;
 }
 
 .commodity-image {
-	width: 100%;
-	height: 200px;
-	object-fit: cover;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--motion-slow);
 }
 
-.commodity-info {
-	text-align: center;
-	margin-top: 10px;
-	flex-grow: 1;
-	display: flex;
-	flex-direction: column;
-	justify-content: space-between;
+.commodity-card:hover .commodity-image,
+.commodity-card:focus-visible .commodity-image {
+  transform: scale(1.04);
 }
 
-.commodity-name, .commodity-price {
-	overflow: hidden;
-	white-space: nowrap;
-	text-overflow: ellipsis;
+.card-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
 }
 
-.commodity-name {
-	font-size: 16px;
-	margin-bottom: 5px;
+.card-title {
+  min-height: calc(var(--font-size-md) * 2.6);
+  font-weight: 600;
+  color: var(--text-strong);
+  line-height: 1.35;
 }
 
-.commodity-price {
-	font-size: 14px;
-	color: #909399;
-	margin-bottom: 10px;
+.card-price {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--brand-primary-strong);
+}
+
+.card-hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.card-hints span {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: var(--radius-pill);
+  background: rgba(63, 51, 45, 0.08);
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.unlock-cue {
+  margin-top: var(--space-2);
+  padding: var(--space-5);
+  border: 1px dashed rgba(219, 124, 93, 0.4);
+  background: rgba(244, 209, 195, 0.34);
+}
+
+.unlock-cue h3 {
+  font-size: var(--font-size-lg);
+}
+
+.unlock-cue p {
+  margin-top: var(--space-2);
+  color: var(--text-default);
+  line-height: var(--line-height-relaxed);
+}
+
+.unlock-link {
+  margin-top: var(--space-3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-pill);
+  background: var(--brand-primary);
+  color: var(--text-on-brand);
+  font-weight: 600;
+  transition: transform var(--motion-standard), background-color var(--motion-standard);
+}
+
+.unlock-link:hover {
+  transform: translateY(-1px);
+  background: var(--brand-primary-strong);
+}
+
+.commodity-pagination {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-3);
+}
+
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: opacity var(--motion-standard), transform var(--motion-standard);
+}
+
+.fade-slide-enter-from,
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+@media (max-width: 1080px) {
+  .directory-layout {
+    grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+  }
+
+  .search-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .directory-intro {
+    grid-template-columns: 1fr;
+  }
+
+  .directory-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .category-panel {
+    position: static;
+  }
+}
+
+@media (max-width: 600px) {
+  .commodity-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card-image-wrap {
+    height: 240px;
+  }
+
+  .unlock-cue {
+    padding: var(--space-4);
+  }
 }
 </style>

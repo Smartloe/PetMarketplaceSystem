@@ -13,6 +13,7 @@ import 'element-plus/dist/index.css';
 
 // 导入统一设计系统样式
 import './assets/design-system.css';
+import './assets/style.css';
 
 // 防抖函数
 const debounce = (fn, delay) => {

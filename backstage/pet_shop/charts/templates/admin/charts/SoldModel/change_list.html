@@ -1,96 +1,97 @@
 {% extends "admin/change_list.html" %}
+{% load static %}
+
+{% block title %}综合数据看板{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'admin_analytics/dashboard.css' %}">
+{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<script src="{% static 'admin_analytics/shared.js' %}" defer></script>
+<script src="{% static 'admin_analytics/dashboard.js' %}" defer></script>
+{% endblock %}
+
+{% block content_title %}{% endblock %}
+
 {% block content %}
-    <div id="sold_chart" style="height:650px;"></div>
-    <script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.1.2/echarts.min.js"></script>
-    <script>
-        var chartDom = document.getElementById('sold_chart');
-        var myChart = echarts.init(chartDom);
-        var option;
+{% url 'charts-dashboard' as dashboard_url %}
+<section class="admin-analytics-page" data-dashboard-url="{{ dashboard_url }}">
+    <header class="analytics-hero">
+        <div class="analytics-hero__copy">
+            <p class="analytics-hero__eyebrow">Admin Analytics</p>
+            <h1>综合数据看板</h1>
+            <p class="analytics-hero__description">
+                将经营总览、商品分析、用户分析与订单分析统一收拢到一个后台入口，方便快速查看近 30 天的核心业务走势。
+            </p>
+        </div>
+        <div class="analytics-hero__meta">
+            <div class="hero-meta-card">
+                <span class="hero-meta-card__label">数据周期</span>
+                <strong>近 30 天实时聚合</strong>
+            </div>
+            <div class="hero-meta-card">
+                <span class="hero-meta-card__label">接口来源</span>
+                <strong>{{ dashboard_url }}</strong>
+            </div>
+        </div>
+    </header>
 
-        setTimeout(function () {
-            option = {
-                legend: {},
-                tooltip: {
-                    trigger: 'axis',
-                    showContent: false
-                },
-                dataset: {
-                    source: [
-                        ['product', '一月', '二月', '三月', '四月', '五月', '六月'],
-                        ['主粮', 56.5, 82.1, 88.7, 70.1, 53.4, 85.1],
-                        ['生活', 51.1, 51.4, 55.1, 53.3, 73.8, 68.7],
-                        ['牵引', 40.1, 62.2, 69.5, 36.4, 45.2, 32.5],
-                        ['清洁', 25.2, 37.1, 41.2, 18, 33.9, 49.1]
-                    ]
-                },
-                xAxis: {type: 'category'},
-                yAxis: {gridIndex: 0},
-                grid: {top: '55%'},
-                series: [
-                    {
-                        type: 'line',
-                        smooth: true,
-                        seriesLayoutBy: 'row',
-                        emphasis: {focus: 'series'}
-                    },
-                    {
-                        type: 'line',
-                        smooth: true,
-                        seriesLayoutBy: 'row',
-                        emphasis: {focus: 'series'}
-                    },
-                    {
-                        type: 'line',
-                        smooth: true,
-                        seriesLayoutBy: 'row',
-                        emphasis: {focus: 'series'}
-                    },
-                    {
-                        type: 'line',
-                        smooth: true,
-                        seriesLayoutBy: 'row',
-                        emphasis: {focus: 'series'}
-                    },
-                    {
-                        type: 'pie',
-                        id: 'pie',
-                        radius: '30%',
-                        center: ['50%', '25%'],
-                        emphasis: {
-                            focus: 'self'
-                        },
-                        label: {
-                            formatter: '{b}: {@一月} ({d}%)'
-                        },
-                        encode: {
-                            itemName: 'product',
-                            value: '一月',
-                            tooltip: '一月'
-                        }
-                    }
-                ]
-            };
-            myChart.on('updateAxisPointer', function (event) {
-                const xAxisInfo = event.axesInfo[0];
-                if (xAxisInfo) {
-                    const dimension = xAxisInfo.value + 1;
-                    myChart.setOption({
-                        series: {
-                            id: 'pie',
-                            label: {
-                                formatter: '{b}: {@[' + dimension + ']} ({d}%)'
-                            },
-                            encode: {
-                                value: dimension,
-                                tooltip: dimension
-                            }
-                        }
-                    });
-                }
-            });
-            myChart.setOption(option);
-        });
+    <div
+        id="dashboard-status"
+        class="analytics-status analytics-status--loading"
+        role="status"
+        aria-live="polite"
+    >
+        正在加载经营数据，请稍候。
+    </div>
 
-        option && myChart.setOption(option);
-    </script>
+    <div id="analytics-dashboard-root" class="analytics-dashboard-grid" data-state="loading">
+        <section id="operations-panel" class="analytics-panel">
+            <div class="analytics-panel__header">
+                <div>
+                    <p class="analytics-panel__eyebrow">Operations</p>
+                    <h2>经营总览</h2>
+                </div>
+                <p class="analytics-panel__caption">交易指标与支付结构</p>
+            </div>
+            <div class="analytics-panel__placeholder">正在连接经营总览数据。</div>
+        </section>
+
+        <section id="catalog-panel" class="analytics-panel">
+            <div class="analytics-panel__header">
+                <div>
+                    <p class="analytics-panel__eyebrow">Catalog</p>
+                    <h2>商品分析</h2>
+                </div>
+                <p class="analytics-panel__caption">分类表现、价格带与库存风险</p>
+            </div>
+            <div class="analytics-panel__placeholder">正在连接商品分析数据。</div>
+        </section>
+
+        <section id="users-panel" class="analytics-panel">
+            <div class="analytics-panel__header">
+                <div>
+                    <p class="analytics-panel__eyebrow">Users</p>
+                    <h2>用户分析</h2>
+                </div>
+                <p class="analytics-panel__caption">新增趋势、地域分布与评价概况</p>
+            </div>
+            <div class="analytics-panel__placeholder">正在连接用户分析数据。</div>
+        </section>
+
+        <section id="orders-panel" class="analytics-panel">
+            <div class="analytics-panel__header">
+                <div>
+                    <p class="analytics-panel__eyebrow">Orders</p>
+                    <h2>订单分析</h2>
+                </div>
+                <p class="analytics-panel__caption">状态分布、退款流向与趋势变化</p>
+            </div>
+            <div class="analytics-panel__placeholder">正在连接订单分析数据。</div>
+        </section>
+    </div>
+</section>
 {% endblock %}

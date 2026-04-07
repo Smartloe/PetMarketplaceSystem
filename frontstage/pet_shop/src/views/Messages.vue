@@ -1,49 +1,66 @@
 <template>
-	<div class="messages-container">
-		<!-- 留言列表 -->
-		<el-card class="messages-list-card">
-			<div class="table-header">
+	<div class="messages-page">
+		<section class="messages-panel shell-surface shell-section">
+			<div class="section-header">
+				<div>
+					<h2>我的留言</h2>
+					<p>查看留言处理进度，支持新增、编辑和删除未回复内容。</p>
+				</div>
 				<el-button type="primary" @click="openCreateDialog">新增留言</el-button>
 			</div>
-			<el-table :data="messages" style="width: 100%">
-				<el-table-column prop="subject" label="主题"></el-table-column>
-				<el-table-column prop="message" label="内容"></el-table-column>
-				<el-table-column prop="message_type" label="类型">
-					<template #default="{ row }">
-						{{ messageTypeMap[row.message_type] }}
-					</template>
-				</el-table-column>
-				<el-table-column prop="add_time" label="创建时间">
-					<template #default="{ row }">
-						{{ formatDate(row.add_time) }}
-					</template>
-				</el-table-column>
-				<el-table-column prop="is_replied" label="是否已回复">
-					<template #default="{ row }">
-						<el-tag :type="row.is_replied ? 'success' : 'info'">
-							{{ row.is_replied ? '已回复' : '未回复' }}
-						</el-tag>
-					</template>
-				</el-table-column>
-				<el-table-column label="详情">
-					<template #default="{ row }">
-						<el-button size="mini" type="primary" @click="viewMessage(row)">查看</el-button>
-					</template>
-				</el-table-column>
-				<el-table-column label="操作">
-					<template #default="{ row }">
-						<el-button size="mini" type="primary" @click="editMessage(row)" :disabled="row.is_replied">
-							编辑
-						</el-button>
-						<el-button size="mini" type="danger" @click="deleteMessage(row.id)">删除</el-button>
-					</template>
-				</el-table-column>
-			</el-table>
-		</el-card>
+
+			<div v-if="messages.length === 0" class="app-empty-state messages-empty">
+				<p>暂时没有留言记录，欢迎告诉我们你的问题或建议。</p>
+				<el-button type="primary" @click="openCreateDialog">立即留言</el-button>
+			</div>
+			<div v-else class="table-scroll-wrap">
+				<p class="table-scroll-hint">左右滑动查看更多列和操作</p>
+				<el-table :data="messages">
+					<el-table-column prop="subject" label="主题" min-width="180" />
+					<el-table-column prop="message" label="内容" min-width="260" show-overflow-tooltip />
+					<el-table-column prop="message_type" label="类型" min-width="120">
+						<template #default="{ row }">
+							{{ messageTypeMap[row.message_type] }}
+						</template>
+					</el-table-column>
+					<el-table-column prop="add_time" label="创建时间" min-width="200">
+						<template #default="{ row }">
+							{{ formatDate(row.add_time) }}
+						</template>
+					</el-table-column>
+					<el-table-column prop="is_replied" label="是否已回复" min-width="130">
+						<template #default="{ row }">
+							<el-tag :type="row.is_replied ? 'success' : 'info'">
+								{{ row.is_replied ? '已回复' : '未回复' }}
+							</el-tag>
+						</template>
+					</el-table-column>
+					<el-table-column label="详情" min-width="110">
+						<template #default="{ row }">
+							<el-button size="small" type="primary" plain @click="viewMessage(row)">查看</el-button>
+						</template>
+					</el-table-column>
+					<el-table-column label="操作" min-width="180">
+						<template #default="{ row }">
+							<div class="row-actions">
+								<el-button size="small" type="primary" @click="editMessage(row)" :disabled="row.is_replied">
+									编辑
+								</el-button>
+								<el-button size="small" type="danger" plain @click="deleteMessage(row.id)">删除</el-button>
+							</div>
+						</template>
+					</el-table-column>
+				</el-table>
+			</div>
+		</section>
 
 		<!-- 创建或编辑留言对话框 -->
-		<el-dialog :title="isEditing ? '编辑' : '新增'" v-model="dialogVisible">
-			<el-form :model="currentMessage" @submit.prevent="submitMessage">
+		<el-dialog
+			v-model="dialogVisible"
+			:title="isEditing ? '编辑留言' : '新增留言'"
+			width="min(760px, 92vw)"
+		>
+			<el-form :model="currentMessage" label-position="top" @submit.prevent="submitMessage">
 				<el-form-item label="主题">
 					<el-input v-model="currentMessage.subject"></el-input>
 				</el-form-item>
@@ -57,18 +74,24 @@
 						:auto-upload="false"
 						:on-change="handleFileChange"
 					>
-						<el-button size="small" type="primary">选择图片</el-button>
+						<el-button size="small" type="primary" plain>选择图片</el-button>
 					</el-upload>
 				</el-form-item>
-				<el-form-item>
-					<el-button type="primary" @click="submitMessage">{{ isEditing ? '更新' : '提交' }}</el-button>
-					<el-button @click="closeDialog">取消</el-button>
-				</el-form-item>
 			</el-form>
+			<template #footer>
+				<div class="dialog-footer">
+					<el-button @click="closeDialog">取消</el-button>
+					<el-button type="primary" @click="submitMessage">{{ isEditing ? '更新' : '提交' }}</el-button>
+				</div>
+			</template>
 		</el-dialog>
 
 		<!-- 查看留言详情对话框 -->
-		<el-dialog title="详情" v-model="viewDialogVisible">
+		<el-dialog
+			v-model="viewDialogVisible"
+			title="留言详情"
+			width="min(720px, 92vw)"
+		>
 			<el-form :model="currentMessage" label-position="top">
 				<el-form-item label="主题">
 					<el-input v-model="currentMessage.subject" disabled></el-input>
@@ -77,7 +100,7 @@
 					<el-input v-model="currentMessage.message" type="textarea" disabled></el-input>
 				</el-form-item>
 				<el-form-item label="上传的图片" v-if="currentMessage.file">
-					<img :src="currentMessage.file" alt="留言图片" style="max-width: 100%; max-height: 300px;">
+					<img :src="currentMessage.file" alt="留言图片" class="message-image">
 				</el-form-item>
 				<el-form-item label="回复内容" v-if="currentMessage.is_replied">
 					<el-input v-model="currentMessage.reply_content" type="textarea" disabled></el-input>
@@ -85,10 +108,12 @@
 				<el-form-item label="回复时间" v-if="currentMessage.is_replied">
 					<el-input v-model="currentMessage.reply_time" disabled></el-input>
 				</el-form-item>
-				<el-form-item>
-					<el-button @click="closeViewDialog">关闭</el-button>
-				</el-form-item>
 			</el-form>
+			<template #footer>
+				<div class="dialog-footer">
+					<el-button @click="closeViewDialog">关闭</el-button>
+				</div>
+			</template>
 		</el-dialog>
 	</div>
 </template>
@@ -258,26 +283,111 @@ export default {
 </script>
 
 <style scoped>
-.messages-container {
+.messages-page {
+	width: 100%;
+}
+
+.messages-panel {
+	width: min(100%, var(--content-max));
+	margin: 0 auto;
 	display: flex;
 	flex-direction: column;
-	align-items: center;
-	padding: 20px;
+	gap: var(--space-5);
 }
 
-.table-header {
+.section-header {
 	display: flex;
-	justify-content: flex-start;
-	margin-bottom: 10px;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--space-4);
 }
 
-.messages-list-card, .create-message-card {
+.section-header h2 {
+	font-size: clamp(1.55rem, 2.2vw, 1.85rem);
+}
+
+.section-header p {
+	margin-top: var(--space-2);
+	color: var(--text-muted);
+}
+
+.messages-empty {
+	min-height: 200px;
+}
+
+.table-scroll-wrap {
+	position: relative;
 	width: 100%;
-	max-width: 1200px;
-	margin-bottom: 20px;
+	overflow-x: auto;
+	padding-bottom: var(--space-2);
 }
 
-.create-message-title {
-	margin-bottom: 10px;
+.table-scroll-hint {
+	display: none;
+	margin: 0 0 var(--space-2);
+	color: var(--text-subtle);
+	font-size: var(--font-size-xs);
+	line-height: 1.4;
+}
+
+.table-scroll-hint::before {
+	content: "↔";
+	display: inline-block;
+	margin-right: var(--space-1);
+	color: var(--brand-accent-strong);
+}
+
+.table-scroll-wrap :deep(.el-table) {
+	min-width: 1120px;
+	border-radius: var(--radius-sm);
+}
+
+.row-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+}
+
+.message-image {
+	max-width: 100%;
+	max-height: 300px;
+	border: 1px solid var(--line-soft);
+	border-radius: var(--radius-sm);
+	object-fit: cover;
+}
+
+.dialog-footer {
+	display: flex;
+	justify-content: flex-end;
+	gap: var(--space-2);
+}
+
+@media (max-width: 768px) {
+	.messages-panel {
+		gap: var(--space-4);
+	}
+
+	.section-header {
+		flex-wrap: wrap;
+	}
+
+	.table-scroll-hint {
+		display: block;
+	}
+
+	.table-scroll-wrap::after {
+		content: "";
+		position: absolute;
+		top: 0;
+		right: 0;
+		width: 28px;
+		height: calc(100% - var(--space-2));
+		pointer-events: none;
+		background: linear-gradient(270deg, rgba(247, 243, 237, 0.95) 0%, rgba(247, 243, 237, 0) 100%);
+	}
+
+	.table-scroll-wrap :deep(.el-table) {
+		min-width: 860px;
+	}
 }
 </style>

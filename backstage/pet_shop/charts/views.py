@@ -1,11 +1,14 @@
+from django.contrib.admin.views.decorators import staff_member_required
 from django.http import JsonResponse
-from echarts import Echart, Legend, Bar
-from commodity.models import *
+
+from charts.services import build_dashboard_payload, build_overview_payload
 
 
-# Create your views here.
-def sold_data(request):
-	chart = Echart('商品销量TOP10', '吉祥宠物商城销量前十的商品')
-	chart.use(Bar('China', [2, 3, 4, 5]))
-	chart.use(Legend(['GDP']))
-	return JsonResponse(chart.json)
+@staff_member_required
+def overview_data(request):
+    return JsonResponse(build_overview_payload())
+
+
+@staff_member_required
+def dashboard_data(request):
+    return JsonResponse(build_dashboard_payload())

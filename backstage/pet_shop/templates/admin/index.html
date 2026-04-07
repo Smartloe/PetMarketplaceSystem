@@ -1,0 +1,179 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static log %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'admin/css/dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'admin_analytics/dashboard.css' %}">
+{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<script src="https://fastly.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js" defer></script>
+<script src="{% static 'admin_analytics/shared.js' %}" defer></script>
+<script src="{% static 'admin_analytics/overview.js' %}" defer></script>
+{% endblock %}
+
+{% block coltype %}colMS{% endblock %}
+
+{% block bodyclass %}admin-overview-index{% endblock %}
+
+{% block content_title %}{% endblock %}
+
+{% block nav-breadcrumbs %}{% endblock %}
+
+{% block nav-sidebar %}{% endblock %}
+
+{% block content %}
+{% url 'charts-overview' as overview_url %}
+<div id="content-main">
+  <section class="admin-analytics-page admin-overview" data-overview-url="{{ overview_url }}">
+    <header class="analytics-hero admin-overview__hero">
+      <div class="analytics-hero__copy">
+        <p class="analytics-hero__eyebrow">Admin Overview</p>
+        <h1>经营概览</h1>
+        <div class="admin-overview__actions">
+          <a class="analytics-action" href="{% url 'admin:charts_soldmodel_changelist' %}">查看完整分析</a>
+        </div>
+      </div>
+      <div class="analytics-hero__meta">
+        <div class="hero-meta-card">
+          <span class="hero-meta-card__label">概览周期</span>
+          <strong>近 7 / 30 天实时聚合</strong>
+        </div>
+        <div class="hero-meta-card">
+          <span class="hero-meta-card__label">接口来源</span>
+          <strong>{{ overview_url }}</strong>
+        </div>
+      </div>
+    </header>
+
+    <div
+      id="overview-status"
+      class="analytics-status analytics-status--loading"
+      role="status"
+      aria-live="polite"
+    >
+      正在加载首页经营概览，请稍候。
+    </div>
+
+    <div id="admin-overview-root" class="admin-overview-grid" data-state="loading">
+      <div id="overview-metrics" class="overview-metrics">
+        <article class="kpi-card">
+          <span class="kpi-card__label">GMV</span>
+          <strong class="kpi-card__value">--</strong>
+          <p class="kpi-card__footnote">正在同步近 30 天成交额</p>
+        </article>
+        <article class="kpi-card">
+          <span class="kpi-card__label">订单数</span>
+          <strong class="kpi-card__value">--</strong>
+          <p class="kpi-card__footnote">正在同步有效订单总量</p>
+        </article>
+        <article class="kpi-card">
+          <span class="kpi-card__label">新增用户</span>
+          <strong class="kpi-card__value">--</strong>
+          <p class="kpi-card__footnote">正在同步近 30 天新增注册</p>
+        </article>
+        <article class="kpi-card">
+          <span class="kpi-card__label">低库存提醒</span>
+          <strong class="kpi-card__value">--</strong>
+          <p class="kpi-card__footnote">正在同步待补货商品数量</p>
+        </article>
+      </div>
+
+      <section id="overview-trend-chart" class="analytics-panel overview-panel overview-panel--span-two">
+        <div class="analytics-panel__header">
+          <div>
+            <p class="analytics-panel__eyebrow">Trend</p>
+            <h2>近 7 / 30 天走势</h2>
+          </div>
+        </div>
+        <div class="analytics-panel__placeholder">正在连接经营走势数据。</div>
+      </section>
+
+      <section id="overview-share-chart" class="analytics-panel overview-panel">
+        <div class="analytics-panel__header">
+          <div>
+            <p class="analytics-panel__eyebrow">Category Share</p>
+            <h2>分类销量占比</h2>
+          </div>
+          <p class="analytics-panel__caption">正在同步近 30 天分类热度。</p>
+        </div>
+        <div class="analytics-panel__placeholder">正在连接分类占比数据。</div>
+      </section>
+
+      <section id="overview-hot-products" class="analytics-panel overview-panel">
+        <div class="analytics-panel__header">
+          <div>
+            <p class="analytics-panel__eyebrow">Hot Products</p>
+            <h2>热销商品</h2>
+          </div>
+          <p class="analytics-panel__caption">正在同步近 30 天销量 Top 5。</p>
+        </div>
+        <div class="analytics-panel__placeholder">正在连接热销商品数据。</div>
+      </section>
+
+      <section id="overview-alerts" class="analytics-panel overview-panel overview-panel--span-two">
+        <div class="analytics-panel__header">
+          <div>
+            <p class="analytics-panel__eyebrow">Alerts</p>
+            <h2>待处理提醒</h2>
+          </div>
+          <p class="analytics-panel__caption">正在同步库存、退款与口碑风险。</p>
+        </div>
+        <div class="analytics-panel__placeholder">正在连接待处理提醒数据。</div>
+      </section>
+    </div>
+  </section>
+
+  <section class="analytics-panel admin-overview__nav-panel">
+    <div class="analytics-panel__header">
+      <div>
+        <p class="analytics-panel__eyebrow">Admin Navigation</p>
+        <h2>管理入口</h2>
+      </div>
+    </div>
+    {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
+  </section>
+</div>
+{% endblock %}
+
+{% block sidebar %}
+<div id="content-related">
+  <div class="module" id="recent-actions-module">
+    <h2>{% translate 'Recent actions' %}</h2>
+    <h3>{% translate 'My actions' %}</h3>
+    {% get_admin_log 10 as admin_log for_user user %}
+    {% if not admin_log %}
+      <p>{% translate 'None available' %}</p>
+    {% else %}
+      <ul class="actionlist">
+        {% for entry in admin_log %}
+          <li class="{% if entry.is_addition %}addlink{% endif %}{% if entry.is_change %} changelink{% endif %}{% if entry.is_deletion %} deletelink{% endif %}">
+            <span class="visually-hidden">
+              {% if entry.is_addition %}
+                {% translate 'Added:' %}
+              {% elif entry.is_change %}
+                {% translate 'Changed:' %}
+              {% elif entry.is_deletion %}
+                {% translate 'Deleted:' %}
+              {% endif %}
+            </span>
+            {% if entry.is_deletion or not entry.get_admin_url %}
+              {{ entry.object_repr }}
+            {% else %}
+              <a href="{{ entry.get_admin_url }}">{{ entry.object_repr }}</a>
+            {% endif %}
+            <br>
+            {% if entry.content_type %}
+              <span class="mini quiet">{% filter capfirst %}{{ entry.content_type.name }}{% endfilter %}</span>
+            {% else %}
+              <span class="mini quiet">{% translate 'Unknown content' %}</span>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
