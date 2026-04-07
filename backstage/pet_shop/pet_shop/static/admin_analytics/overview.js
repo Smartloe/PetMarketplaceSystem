@@ -166,7 +166,7 @@
             panels.trend.innerHTML = renderPanel(
                 "Trend",
                 "近 7 / 30 天走势",
-                "销售额与订单量的首页快照",
+                "",
                 renderEmptyBlock("正在连接经营走势数据。")
             );
             panels.share.innerHTML = renderPanel(
@@ -199,7 +199,7 @@
             panels.trend.innerHTML = renderPanel(
                 "Trend",
                 "近 7 / 30 天走势",
-                "销售额与订单量的首页快照",
+                "",
                 renderEmptyBlock("暂无趋势数据，待订单产生后即可在首页查看走势变化。")
             );
             panels.share.innerHTML = renderPanel(
@@ -232,7 +232,7 @@
             panels.trend.innerHTML = renderPanel(
                 "Trend",
                 "近 7 / 30 天走势",
-                "销售额与订单量的首页快照",
+                "",
                 renderEmptyBlock("暂时无法渲染趋势图，请稍后点击“重新获取”。")
             );
             panels.share.innerHTML = renderPanel(
@@ -278,7 +278,7 @@
             panels.trend.innerHTML = renderPanel(
                 "Trend",
                 "近 7 / 30 天走势",
-                "用首页视角快速判断销售额与订单量的节奏变化",
+                "",
                 !series.length
                     ? renderEmptyBlock("暂无趋势数据。")
                     : '<div class="overview-toolbar">' +

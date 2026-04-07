@@ -61,9 +61,11 @@
                     escapeHtml(title) +
                     "</h2>" +
                 "</div>" +
-                '<p class="analytics-panel__caption">' +
-                escapeHtml(caption) +
-                "</p>" +
+                (caption
+                    ? '<p class="analytics-panel__caption">' +
+                      escapeHtml(caption) +
+                      "</p>"
+                    : "") +
             "</div>" +
             bodyHtml
         );

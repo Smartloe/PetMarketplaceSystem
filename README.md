@@ -1,479 +1,275 @@
-# 🐾 吉祥宠物商城系统 (Pet Marketplace System)
+# 吉祥宠物商城系统
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
-[![Django](https://img.shields.io/badge/Django-5.0.4-green.svg)](https://www.djangoproject.com/)
-[![Vue.js](https://img.shields.io/badge/Vue.js-3.4+-4FC08D.svg)](https://vuejs.org/)
-[![Element Plus](https://img.shields.io/badge/Element%20Plus-2.7+-409EFF.svg)](https://element-plus.org/)
+一个前后端分离的宠物商城项目，包含用户注册登录、商品浏览、购物车、订单、留言、AI 宠物顾问，以及基于 Django Admin 的综合后台与数据看板。
 
-> 🌟 一个现代化的宠物商城系统，集成AI宠物顾问、商品管理、订单处理等功能，为宠物爱好者提供一站式服务平台。
+## 项目亮点
 
-## 📋 目录
+- 前台商城：商品列表、详情、收藏、购物车、下单、售后与个人中心。
+- AI 宠物顾问：通过 `/api/ai/consult/` 提供宠物问答能力。
+- 后台管理：商品、订单、广告、用户、评论等模块集中管理。
+- 数据可视化：后台首页提供简版经营概览，分析页提供完整图表。
+- 演示数据：支持把假数据写入真实业务表，便于本地演示和联调。
 
-- [✨ 项目特色](#-项目特色)
-- [🏗️ 系统架构](#️-系统架构)
-- [🚀 快速开始](#-快速开始)
-- [📦 功能模块](#-功能模块)
-- [🛠️ 技术栈](#️-技术栈)
-- [📁 项目结构](#-项目结构)
-- [🔧 开发指南](#-开发指南)
-- [📸 项目截图](#-项目截图)
-- [🤝 贡献指南](#-贡献指南)
-- [📄 许可证](#-许可证)
+## 技术栈
 
-## ✨ 项目特色
+### 前端
 
-### 🤖 AI智能顾问
-- **专业宠物咨询**：基于LongCat模型的AI宠物顾问
-- **24小时在线**：随时为用户提供宠物护理建议
-- **多品类覆盖**：支持猫、狗等多种宠物类型
-- **流式对话**：实时响应，自然对话体验
+- Vue 3
+- Vue Router
+- Vuex
+- Element Plus
+- Axios
+- Vue CLI
 
-### 🛍️ 完整商城功能
-- **商品管理**：分类浏览、搜索、详情展示
-- **购物车系统**：添加、修改、批量操作
-- **订单管理**：下单、支付、物流跟踪
-- **用户中心**：个人信息、收藏、历史记录
+### 后端
 
-### 🎨 现代化UI设计
-- **统一设计系统**：温暖的宠物主题色彩
-- **响应式布局**：完美适配桌面和移动端
-- **流畅动画**：优雅的交互体验
-- **玻璃拟态效果**：现代化视觉设计
+- Django 5
+- Django REST Framework
+- SimpleUI
+- MySQL
+- uv
+- drf-yasg
 
-### 🔐 安全可靠
-- **JWT认证**：安全的用户身份验证
-- **权限控制**：细粒度的访问权限管理
-- **数据加密**：敏感信息安全存储
-- **CORS配置**：跨域请求安全处理
+## 目录结构
 
-## 🏗️ 系统架构
-
-```mermaid
-graph TB
-    subgraph "前端层 (Frontend)"
-        A[Vue.js 3 + Element Plus]
-        B[Vuex 状态管理]
-        C[Vue Router 路由]
-        D[Axios HTTP客户端]
-    end
-    
-    subgraph "后端层 (Backend)"
-        E[Django 5.0.4]
-        F[Django REST Framework]
-        G[JWT认证]
-        H[CORS处理]
-    end
-    
-    subgraph "数据层 (Database)"
-        I[MySQL 数据库]
-        J[媒体文件存储]
-    end
-    
-    subgraph "AI服务 (AI Service)"
-        K[LongCat AI模型]
-        L[流式对话处理]
-    end
-    
-    A --> E
-    B --> D
-    C --> D
-    D --> F
-    F --> G
-    F --> H
-    E --> I
-    E --> J
-    E --> K
-    K --> L
+```text
+PetMarketplaceSystem/
+├── backstage/
+│   └── pet_shop/
+│       ├── accounts/                # 账户与用户资料
+│       ├── charts/                  # 后台概览与分析接口、演示数据
+│       ├── commodity/               # 商品与分类
+│       ├── customer_operation/      # 地址、收藏、留言、评论
+│       ├── index/                   # 首页与 AI 相关接口
+│       ├── merchant/                # 广告与商家数据
+│       ├── trade/                   # 购物车、订单、退款、确认收货
+│       ├── pet_shop/                # Django 配置、静态资源
+│       ├── templates/               # Admin 模板覆盖
+│       ├── manage.py
+│       ├── pyproject.toml
+│       └── uv.lock
+├── frontstage/
+│   └── pet_shop/
+│       ├── public/
+│       ├── src/
+│       │   ├── api/
+│       │   ├── assets/
+│       │   ├── components/
+│       │   ├── router/
+│       │   ├── store/
+│       │   └── views/
+│       ├── package.json
+│       └── vue.config.js
+└── README.md
 ```
 
-## 🚀 快速开始
+## 环境要求
 
-### 📋 环境要求
+- Python 3.10+
+- Node.js 16+
+- MySQL 8.0+
+- Git
+- uv
 
-- **Python**: 3.10+
-- **Node.js**: 16.0+
-- **MySQL**: 8.0+
-- **Git**: 最新版本
+安装 `uv`：
 
-### 🔧 安装步骤
+```bash
+pip install uv
+```
 
-#### 1. 克隆项目
+## 快速开始
+
+### 1. 克隆项目
+
 ```bash
 git clone https://github.com/Smartloe/PetMarketplaceSystem.git
 cd PetMarketplaceSystem
 ```
 
-#### 2. 后端设置
+### 2. 准备数据库
 
-```bash
-# 进入后端目录
-cd backstage/pet_shop
+先创建数据库：
 
-# 安装uv包管理器 (推荐)
-pip install uv
-
-# 创建虚拟环境并安装依赖
-uv sync
-
-# 或使用传统方式
-pip install -r requirements.txt
-
-# 配置数据库
-# 1. 创建MySQL数据库 'pet_shop'
-# 2. 修改 .env 文件中的数据库配置
-
-# 运行数据库迁移
-uv run python manage.py migrate
-
-# 创建超级用户
-uv run python manage.py createsuperuser
-
-# 启动后端服务
-uv run python manage.py runserver 0.0.0.0:8010
+```sql
+CREATE DATABASE pet_shop CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-#### 3. 前端设置
+项目后端默认读取这些环境变量：
+
+```env
+MYSQL_HOST=127.0.0.1
+MYSQL_PORT=3306
+MYSQL_DATABASE=pet_shop
+MYSQL_USER=root
+MYSQL_PASSWORD=your_password
+LONGCAT_API_KEY=your_longcat_api_key
+```
+
+如果不额外配置，开发环境默认数据库名就是 `pet_shop`。
+
+### 3. 启动后端
 
 ```bash
-# 进入前端目录
+cd backstage/pet_shop
+uv sync
+uv run python manage.py migrate
+uv run python manage.py createsuperuser
+uv run python manage.py runserver 127.0.0.1:8000
+```
+
+可选：写入演示业务数据，方便查看后台概览和完整分析页。
+
+```bash
+uv run python manage.py seed_demo_business_data
+```
+
+### 4. 启动前端
+
+```bash
 cd frontstage/pet_shop
-
-# 安装依赖
 npm install
-
-# 启动开发服务器
 npm run serve
 ```
 
-#### 4. 访问应用
+前端开发服务器默认端口是 `8010`，并通过 `vue.config.js` 将 `/api` 代理到 `http://127.0.0.1:8000`。
 
-- **前端应用**: http://localhost:8011
-- **后端API**: http://localhost:8010
-- **管理后台**: http://localhost:8010/admin
+### 5. 访问地址
 
-## 📦 功能模块
+- 前台首页：http://127.0.0.1:8010
+- 后台管理：http://127.0.0.1:8000/admin/
+- Swagger 文档：http://127.0.0.1:8000/swagger/
+- ReDoc 文档：http://127.0.0.1:8000/redoc/
 
-### 🏠 前台功能
+## 数据库导入与导出
 
-| 模块 | 功能描述 | 状态 |
-|------|----------|------|
-| **首页** | 轮播图展示、商品推荐、特色服务 | ✅ 完成 |
-| **AI顾问** | 智能宠物咨询、流式对话、专业建议 | ✅ 完成 |
-| **商品浏览** | 分类展示、搜索筛选、详情查看 | ✅ 完成 |
-| **购物车** | 商品添加、数量修改、批量操作 | ✅ 完成 |
-| **订单管理** | 下单流程、支付集成、状态跟踪 | ✅ 完成 |
-| **用户中心** | 个人信息、收藏管理、历史记录 | ✅ 完成 |
-| **留言系统** | 用户反馈、客服回复、图片上传 | ✅ 完成 |
+### 导入已有备份
 
-### 🔧 后台功能
+如果你已经有 `pet_shop_backup.sql`：
 
-| 模块 | 功能描述 | 状态 |
-|------|----------|------|
-| **用户管理** | 用户信息、权限分配、状态管理 | ✅ 完成 |
-| **商品管理** | 商品CRUD、分类管理、库存控制 | ✅ 完成 |
-| **订单管理** | 订单处理、状态更新、退款管理 | ✅ 完成 |
-| **数据统计** | 销售报表、用户分析、图表展示 | ✅ 完成 |
-| **系统设置** | 基础配置、支付设置、邮件配置 | ✅ 完成 |
-
-## 🛠️ 技术栈
-
-### 前端技术
-- **框架**: Vue.js 3.4+ (Composition API)
-- **UI库**: Element Plus 2.7+
-- **状态管理**: Vuex 4.1+
-- **路由**: Vue Router 4.3+
-- **HTTP客户端**: Axios 1.6+
-- **构建工具**: Vue CLI 5.0+
-- **样式**: SCSS + CSS变量
-- **图标**: Element Plus Icons
-
-### 后端技术
-- **框架**: Django 5.0.4
-- **API**: Django REST Framework 3.15+
-- **认证**: JWT (djangorestframework-simplejwt)
-- **数据库**: MySQL 8.0+ (PyMySQL)
-- **跨域**: django-cors-headers
-- **文档**: drf-yasg (Swagger)
-- **管理界面**: SimpleUI
-- **包管理**: UV (推荐) / Pip
-
-### 开发工具
-- **版本控制**: Git
-- **代码规范**: ESLint + Prettier
-- **类型检查**: Pyright (Python)
-- **API测试**: Postman / Swagger UI
-- **数据库工具**: MySQL Workbench
-
-## 📁 项目结构
-
-```
-PetMarketplaceSystem/
-├── 📁 backstage/                 # 后端代码
-│   └── 📁 pet_shop/
-│       ├── 📁 accounts/          # 用户账户模块
-│       ├── 📁 commodity/         # 商品管理模块
-│       ├── 📁 customer_operation/# 用户操作模块
-│       ├── 📁 trade/            # 交易订单模块
-│       ├── 📁 merchant/         # 商家管理模块
-│       ├── 📁 charts/           # 数据图表模块
-│       ├── 📁 index/            # 首页接口模块
-│       ├── 📁 media/            # 媒体文件存储
-│       ├── 📁 static/           # 静态文件
-│       ├── 📄 manage.py         # Django管理脚本
-│       ├── 📄 pyproject.toml    # Python项目配置
-│       └── 📄 .env              # 环境变量配置
-│
-├── 📁 frontstage/               # 前端代码
-│   └── 📁 pet_shop/
-│       ├── 📁 public/           # 公共资源
-│       │   ├── 📁 img/          # 图片资源
-│       │   └── 📄 index.html    # HTML模板
-│       ├── 📁 src/              # 源代码
-│       │   ├── 📁 assets/       # 静态资源
-│       │   │   ├── 📄 design-system.css # 设计系统
-│       │   │   └── 📄 style.css # 全局样式
-│       │   ├── 📁 components/   # 公共组件
-│       │   │   └── 📄 Header.vue # 导航栏组件
-│       │   ├── 📁 views/        # 页面组件
-│       │   │   ├── 📄 Home.vue  # 首页
-│       │   │   ├── 📄 AIPetExpert.vue # AI顾问
-│       │   │   └── 📄 ...       # 其他页面
-│       │   ├── 📁 router/       # 路由配置
-│       │   ├── 📁 store/        # 状态管理
-│       │   ├── 📄 main.js       # 应用入口
-│       │   └── 📄 App.vue       # 根组件
-│       ├── 📄 package.json      # 项目依赖
-│       └── 📄 vue.config.js     # Vue配置
-│
-├── 📄 README.md                 # 项目文档
-└── 📄 .gitignore               # Git忽略文件
-```
-
-## 🔧 开发指南
-
-### 🌐 环境配置
-
-#### 后端环境变量 (.env)
-```env
-# 数据库配置
-DB_NAME=pet_shop
-DB_USER=root
-DB_PASSWORD=your_password
-DB_HOST=localhost
-DB_PORT=3306
-
-# Django配置
-SECRET_KEY=your_secret_key
-DEBUG=True
-ALLOWED_HOSTS=localhost,127.0.0.1
-
-# AI服务配置
-AI_API_URL=your_ai_service_url
-AI_API_KEY=your_ai_api_key
-```
-
-### 🔄 开发流程
-
-#### 1. 后端开发
 ```bash
-# 创建新的Django应用
+mysql -u root -p pet_shop < pet_shop_backup.sql
+```
+
+### 使用 mysqldump 导出数据库
+
+本地开发机可直接使用：
+
+```bash
+mysqldump -u root -pxllzy123 pet_shop > pet_shop_backup.sql
+```
+
+更安全的写法是不要把真实密码直接写进命令历史，而是使用交互输入：
+
+```bash
+mysqldump -u root -p pet_shop > pet_shop_backup.sql
+```
+
+## 常用开发命令
+
+### 后端
+
+```bash
 cd backstage/pet_shop
-uv run python manage.py startapp your_app_name
+
+# 安装或同步依赖
+uv sync
 
 # 数据库迁移
 uv run python manage.py makemigrations
 uv run python manage.py migrate
 
+# 创建管理员
+uv run python manage.py createsuperuser
+
+# 写入演示数据
+uv run python manage.py seed_demo_business_data
+
 # 运行测试
 uv run python manage.py test
 
-# 收集静态文件
-uv run python manage.py collectstatic
+# 本地启动
+uv run python manage.py runserver 127.0.0.1:8000
 ```
 
-#### 2. 前端开发
+### 前端
+
 ```bash
-# 安装新依赖
 cd frontstage/pet_shop
-npm install package_name
+
+# 安装依赖
+npm install
+
+# 本地开发
+npm run serve
+
+# 生产构建
+npm run build
 
 # 代码检查
 npm run lint
-
-# 构建生产版本
-npm run build
 ```
 
-### 📝 代码规范
+## 主要功能模块
 
-#### Python (后端)
-- 遵循 PEP 8 代码规范
-- 使用类型注解
-- 编写文档字符串
-- 单元测试覆盖率 > 80%
+### 前台
 
-#### JavaScript/Vue (前端)
-- 使用 ESLint + Prettier
-- 组件命名采用 PascalCase
-- 文件命名采用 kebab-case
-- 编写组件文档
+- 首页推荐与广告位
+- 商品列表、详情、搜索与分类筛选
+- 购物车与订单结算
+- 收藏、留言、评论、地址管理
+- AI 宠物顾问
 
-### 🔍 API文档
+### 后台
 
-访问 http://localhost:8010/swagger/ 查看完整的API文档
+- 商品管理与库存管理
+- 订单管理、退款审核、确认收货
+- 广告管理
+- 用户与用户资料管理
+- 后台首页经营概览
+- 完整数据分析页
 
-#### 主要API端点
+## 关键接口
 
-| 端点 | 方法 | 描述 |
-|------|------|------|
-| `/api/accounts/` | GET/POST | 用户管理 |
-| `/api/commodity/` | GET/POST | 商品管理 |
-| `/api/trade/` | GET/POST | 订单管理 |
-| `/api/customer-operation/` | GET/POST | 用户操作 |
-| `/api/ai-chat/` | POST | AI对话接口 |
+### 业务接口
 
-## 📸 项目截图
+- `/api/accounts/`
+- `/api/commodity/`
+- `/api/trade/`
+- `/api/operation/`
+- `/api/merchant/`
+- `/api/ai/consult/`
 
-### 🏠 首页展示
-*现代化的首页设计，温暖的宠物主题色彩*
+### 后台分析接口
 
-### 🤖 AI宠物顾问
-*智能对话界面，专业的宠物咨询服务*
+- `/api/charts/overview/`：后台首页概览数据
+- `/api/charts/dashboard/`：完整分析页数据
 
-### 🛍️ 商品浏览
-*清晰的商品展示，便捷的购物体验*
+## 后台说明
 
-### 📱 移动端适配
-*完美的移动端响应式设计*
+- 后台首页是“先扫一眼”的总控台，集中展示近 30 天核心指标、走势、分类热度、热销商品和待处理提醒。
+- 后台分析页提供更完整的图表与明细。
+- 后台 Logo 已与前台品牌统一。
+- 数据可视化支持基于真实业务表的演示数据，不依赖单独的 mock 文件。
 
-## 🚀 部署指南
+## 故障排查
 
-### 🐳 Docker部署 (推荐)
+### 前端能打开但看不到数据
 
-```bash
-# 构建镜像
-docker-compose build
+优先检查：
 
-# 启动服务
-docker-compose up -d
+1. 后端是否运行在 `127.0.0.1:8000`
+2. 前端是否通过 `npm run serve` 启动在 `8010`
+3. `vue.config.js` 中 `/api` 代理是否生效
+4. MySQL 是否已导入数据或执行过 `seed_demo_business_data`
 
-# 查看日志
-docker-compose logs -f
-```
+### 后台图表没有数据
 
-### 🖥️ 传统部署
+可按顺序检查：
 
-#### 后端部署
-```bash
-# 安装依赖
-pip install -r requirements.txt
+1. 是否已导入 `pet_shop_backup.sql`
+2. 是否执行过 `uv run python manage.py seed_demo_business_data`
+3. 当前登录账号是否为后台管理员
 
-# 配置数据库
-python manage.py migrate
+## 许可证
 
-# 收集静态文件
-python manage.py collectstatic
-
-# 使用Gunicorn启动
-gunicorn pet_shop.wsgi:application --bind 0.0.0.0:8000
-```
-
-#### 前端部署
-```bash
-# 构建生产版本
-npm run build
-
-# 使用Nginx托管
-# 将dist目录内容复制到Nginx网站根目录
-```
-
-### 🔧 生产环境配置
-
-#### Nginx配置示例
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-    
-    # 前端静态文件
-    location / {
-        root /var/www/pet-shop/dist;
-        try_files $uri $uri/ /index.html;
-    }
-    
-    # 后端API
-    location /api/ {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-    
-    # 媒体文件
-    location /media/ {
-        alias /var/www/pet-shop/media/;
-    }
-}
-```
-
-## 🤝 贡献指南
-
-我们欢迎所有形式的贡献！请遵循以下步骤：
-
-### 🔄 贡献流程
-
-1. **Fork 项目**
-   ```bash
-   git clone https://github.com/your-username/PetMarketplaceSystem.git
-   ```
-
-2. **创建功能分支**
-   ```bash
-   git checkout -b feature/amazing-feature
-   ```
-
-3. **提交更改**
-   ```bash
-   git commit -m 'Add some amazing feature'
-   ```
-
-4. **推送分支**
-   ```bash
-   git push origin feature/amazing-feature
-   ```
-
-5. **创建 Pull Request**
-
-### 📋 贡献规范
-
-- 提交前请运行测试确保代码质量
-- 遵循现有的代码风格和规范
-- 为新功能编写相应的测试用例
-- 更新相关文档和README
-
-### 🐛 问题报告
-
-发现Bug？请创建Issue并包含以下信息：
-- 详细的问题描述
-- 复现步骤
-- 期望行为
-- 实际行为
-- 环境信息 (操作系统、浏览器版本等)
-
-## 📞 联系我们
-
-- **项目维护者**: Smartloe
-- **GitHub**: https://github.com/Smartloe
-- **项目地址**: https://github.com/Smartloe/PetMarketplaceSystem
-
-## 🙏 致谢
-
-感谢以下开源项目的支持：
-- [Django](https://www.djangoproject.com/) - 强大的Python Web框架
-- [Vue.js](https://vuejs.org/) - 渐进式JavaScript框架
-- [Element Plus](https://element-plus.org/) - 优秀的Vue 3组件库
-- [MySQL](https://www.mysql.com/) - 可靠的关系型数据库
-
-## 📄 许可证
-
-本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
+本项目使用 [MIT License](LICENSE)。

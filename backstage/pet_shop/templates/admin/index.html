@@ -16,7 +16,7 @@
 
 {% block coltype %}colMS{% endblock %}
 
-{% block bodyclass %}{{ block.super }} dashboard admin-overview-index{% endblock %}
+{% block bodyclass %}admin-overview-index{% endblock %}
 
 {% block content_title %}{% endblock %}
 
@@ -32,9 +32,6 @@
       <div class="analytics-hero__copy">
         <p class="analytics-hero__eyebrow">Admin Overview</p>
         <h1>经营概览</h1>
-        <p class="analytics-hero__description">
-          把后台首页做成“先扫一眼”的总控台: 近 30 天核心指标、走势变化、分类热度、热销商品和待处理提醒都集中在这里，继续保留默认管理入口与近期操作。
-        </p>
         <div class="admin-overview__actions">
           <a class="analytics-action" href="{% url 'admin:charts_soldmodel_changelist' %}">查看完整分析</a>
         </div>
@@ -90,7 +87,6 @@
             <p class="analytics-panel__eyebrow">Trend</p>
             <h2>近 7 / 30 天走势</h2>
           </div>
-          <p class="analytics-panel__caption">正在同步销售额与订单量变化。</p>
         </div>
         <div class="analytics-panel__placeholder">正在连接经营走势数据。</div>
       </section>
@@ -136,7 +132,6 @@
         <p class="analytics-panel__eyebrow">Admin Navigation</p>
         <h2>管理入口</h2>
       </div>
-      <p class="analytics-panel__caption">继续使用 Django 管理后台默认应用列表与快捷入口。</p>
     </div>
     {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
   </section>
