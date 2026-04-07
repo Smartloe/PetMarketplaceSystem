@@ -1,5 +1,8 @@
+import subprocess
+from pathlib import Path
+
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
 
@@ -31,3 +34,30 @@ class AnalyticsAdminViewTests(TestCase):
         self.assertContains(response, reverse("admin:charts_soldmodel_changelist"))
         self.assertContains(response, "数据可视化")
         self.assertContains(response, 'id="recent-actions-module"')
+
+
+class AnalyticsStaticRegressionTests(SimpleTestCase):
+    def _run_script(self, script_name):
+        backend_root = Path(__file__).resolve().parents[2]
+        script_path = backend_root / "charts" / "tests" / script_name
+        result = subprocess.run(
+            ["node", str(script_path)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(
+            result.returncode,
+            0,
+            msg=(
+                f"{script_name} exited with {result.returncode}\n"
+                f"stdout:\n{result.stdout}\n"
+                f"stderr:\n{result.stderr}"
+            ),
+        )
+
+    def test_dashboard_js_regression_script_passes(self):
+        self._run_script("dashboard_js_regression_check.js")
+
+    def test_overview_js_regression_script_passes(self):
+        self._run_script("overview_js_regression_check.js")
