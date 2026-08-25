@@ -1,11 +1,9 @@
 import json
 import logging
 import os
-import re
 
 import requests
 from django.http import StreamingHttpResponse
-from django.shortcuts import render
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -13,6 +11,13 @@ from rest_framework.views import APIView
 LONGCAT_API_URL = "https://api.longcat.chat/openai/v1/chat/completions"
 DEFAULT_LONGCAT_MODEL = "LongCat-Flash-Chat"
 MAX_HISTORY_MESSAGES = 8
+
+# 上游调用的参数由服务端固定，不接受请求体覆盖 —— 否则任何调用方
+# 都能自己挑模型、把 max_tokens 拉满，用我们的 API key 计费。
+LONGCAT_MAX_TOKENS = 1200
+LONGCAT_TEMPERATURE = 0.7
+# 单条提问的长度上限，避免用超长 prompt 放大上游成本
+MAX_QUESTION_CHARS = 2000
 
 logger = logging.getLogger(__name__)
 
@@ -35,28 +40,30 @@ NON_PET_KEYWORDS = [
 
 def _is_pet_related_question(content):
     """
-    检查问题是否与宠物相关
+    粗粒度的话题判断：只用来挡明显跑题的提问。
+
+    白名单优先于黑名单。此前顺序是反的 —— 黑名单先跑，于是只要出现一个
+    非宠物词就否决整句，"我的猫咪生病了需要治疗吗"（含"治疗"）、
+    "推荐一个宠物喂食系统"（含"系统"）这类正常提问都会被拒。
+
+    需要说明的是：关键词过滤本身挡不住刻意绕过（改写措辞、prompt 注入
+    都能穿过），真正约束话题范围的是 _get_pet_system_prompt() 里的系统
+    提示词。这里只是省掉一次明显无关的上游调用。
     """
     if not content:
         return True
-        
+
     content_lower = content.lower()
-    
-    # 检查是否包含非宠物关键词
-    for keyword in NON_PET_KEYWORDS:
-        if keyword.lower() in content_lower:
-            return False
-    
-    # 检查是否包含宠物关键词
-    for keyword in PET_KEYWORDS:
-        if keyword.lower() in content_lower:
-            return True
-    
-    # 如果没有明确的关键词，但问题很短，可能是打招呼
-    if len(content.strip()) < 10:
+
+    # 先看是否命中宠物关键词；命中就放行，哪怕句子里还夹着别的词
+    if any(keyword.lower() in content_lower for keyword in PET_KEYWORDS):
         return True
-    
-    # 默认允许，避免过度限制
+
+    # 没有任何宠物线索，才用黑名单挡掉明显属于其他领域的提问
+    if any(keyword.lower() in content_lower for keyword in NON_PET_KEYWORDS):
+        return False
+
+    # 既无宠物线索也无明显跑题信号（例如打招呼），交给系统提示词处理
     return True
 
 def _get_pet_system_prompt():
@@ -193,8 +200,12 @@ def _generate_streaming_response(api_key, request_body):
 class AIPetConsultView(APIView):
     """
     AI宠物顾问接口，支持流式输出和内容过滤
+
+    需要登录并受限流约束：每次请求都会用服务端的 LONGCAT_API_KEY 去调
+    付费上游，匿名且不限速会让任何人都能替我们花钱。
     """
-    permission_classes = (permissions.AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
+    throttle_scope = 'ai_consult'
 
     def post(self, request):
         payload = request.data if isinstance(request.data, dict) else {}
@@ -210,6 +221,12 @@ class AIPetConsultView(APIView):
                     {'detail': '请提供需要咨询的问题。'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
+
+        if any(len(message['content']) > MAX_QUESTION_CHARS for message in messages):
+            return Response(
+                {'detail': f'单条内容请控制在 {MAX_QUESTION_CHARS} 字以内。'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         # 检查最新用户消息是否与宠物相关
         user_messages = [msg for msg in messages if msg.get('role') == 'user']
@@ -238,7 +255,8 @@ class AIPetConsultView(APIView):
                     )
                     response['Cache-Control'] = 'no-cache'
                     response['Connection'] = 'keep-alive'
-                    response['Access-Control-Allow-Origin'] = '*'
+                    # CORS 头交给 corsheaders 按白名单添加；手写 '*' 与
+                    # CORS_ALLOW_CREDENTIALS 组合是非法的，浏览器会拒收。
                     return response
                 else:
                     return Response({'answer': rejection_message}, status=status.HTTP_200_OK)
@@ -254,11 +272,12 @@ class AIPetConsultView(APIView):
         # 添加系统提示词
         messages = _prepare_messages_with_system_prompt(messages)
 
+        # 模型与生成参数一律由服务端决定，忽略请求体里的同名字段
         request_body = {
-            'model': payload.get('model', DEFAULT_LONGCAT_MODEL),
+            'model': DEFAULT_LONGCAT_MODEL,
             'messages': messages,
-            'max_tokens': payload.get('max_tokens', 1200),
-            'temperature': payload.get('temperature', 0.7)
+            'max_tokens': LONGCAT_MAX_TOKENS,
+            'temperature': LONGCAT_TEMPERATURE,
         }
 
         if stream:
@@ -270,7 +289,6 @@ class AIPetConsultView(APIView):
             )
             response['Cache-Control'] = 'no-cache'
             response['Connection'] = 'keep-alive'
-            response['Access-Control-Allow-Origin'] = '*'
             return response
         else:
             # 返回普通响应（兼容旧版本）

@@ -22,6 +22,7 @@ class Advertisement(models.Model):
 	class Meta:
 		verbose_name = '广告信息'
 		verbose_name_plural = '广告信息'
+		ordering = ['-created_time', '-id']
 
 	def __str__(self):
 		return self.ad_title

@@ -517,13 +517,28 @@ def _build_province_distribution(
     ]
 
 
-def _build_rating_summary():
-    aggregates = UserComment.objects.aggregate(
+def _build_rating_summary(
+    days: int = DASHBOARD_WINDOW_DAYS,
+    time_context: _AnalyticsTimeContext | None = None,
+):
+    """
+    Scoped to the same rolling window as every other dashboard metric.
+
+    This used to aggregate over all comments ever, which made the "last 30
+    days" panel display a lifetime average that never moved.
+    """
+    start_at, end_at = _window_datetime_bounds(days, time_context=time_context)
+    scoped_comments = UserComment.objects.filter(
+        created_time__gte=start_at,
+        created_time__lt=end_at,
+    )
+
+    aggregates = scoped_comments.aggregate(
         average_rating=Avg("rating"),
         total_comments=Count("id"),
     )
     rating_counts = (
-        UserComment.objects.values("rating")
+        scoped_comments.values("rating")
         .annotate(value=Count("id"))
         .order_by("rating")
     )
@@ -654,7 +669,10 @@ def build_dashboard_payload():
                     days=days_long,
                     time_context=time_context,
                 ),
-                "rating_summary": _build_rating_summary(),
+                "rating_summary": _build_rating_summary(
+                    days=days_long,
+                    time_context=time_context,
+                ),
             },
             "orders": {
                 "status_distribution": _build_order_status_distribution(

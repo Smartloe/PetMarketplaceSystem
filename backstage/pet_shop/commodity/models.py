@@ -7,7 +7,7 @@ class CommodityInfos(models.Model):
 	sku_title = models.CharField(max_length=255, verbose_name='商品名称')
 	sku_description = models.CharField(max_length=255, verbose_name='商品描述', blank=True)
 	main_image = models.ImageField(verbose_name='商品主图', upload_to="product_photos/")
-	detail_images = models.ImageField(verbose_name='商品主图', upload_to="product_photos_details/")
+	detail_images = models.ImageField(verbose_name='商品详情图', upload_to="product_photos_details/")
 	cost_price = models.DecimalField(max_digits=24, decimal_places=2, verbose_name='商品进价', blank=True)
 	price = models.DecimalField(max_digits=24, decimal_places=2, verbose_name='商品售价')
 	status = models.CharField(max_length=32, default='1', verbose_name='商品状态')
@@ -22,6 +22,7 @@ class CommodityInfos(models.Model):
 	class Meta:
 		verbose_name = '商品信息'
 		verbose_name_plural = '商品信息'
+		ordering = ['-created_time', '-id']
 
 	def __str__(self):
 		return self.sku_title

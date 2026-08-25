@@ -43,6 +43,8 @@ class OrderInfos(models.Model):
 	class Meta:
 		verbose_name = '订单信息'
 		verbose_name_plural = '订单信息'
+		# 分页必须建立在有序 queryset 上，否则跨页会重复或漏行
+		ordering = ['-created_time', '-id']
 
 	def __str__(self):
 		return f"订单号: {self.order_sn}, 用户: {self.user.username}"
@@ -61,6 +63,7 @@ class OrderGoods(models.Model):
 	class Meta:
 		verbose_name = "订单商品"
 		verbose_name_plural = verbose_name
+		ordering = ['-add_time', '-id']
 
 	def __str__(self):
 		return f"订单号: {self.order.order_sn}, 商品: {self.goods.sku_title}"
@@ -85,3 +88,4 @@ class ShoppingCart(models.Model):
 	class Meta:
 		verbose_name = '购物车'
 		verbose_name_plural = '购物车'
+		ordering = ['-created_time', '-id']

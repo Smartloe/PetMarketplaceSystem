@@ -2,6 +2,9 @@ import axios from 'axios';
 
 const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || '/api';
 
+const ACCESS_TOKEN_KEY = 'access_token';
+const REFRESH_TOKEN_KEY = 'refresh_token';
+
 // 创建 axios 实例
 const instance = axios.create({
     baseURL: API_BASE_URL,
@@ -11,35 +14,100 @@ const instance = axios.create({
     withCredentials: true
 });
 
-function isLatin1Encodable(value = '') {
-    return Array.from(value).every((char) => char.codePointAt(0) <= 0xFF);
+// ---- token 存取 ----
+// 只保存 JWT。此前这里保存的是明文密码并对每个请求做 Basic Auth，
+// 任何一次 XSS 都能拿到可无限复用的真实凭据；JWT 至少是有期限、
+// 可作废的。
+
+export function getAccessToken() {
+    return localStorage.getItem(ACCESS_TOKEN_KEY);
 }
 
-// 获取 Basic Auth 头部的工具函数
-export function getBasicAuthHeader() {
-    const username = localStorage.getItem('username');
-    const password = localStorage.getItem('password');
-    if (!username || !password) {
-        return null;
-    }
+export function getRefreshToken() {
+    return localStorage.getItem(REFRESH_TOKEN_KEY);
+}
 
-    // 非 Latin1 凭证交给 session cookie 认证，避免 btoa 在浏览器里直接抛错。
-    if (!isLatin1Encodable(username) || !isLatin1Encodable(password)) {
-        return null;
+export function setAuthTokens({ access, refresh }) {
+    if (access) {
+        localStorage.setItem(ACCESS_TOKEN_KEY, access);
     }
+    if (refresh) {
+        localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
+    }
+}
 
-    return 'Basic ' + btoa(`${username}:${password}`);
+export function clearAuthTokens() {
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+    // 清掉旧版本遗留的明文凭据
+    localStorage.removeItem('username');
+    localStorage.removeItem('password');
+}
+
+export function isAuthenticated() {
+    return Boolean(getAccessToken());
 }
 
 instance.interceptors.request.use((config) => {
-    const authHeader = getBasicAuthHeader();
-    if (authHeader) {
-        config.headers.Authorization = authHeader;
+    const token = getAccessToken();
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
     } else {
         delete config.headers.Authorization;
     }
     return config;
 });
+
+// ---- access token 过期时自动刷新并重放原请求 ----
+// 并发的 401 共享同一次刷新，避免同时打多个 refresh 请求。
+let refreshInFlight = null;
+
+function refreshAccessToken() {
+    const refresh = getRefreshToken();
+    if (!refresh) {
+        return Promise.reject(new Error('no refresh token'));
+    }
+    if (!refreshInFlight) {
+        // 用裸 axios，避免走到本实例的拦截器造成递归
+        refreshInFlight = axios
+            .post(`${API_BASE_URL}/accounts/token/refresh/`, { refresh })
+            .then((response) => {
+                const access = response.data.access;
+                setAuthTokens({ access, refresh: response.data.refresh });
+                return access;
+            })
+            .finally(() => {
+                refreshInFlight = null;
+            });
+    }
+    return refreshInFlight;
+}
+
+instance.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        const { response, config } = error;
+        const isAuthFailure = response && response.status === 401;
+        const isRefreshCall = config && config.url && config.url.includes('/token/refresh/');
+
+        if (!isAuthFailure || isRefreshCall || !config || config._retried) {
+            return Promise.reject(error);
+        }
+
+        return refreshAccessToken()
+            .then((access) => {
+                config._retried = true;
+                config.headers = config.headers || {};
+                config.headers.Authorization = `Bearer ${access}`;
+                return instance.request(config);
+            })
+            .catch(() => {
+                // refresh 也失效了：清空并让调用方决定如何跳转
+                clearAuthTokens();
+                return Promise.reject(error);
+            });
+    }
+);
 
 // 获取商品列表
 export const getCommodities = () => instance.get('/commodity/list/');
@@ -149,8 +217,9 @@ export const getCaptcha = (username) => instance.get('/accounts/captcha/', { par
 // 用户登录
 export const loginUser = (data) => instance.post('/accounts/login/', data);
 
-// 用户登出
-export const logoutUser = () => instance.post('/accounts/logout/');
+// 用户登出。后端路由是 /loginout/（不是 /logout/），此前这里写错导致
+// 登出请求一直静默 404。JWT 是无状态的，真正的登出动作是本地清 token。
+export const logoutUser = () => instance.post('/accounts/loginout/').finally(clearAuthTokens);
 
 // 获取用户地址列表
 export const getUserAddresses = (page) => instance.get('/operation/addresses/', { params: { page } });

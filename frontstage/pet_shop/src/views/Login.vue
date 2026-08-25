@@ -65,7 +65,7 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { getCaptcha, loginUser } from '@/api';
+import { getCaptcha, loginUser, setAuthTokens } from '@/api';
 import AuthSplitLayout from '@/components/AuthSplitLayout.vue';
 import store from '@/store';
 
@@ -155,8 +155,11 @@ export default {
         .then((response) => {
           if (response.data.status === 200) {
             ElMessage.success(response.data.message);
-            localStorage.setItem('username', loginForm.value.username);
-            localStorage.setItem('password', loginForm.value.password);
+            // 保存 JWT，不再保存明文密码
+            setAuthTokens({
+              access: response.data.access,
+              refresh: response.data.refresh,
+            });
             store.commit('setUserId', response.data.id);
             store.commit('setUserName', response.data.username);
             store.commit('setLastLogin', response.data.last_login);

@@ -133,7 +133,7 @@
 </template>
 
 <script>
-import { consultPetAdvisor, getBasicAuthHeader } from '@/api';
+import { consultPetAdvisor, getAccessToken } from '@/api';
 import { Refresh, Promotion } from '@element-plus/icons-vue';
 import { marked } from 'marked';
 
@@ -161,10 +161,10 @@ function createStreamingHeaders() {
     'Content-Type': 'application/json',
     Accept: 'text/event-stream',
   };
-  const authHeader = getBasicAuthHeader();
+  const token = getAccessToken();
 
-  if (authHeader) {
-    headers.Authorization = authHeader;
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
   }
 
   return headers;

@@ -1,3 +1,4 @@
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 
@@ -17,6 +18,7 @@ class UserFav(models.Model):
 		verbose_name = '用户收藏'
 		verbose_name_plural = verbose_name
 		unique_together = ("user", "goods")
+		ordering = ['-add_time', '-id']
 
 	def __str__(self):
 		return self.user.username
@@ -53,6 +55,7 @@ class UserLeavingMessage(models.Model):
 	class Meta:
 		verbose_name = "用户留言"
 		verbose_name_plural = verbose_name
+		ordering = ['-add_time', '-id']
 
 	def __str__(self):
 		return self.subject
@@ -78,6 +81,8 @@ class UserAddress(models.Model):
 	class Meta:
 		verbose_name = "收货地址"
 		verbose_name_plural = verbose_name
+		# 默认地址排在最前，其余按创建时间倒序
+		ordering = ['-is_default', '-created_time', '-id']
 
 	def __str__(self):
 		return f"{self.province}{self.city}{self.county}{self.address}"
@@ -94,7 +99,10 @@ class UserComment(models.Model):
 	# 评论内容
 	content = models.TextField(verbose_name="评论内容")
 	# 评论星级，范围1-5
-	rating = models.IntegerField(default=5, verbose_name="评分", help_text="评分范围从1到5")
+	rating = models.IntegerField(
+		default=5, verbose_name="评分", help_text="评分范围从1到5",
+		validators=[MinValueValidator(1), MaxValueValidator(5)],
+	)
 	# 是否显示，用于审核评论
 	is_show = models.BooleanField(default=True, verbose_name="是否展示")
 	# 创建人，可以为空或者匿名用户
@@ -105,6 +113,7 @@ class UserComment(models.Model):
 	class Meta:
 		verbose_name = "用户评论"
 		verbose_name_plural = verbose_name
+		ordering = ['-created_time', '-id']
 
 	def __str__(self):
 		# 返回评论的摘要或者其他有意义的字符串表示

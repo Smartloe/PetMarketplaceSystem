@@ -14,6 +14,8 @@ import ipaddress
 import platform
 from pathlib import Path
 from datetime import timedelta
+
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 # 加载环境变量
@@ -26,12 +28,36 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-utyj1&cv+2&m(^36*4c$07u*r@+11bh!bc)1@ej1bk$^@%au8h'
+def _env_bool(name: str, default: bool) -> bool:
+	raw = os.environ.get(name)
+	if raw is None:
+		return default
+	return raw.strip().lower() in {'1', 'true', 'yes', 'on'}
+
+
+def _env_list(name: str, default: str) -> list[str]:
+	return [item.strip() for item in os.environ.get(name, default).split(',') if item.strip()]
+
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = _env_bool('DJANGO_DEBUG', True)
 
-ALLOWED_HOSTS = ['*']
+# SECURITY WARNING: keep the secret key used in production secret!
+# Provide it via DJANGO_SECRET_KEY (see .env.template). The insecure fallback
+# is only tolerated while DEBUG is on, so local development still works with
+# no configuration, but an unconfigured production boot fails loudly.
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', '').strip()
+if not SECRET_KEY:
+	if DEBUG:
+		SECRET_KEY = 'django-insecure-local-dev-only-never-deploy-this-value'
+	else:
+		raise ImproperlyConfigured(
+			'DJANGO_SECRET_KEY must be set when DJANGO_DEBUG is off. '
+			'Generate one with: python -c "from django.core.management.utils '
+			'import get_random_secret_key; print(get_random_secret_key())"'
+		)
+
+ALLOWED_HOSTS = _env_list('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost')
 # AUTH_USER_MODEL = 'accounts.UserProfile'
 
 # Application definition
@@ -54,8 +80,8 @@ INSTALLED_APPS = [
 	'charts.apps.ChartsConfig',  # 注册charts
 	'customer_operation.apps.CustomerOperationConfig',  # 注册customer_operation
 	'trade.apps.TradeConfig',  # 注册trade
-	'django_echarts',
-	'django_echarts.contrib.bootstrap5',
+	# 注：后台图表用的是模板里 CDN 引入的 ECharts，不依赖 django_echarts，
+	# 该应用与 pyecharts/django-chartjs 已一并移除。
 	'drf_yasg',
 	'import_export'
 ]
@@ -65,7 +91,7 @@ MIDDLEWARE = [
 	'django.middleware.security.SecurityMiddleware',
 	'django.contrib.sessions.middleware.SessionMiddleware',
 	'django.middleware.common.CommonMiddleware',
-	# 'django.middleware.csrf.CsrfViewMiddleware',
+	'django.middleware.csrf.CsrfViewMiddleware',
 	'django.contrib.auth.middleware.AuthenticationMiddleware',
 	'django.contrib.messages.middleware.MessageMiddleware',
 	'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -146,7 +172,7 @@ DATABASES = {
 		'ENGINE': 'django.db.backends.mysql',
 		'NAME': os.environ.get('MYSQL_DATABASE', 'pet_shop'),
 		'USER': os.environ.get('MYSQL_USER', 'root'),
-		'PASSWORD': os.environ.get('MYSQL_PASSWORD', 'xllzy123'),
+		'PASSWORD': os.environ.get('MYSQL_PASSWORD', ''),
 		'HOST': detect_mysql_host(),
 		'PORT': int(os.environ.get('MYSQL_PORT', 3306)),
 		'OPTIONS': {
@@ -199,33 +225,55 @@ REST_FRAMEWORK = {
 	'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
 	# 每页的数据量
 	'PAGE_SIZE': 6,
-	# 用户认证方式
+	# 用户认证方式：前台走 JWT（Authorization: Bearer <token>），
+	# SessionAuthentication 仅保留给 DRF 的可浏览 API 与后台内嵌调用。
+	# 注意：这里必须使用标准的 SessionAuthentication —— 早期版本用的
+	# CsrfExemptSessionAuthentication 会关掉 CSRF 校验，已随本次修复移除。
 	'DEFAULT_AUTHENTICATION_CLASSES': (
-		'pet_shop.authentication.CsrfExemptSessionAuthentication',
-		'rest_framework.authentication.BasicAuthentication',
 		'rest_framework_simplejwt.authentication.JWTAuthentication',
+		'rest_framework.authentication.SessionAuthentication',
 	),
+	# 只放全局的“必须登录”。对象归属校验由各 ViewSet 自己声明
+	# （IsOwnerOrReadOnly 依赖 obj.user，放在全局会对没有 user 字段的
+	# 模型抛 AttributeError，而且多个同名类 AND 在一起没有意义）。
 	'DEFAULT_PERMISSION_CLASSES': [
 		'rest_framework.permissions.IsAuthenticated',
-		'trade.permissions.IsOwnerOrReadOnly',
-		'customer_operation.permissions.IsOwnerOrReadOnly',
 	],
+	# 限流：保护验证码、登录与 AI 端点这类高成本/可滥用入口
+	'DEFAULT_THROTTLE_CLASSES': [
+		'rest_framework.throttling.ScopedRateThrottle',
+	],
+	'DEFAULT_THROTTLE_RATES': {
+		'ai_consult': os.environ.get('THROTTLE_AI_CONSULT', '10/min'),
+		'captcha': os.environ.get('THROTTLE_CAPTCHA', '30/min'),
+		'login': os.environ.get('THROTTLE_LOGIN', '10/min'),
+	},
+}
+
+SIMPLE_JWT = {
+	'ACCESS_TOKEN_LIFETIME': timedelta(minutes=int(os.environ.get('JWT_ACCESS_MINUTES', 60))),
+	'REFRESH_TOKEN_LIFETIME': timedelta(days=int(os.environ.get('JWT_REFRESH_DAYS', 7))),
+	'ROTATE_REFRESH_TOKENS': False,
+	'AUTH_HEADER_TYPES': ('Bearer',),
+	# 需要它来保持 last_login 的更新 —— 登录不再走 django 的 login()，
+	# 而 authenticate() 本身不会写 last_login。
+	'UPDATE_LAST_LOGIN': True,
 }
 
 # 设置跨域访问
-# 指定所有域名(IP)都可以访问，默认为False
-CORS_ORIGIN_ALLOW_ALL = True
-# 设置允许携带Cookie
+# 不再使用 CORS_ORIGIN_ALLOW_ALL —— 通配符来源与 CORS_ALLOW_CREDENTIALS
+# 同时开启会允许任意站点带着用户凭据调用本 API。
+CORS_ALLOWED_ORIGINS = _env_list(
+	'CORS_ALLOWED_ORIGINS',
+	'http://localhost:8010,http://127.0.0.1:8010',
+)
+# 允许携带凭据，但仅限上面白名单内的来源
 CORS_ALLOW_CREDENTIALS = True
-# 设置允许访问的域名(IP)
-# 如果CORS_ORIGIN_ALLOW_ALL=True则无需设置
-CORS_ORIGIN_WHITELIST = [
-	"http://localhost:8010",
-]
 
-CSRF_TRUSTED_ORIGINS = [
-	"http://localhost:8010",  # 我的Vue服务器地址
-]
+CSRF_TRUSTED_ORIGINS = _env_list(
+	'CSRF_TRUSTED_ORIGINS',
+	'http://localhost:8010,http://127.0.0.1:8010',
+)
 # 允许执行的请求方式
 CORS_ALLOW_METHODS = (
 	'DELETE',
@@ -261,9 +309,34 @@ SIMPLEUI_HOME_INFO = False
 SIMPLEUI_ANALYSIS = False
 
 # 设置缓存
+# 注意：LocMemCache 是每进程独立的。验证码用它存储，因此在多进程/多机
+# 部署下会出现“验证码无效”——上线前应换成 Redis 或 Memcached，并通过
+# CACHE_BACKEND / CACHE_LOCATION 覆盖。
 CACHES = {
 	'default': {
-		'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-		'LOCATION': 'unique-snowflake',
+		'BACKEND': os.environ.get(
+			'CACHE_BACKEND',
+			'django.core.cache.backends.locmem.LocMemCache',
+		),
+		'LOCATION': os.environ.get('CACHE_LOCATION', 'unique-snowflake'),
 	}
 }
+
+# 仅在关闭 DEBUG（即非本地开发）时启用的安全加固项
+if not DEBUG:
+	SECURE_CONTENT_TYPE_NOSNIFF = True
+	SECURE_BROWSER_XSS_FILTER = True
+	# 注意：这一项目前不生效。simpleui 的 AppConfig.ready() 会无条件从
+	# MIDDLEWARE 里 pop 掉 XFrameOptionsMiddleware（它的后台 UI 依赖
+	# iframe），且没有开关可关闭该行为。因此 `manage.py check --deploy`
+	# 会报 security.W002，且防点击劫持头需要在反向代理层为非 /admin/
+	# 路径补上。保留此设置，以便将来替换后台皮肤后自动生效。
+	X_FRAME_OPTIONS = 'DENY'
+	SESSION_COOKIE_HTTPONLY = True
+	SESSION_COOKIE_SECURE = _env_bool('SESSION_COOKIE_SECURE', True)
+	CSRF_COOKIE_SECURE = _env_bool('CSRF_COOKIE_SECURE', True)
+	SECURE_SSL_REDIRECT = _env_bool('SECURE_SSL_REDIRECT', False)
+	SECURE_HSTS_SECONDS = int(os.environ.get('SECURE_HSTS_SECONDS', 0))
+	if SECURE_HSTS_SECONDS:
+		SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+		SECURE_HSTS_PRELOAD = True

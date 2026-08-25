@@ -1,9 +1,5 @@
 from django.db import models
-
-# Create your models here.
-from django.db import models
 from phonenumber_field.modelfields import PhoneNumberField
-from django.contrib.auth.models import AbstractUser
 
 
 class UserProfile(models.Model):
