@@ -67,7 +67,7 @@ PetMarketplaceSystem/
 
 ## 环境要求
 
-- Python 3.10+
+- **Python 3.12**（不要用 3.13：`pillow==10.3.0` 在 3.13 上编译不过，所以下面所有 `uv` 命令都显式带 `--python 3.12`）
 - Node.js 16+
 - MySQL 8.0+
 - Git
@@ -96,7 +96,16 @@ cd PetMarketplaceSystem
 CREATE DATABASE pet_shop CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-项目后端默认读取这些环境变量：
+### 3. 配置环境变量
+
+所有配置都走 `.env`（已 gitignore）。仓库里提交了 `.env.template`，列出了每一个可用变量：
+
+```bash
+cd backstage/pet_shop
+cp .env.template .env
+```
+
+然后按需填写，常用的几项：
 
 ```env
 MYSQL_HOST=127.0.0.1
@@ -107,25 +116,27 @@ MYSQL_PASSWORD=your_password
 LONGCAT_API_KEY=your_longcat_api_key
 ```
 
-如果不额外配置，开发环境默认数据库名就是 `pet_shop`。
+`settings.py` 里已经不含 SECRET_KEY 和数据库密码。`DJANGO_DEBUG=False` 时
+`DJANGO_SECRET_KEY` 是**必填**的，否则启动会直接失败；开发环境（DEBUG=True）可以留空。
+数据库名不填默认就是 `pet_shop`。
 
-### 3. 启动后端
+### 4. 启动后端
 
 ```bash
 cd backstage/pet_shop
-uv sync
-uv run python manage.py migrate
-uv run python manage.py createsuperuser
-uv run python manage.py runserver 127.0.0.1:8000
+uv sync --python 3.12
+uv run --python 3.12 python manage.py migrate
+uv run --python 3.12 python manage.py createsuperuser
+uv run --python 3.12 python manage.py runserver 127.0.0.1:8000
 ```
 
-可选：写入演示业务数据，方便查看后台概览和完整分析页。
+可选：写入演示业务数据，方便查看后台概览和完整分析页。该命令只在 `DEBUG=True` 时可用。
 
 ```bash
-uv run python manage.py seed_demo_business_data
+uv run --python 3.12 python manage.py seed_demo_business_data
 ```
 
-### 4. 启动前端
+### 5. 启动前端
 
 ```bash
 cd frontstage/pet_shop
@@ -134,33 +145,36 @@ npm run serve
 ```
 
 前端开发服务器默认端口是 `8010`，并通过 `vue.config.js` 将 `/api` 代理到 `http://127.0.0.1:8000`。
+后端的 `CORS_ALLOWED_ORIGINS` / `CSRF_TRUSTED_ORIGINS` 默认值也是 8010 的两个来源，改端口时要同步改。
 
-### 5. 访问地址
+### 6. 访问地址
 
 - 前台首页：http://127.0.0.1:8010
 - 后台管理：http://127.0.0.1:8000/admin/
 - Swagger 文档：http://127.0.0.1:8000/swagger/
 - ReDoc 文档：http://127.0.0.1:8000/redoc/
 
-## 数据库导入与导出
+## 数据库初始化与导出
 
-### 导入已有备份
+### 如何得到一份可用的数据
 
-如果你已经有 `pet_shop_backup.sql`：
+用迁移建表，再按需写入演示数据：
 
 ```bash
-mysql -u root -p pet_shop < pet_shop_backup.sql
+cd backstage/pet_shop
+uv run --python 3.12 python manage.py migrate
+uv run --python 3.12 python manage.py seed_demo_business_data
 ```
+
+这是本项目**唯一受支持**的建数据方式。
+
+仓库里那份 `pet_shop_backup.sql` 已经不再纳入版本管理（`*.sql` 已加入 `.gitignore`，
+导出文件含真实用户数据：密码哈希、邮箱、手机号）。即使你手上有这个文件，它也无法直接导入 ——
+编码是 UTF-16LE、中文是乱码，并且有一处未转义的引号会让 `mysql` 客户端报语法错误。
 
 ### 使用 mysqldump 导出数据库
 
-本地开发机可直接使用：
-
-```bash
-mysqldump -u root -pxllzy123 pet_shop > pet_shop_backup.sql
-```
-
-更安全的写法是不要把真实密码直接写进命令历史，而是使用交互输入：
+不要把密码写在命令里（会留在 shell 历史中），用 `-p` 让它交互式提示：
 
 ```bash
 mysqldump -u root -p pet_shop > pet_shop_backup.sql
@@ -174,23 +188,23 @@ mysqldump -u root -p pet_shop > pet_shop_backup.sql
 cd backstage/pet_shop
 
 # 安装或同步依赖
-uv sync
+uv sync --python 3.12
 
 # 数据库迁移
-uv run python manage.py makemigrations
-uv run python manage.py migrate
+uv run --python 3.12 python manage.py makemigrations
+uv run --python 3.12 python manage.py migrate
 
 # 创建管理员
-uv run python manage.py createsuperuser
+uv run --python 3.12 python manage.py createsuperuser
 
-# 写入演示数据
-uv run python manage.py seed_demo_business_data
+# 写入演示数据（仅 DEBUG=True 可用）
+uv run --python 3.12 python manage.py seed_demo_business_data
 
-# 运行测试
-uv run python manage.py test
+# 运行测试（当前 52 个全部通过）
+uv run --python 3.12 python manage.py test
 
 # 本地启动
-uv run python manage.py runserver 127.0.0.1:8000
+uv run --python 3.12 python manage.py runserver 127.0.0.1:8000
 ```
 
 ### 前端
@@ -234,12 +248,25 @@ npm run lint
 
 ### 业务接口
 
-- `/api/accounts/`
-- `/api/commodity/`
-- `/api/trade/`
-- `/api/operation/`
-- `/api/merchant/`
-- `/api/ai/consult/`
+- `/api/accounts/`：注册、登录、登出、用户资料
+- `/api/commodity/`：商品列表 `list/`、详情 `detail/<id>/`、搜索 `search/`、评论 `comments/<id>/`
+- `/api/trade/`：购物车 `shopping-carts/`、订单 `orders/`、结算 `checkout/`、退款、确认收货、评价
+- `/api/operation/`：收藏、留言、地址、评论、省市区数据
+- `/api/merchant/`：广告位（只读）
+- `/api/ai/consult/`：AI 宠物顾问，**需要登录**并有限流（默认 10 次/分钟）
+
+### 认证接口
+
+前台使用 JWT：
+
+- `GET /api/accounts/captcha/?username=X`：获取图形验证码，只返回图片（`{img}`），答案留在服务端缓存，60 秒有效且一次性使用
+- `POST /api/accounts/login/`：body `{username, password, code}`，返回 `access` / `refresh`
+- `POST /api/accounts/token/refresh/`：body `{refresh}`，用于 `access` 过期后换新的
+- `POST /api/accounts/token/verify/`：校验 token
+- `POST /api/accounts/loginout/`：登出（注意路由是 `loginout`，不是 `logout`）
+
+前端只在 localStorage 保存 `access_token` / `refresh_token`，请求统一带
+`Authorization: Bearer <access>`，并在收到 401 时自动刷新重放。
 
 ### 后台分析接口
 
@@ -262,15 +289,26 @@ npm run lint
 1. 后端是否运行在 `127.0.0.1:8000`
 2. 前端是否通过 `npm run serve` 启动在 `8010`
 3. `vue.config.js` 中 `/api` 代理是否生效
-4. MySQL 是否已导入数据或执行过 `seed_demo_business_data`
+4. 是否执行过 `migrate`，需要演示数据时是否跑过 `seed_demo_business_data`
+5. `CORS_ALLOWED_ORIGINS` 是否包含前端来源
 
 ### 后台图表没有数据
 
 可按顺序检查：
 
-1. 是否已导入 `pet_shop_backup.sql`
-2. 是否执行过 `uv run python manage.py seed_demo_business_data`
-3. 当前登录账号是否为后台管理员
+1. 是否执行过 `uv run --python 3.12 python manage.py seed_demo_business_data`
+2. 当前登录账号是否为后台管理员（`/api/charts/` 的两个接口要求 staff 权限）
+3. 网络能否访问 jsDelivr —— 后台图表的 ECharts 是从 CDN 引入的，离线环境下会渲染不出来
+
+### `uv sync` 编译 pillow 失败
+
+用的是 Python 3.13。加上 `--python 3.12`。
+
+### 登录总提示验证码无效
+
+验证码只有 60 秒有效期且一次性使用，每次提交前重新获取一张。多进程部署时还需注意：
+缓存默认是 LocMemCache（每进程独立），验证码会因为生成和校验落在不同进程而失效，
+这种情况下需要通过 `CACHE_BACKEND` / `CACHE_LOCATION` 换成 Redis。
 
 ## 许可证
 

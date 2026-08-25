@@ -1,711 +1,312 @@
-# 🐾 吉祥宠物商城系统 - 开发文档
+# 吉祥宠物商城 开发文档
 
-## 📚 详细开发指南
+面向要在本地跑起来并改代码的开发者。接口的字段级细节请直接看运行中的
+`/swagger/` 或 `/redoc/`，本文不重复抄一遍。
 
-### 🔧 数据库设计
+## 1. 环境准备
 
-#### 核心数据表
+必需：
 
-##### 用户相关表
+- **Python 3.12**。不是 3.13 —— `pillow==10.3.0` 在 3.13 上编译不过，
+  所有 `uv` 命令都要显式带 `--python 3.12`。
+- Node.js 16+
+- MySQL 8.0+
+- `uv`（`pip install uv`）
+
+### 后端
+
+```bash
+cd backstage/pet_shop
+cp .env.template .env        # 然后按第 2 节填写
+uv sync --python 3.12
+uv run --python 3.12 python manage.py migrate
+uv run --python 3.12 python manage.py createsuperuser
+uv run --python 3.12 python manage.py runserver 127.0.0.1:8000
+```
+
+建库语句（`.env` 里的 `MYSQL_DATABASE` 默认是 `pet_shop`）：
+
 ```sql
--- 用户基础信息表
-CREATE TABLE accounts_userprofile (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    username VARCHAR(150) UNIQUE NOT NULL,
-    email VARCHAR(254),
-    phone VARCHAR(20),
-    avatar VARCHAR(100),
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-
--- 用户地址表
-CREATE TABLE customer_operation_useraddress (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    user_id BIGINT NOT NULL,
-    province VARCHAR(100),
-    city VARCHAR(100),
-    district VARCHAR(100),
-    address TEXT,
-    signer_name VARCHAR(100),
-    signer_mobile VARCHAR(20),
-    is_default BOOLEAN DEFAULT FALSE,
-    FOREIGN KEY (user_id) REFERENCES accounts_userprofile(id)
-);
+CREATE DATABASE pet_shop CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-##### 商品相关表
-```sql
--- 商品信息表
-CREATE TABLE commodity_commodityinfos (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(200) NOT NULL,
-    description TEXT,
-    cost_price DECIMAL(10,2),
-    market_price DECIMAL(10,2),
-    shop_price DECIMAL(10,2),
-    goods_sn VARCHAR(50) UNIQUE,
-    click_num INT DEFAULT 0,
-    sold_num INT DEFAULT 0,
-    fav_num INT DEFAULT 0,
-    goods_num INT DEFAULT 0,
-    is_new BOOLEAN DEFAULT FALSE,
-    is_hot BOOLEAN DEFAULT FALSE,
-    goods_front_image VARCHAR(200),
-    goods_detail_image VARCHAR(200),
-    add_time DATETIME DEFAULT CURRENT_TIMESTAMP
-);
+可选：写入演示业务数据，让后台概览和分析页有内容。该命令**只在
+`DEBUG=True` 时允许执行**，否则直接报 `CommandError`。
 
--- 商品分类表
-CREATE TABLE commodity_goodscategory (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(30) NOT NULL,
-    code VARCHAR(30),
-    desc TEXT,
-    category_type INT,
-    parent_category_id BIGINT,
-    is_tab BOOLEAN DEFAULT FALSE,
-    add_time DATETIME DEFAULT CURRENT_TIMESTAMP
-);
+```bash
+uv run --python 3.12 python manage.py seed_demo_business_data
 ```
 
-##### 交易相关表
-```sql
--- 购物车表
-CREATE TABLE trade_shoppingcart (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    user_id BIGINT NOT NULL,
-    goods_id BIGINT NOT NULL,
-    nums INT NOT NULL,
-    add_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES accounts_userprofile(id),
-    FOREIGN KEY (goods_id) REFERENCES commodity_commodityinfos(id)
-);
+### 前端
 
--- 订单信息表
-CREATE TABLE trade_orderinfo (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    user_id BIGINT NOT NULL,
-    order_sn VARCHAR(30) UNIQUE,
-    trade_no VARCHAR(100),
-    pay_status VARCHAR(30) DEFAULT 'TRADE_BUYER_PAID',
-    post_script VARCHAR(200),
-    order_mount DECIMAL(10,2),
-    pay_time DATETIME,
-    address VARCHAR(100),
-    signer_name VARCHAR(20),
-    singer_mobile VARCHAR(11),
-    add_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES accounts_userprofile(id)
-);
+```bash
+cd frontstage/pet_shop
+npm install
+npm run serve      # 端口 8010
 ```
 
-### 🔌 API接口文档
+开发服务器跑在 **8010**，`vue.config.js` 把 `/api` 代理到
+`http://127.0.0.1:8000`。后端的 `CORS_ALLOWED_ORIGINS` 与
+`CSRF_TRUSTED_ORIGINS` 默认值也是 8010 的两个来源，改前端端口时这两个都要跟着改。
 
-#### 认证接口
+访问地址：
 
-##### 用户注册
-```http
-POST /api/accounts/register/
-Content-Type: application/json
+| 用途 | 地址 |
+| --- | --- |
+| 前台 | http://127.0.0.1:8010 |
+| 后台管理 | http://127.0.0.1:8000/admin/ |
+| Swagger | http://127.0.0.1:8000/swagger/ |
+| ReDoc | http://127.0.0.1:8000/redoc/ |
 
-{
-    "username": "testuser",
-    "password": "password123",
-    "email": "test@example.com",
-    "phone": "13800138000"
-}
+## 2. 环境变量
+
+全部配置走 `.env`（已 gitignore）。模板 `backstage/pet_shop/.env.template`
+是提交进仓库的，列了每一个变量。`settings.py` 里不再有硬编码的
+SECRET_KEY 或数据库密码。
+
+| 变量 | 说明 |
+| --- | --- |
+| `DJANGO_SECRET_KEY` | `DJANGO_DEBUG=False` 时**必填**，否则启动直接抛 `ImproperlyConfigured`；DEBUG 开着时用不安全的开发兜底值 |
+| `DJANGO_DEBUG` | 默认 `True` |
+| `DJANGO_ALLOWED_HOSTS` | 逗号分隔，默认 `127.0.0.1,localhost` |
+| `MYSQL_HOST` / `MYSQL_PORT` / `MYSQL_DATABASE` / `MYSQL_USER` / `MYSQL_PASSWORD` | 数据库连接 |
+| `CORS_ALLOWED_ORIGINS` / `CSRF_TRUSTED_ORIGINS` | 显式白名单，逗号分隔。**没有通配符** |
+| `LONGCAT_API_KEY` | 不配则 `/api/ai/consult/` 返回 503 |
+| `LONGCAT_API_URL` | 可选，覆盖上游地址 |
+| `JWT_ACCESS_MINUTES` / `JWT_REFRESH_DAYS` | 默认 60 分钟 / 7 天 |
+| `THROTTLE_AI_CONSULT` / `THROTTLE_CAPTCHA` / `THROTTLE_LOGIN` | 默认 `10/min` / `30/min` / `10/min` |
+| `CACHE_BACKEND` / `CACHE_LOCATION` | 见第 6 节 |
+| `COMMODITY_PREVIEW_LIMIT` | 未登录用户每个分类可见的商品数，默认 6 |
+
+`MYSQL_HOST` 不设时 `settings.detect_mysql_host()` 会探测运行环境：WSL2 下读
+`/etc/resolv.conf` 的第一个 nameserver（指向 Windows 宿主），否则用
+`127.0.0.1`。在 `.env` 里显式写 `MYSQL_HOST` 就会跳过这套探测。
+
+关键的 DRF 全局设置（`settings.py`）：分页 `PAGE_SIZE = 6`，默认权限
+`IsAuthenticated`，认证类是 `JWTAuthentication` + 标准
+`SessionAuthentication`（后者留给 DRF 可浏览界面和后台内嵌调用）。CSRF
+中间件是**开启**的。
+
+## 3. 认证流程
+
+前台走 JWT（`djangorestframework-simplejwt`），登录带图形验证码。
+
+1. `GET /api/accounts/captcha/?username=X` → `{"img": "<base64 JPEG>"}`。
+   **响应里没有答案**，答案存在 Django 缓存的 `verify_code_<username>` 键下，
+   有效期 60 秒，且一次性使用 —— `LoginView` 无论校验成败都会立刻删掉它。
+2. `POST /api/accounts/login/`，body `{username, password, code}`。成功返回：
+
+   ```json
+   {
+     "status": 200,
+     "message": "用户登录成功",
+     "id": 1,
+     "username": "demo",
+     "email": "demo@example.com",
+     "last_login": "2026-01-01T10:00:00",
+     "access": "<JWT>",
+     "refresh": "<JWT>"
+   }
+   ```
+
+   `last_login` 回传的是**本次登录之前**的值。验证码错返回 400
+   `{"error": "验证码无效"}`，账号密码错返回 401。
+3. 前端只把 `access` / `refresh` 存进 localStorage（键名
+   `access_token` / `refresh_token`），每个请求带
+   `Authorization: Bearer <access>`。
+4. `access` 过期后 `POST /api/accounts/token/refresh/`，body `{refresh}`。
+   前端 `src/api/index.js` 的响应拦截器在收到 401 时自动刷新并重放原请求，
+   并发的 401 共享同一次刷新。
+5. `POST /api/accounts/token/verify/` 校验 token 有效性。
+6. 登出路由是 `POST /api/accounts/loginout/`（**不是** `/logout/`）。JWT
+   无状态，真正的登出动作是前端清掉本地 token。
+
+注册是 `POST /api/accounts/register/`，字段 `username / email / password /
+password2`，两次密码不一致或邮箱已注册都会 400。
+
+## 4. 数据模型
+
+Django 内置的 `auth.User` 就是用户主体，没有启用自定义 `AUTH_USER_MODEL`。
+
+### commodity
+
+- **`CommodityInfos`**：`sku_title`（商品名）、`sku_description`、
+  `main_image`、`detail_images`、`cost_price`（进价）、`price`（售价）、
+  `status`、`types`（外键 → `CommodityCategories`）、`sold`（已售）、
+  `stock_quantity`（库存）、`created_by/created_time/updated_by/updated_time`。
+- **`CommodityCategories`**：`title`（唯一）、`parent_category`（自关联，
+  `related_name='sub_categories'`）。只有两层：顶级类型 + 子类型。
+
+### trade
+
+- **`OrderInfos`**：`user`、`order_sn`（唯一）、`address`（外键 →
+  `customer_operation.UserAddress`）、`total_price`、`coupon_price`、
+  `payable_price`、`pay_method`、`leave_comment`、`order_status`、
+  `confirmed_time`、`refund_status`、`refund_reason`、`created_by/created_time/
+  update_by/update_time`（注意订单表这两个是 `update_by`/`update_time`，
+  没有 `d`）。
+- **`OrderGoods`**：`order`（`related_name='goods'`）、`goods`（外键 →
+  `CommodityInfos`）、`goods_num`、`add_time`、`commented`。
+- **`ShoppingCart`**：`user`、`commodity`（`on_delete=SET_NULL`、
+  `db_constraint=False`，所以可能为 `None`）、`quantity`、`created_time`、
+  `updated_time`。
+
+状态码取值：
+
+| 字段 | 取值 |
+| --- | --- |
+| `order_status` | 0 未支付 / 1 已支付 / 2 发货中 / 3 已签收 / 4 退货中 / 5 已退货 |
+| `refund_status` | 0 无 / 1 待审核 / 2 已通过 / 3 已拒绝 |
+| `pay_method` | 1 微信 / 2 支付宝 / 3 银联 |
+
+### customer_operation
+
+- **`UserFav`**：`user` + `goods`，`unique_together`。
+- **`UserLeavingMessage`**：`message_type`（1 留言 / 2 投诉 / 3 询问 /
+  4 售后 / 5 求购）、`subject`、`message`、`file`、`is_replied`、
+  `reply_content`、`reply_time`。
+- **`UserAddress`**：`province`、`city`、`county`、`address`、`is_default`、
+  `signer_name`、`signer_mobile`。排序把默认地址放最前。
+- **`UserComment`**：`user`、`commodity`、`content`、`rating`（1–5，模型层有
+  `MinValueValidator`/`MaxValueValidator`）、`is_show`（后台审核开关）。
+
+### accounts
+
+- **`UserProfile`**：`username` 是指向 `auth.User` 的外键（`to_field='username'`，
+  不是字符串字段）、`birthday`、`gender`（M/F/O）、`user_intro`、`avatar`、
+  `mobile`（`PhoneNumberField`，region CN）、`user_score`、`total_cost_amt`。
+  首次访问个人中心时由 `UserProfileViewSet.list()` 惰性补齐。
+
+### merchant / charts / index
+
+- **`merchant.Advertisement`**：`ad_title`、`ad_content`、`ad_image`、
+  `ad_link`、`start_date`、`end_date`、`click_count`。
+- **`charts.SoldModel` / `charts.UserModel`**：只有一个 `name` 字段，纯占位，
+  作用是在 Admin 菜单里挂出「综合数据看板」「用户数据可视化」两个入口。
+- **`index`**：没有模型，只有 AI 咨询视图。
+
+## 5. API 一览
+
+前缀在 `pet_shop/urls.py` 挂载。字段细节看 `/swagger/`。
+
+### accounts — `/api/accounts/`
+
+`register/`、`login/`、`loginout/`、`token/refresh/`、`token/verify/`、
+`captcha/`、`profiles/`（ViewSet，只返回当前用户）、
+`profiles/upload-avatar/`。
+
+### commodity — `/api/commodity/`
+
+- `list/` — 按分类分组的商品树。匿名可访问，但每个分类只返回
+  `COMMODITY_PREVIEW_LIMIT` 条，响应里带 `limited` 和 `preview_limit`。
+- `detail/<pk>/` — 商品详情 + 所属分类。匿名可访问。
+- `search/` — `?query=` 对 `sku_title` / `sku_description` 模糊匹配，同样有匿名限量。
+- `comments/<pk>/` — 某商品的评论列表（只含 `is_show=True`）。
+
+### trade — `/api/trade/`
+
+ViewSet：`orders/`、`order-goods/`、`shopping-carts/`（都只返回当前用户的数据）。
+`shopping-carts/` 的 POST 用 `{commodity, quantity}`，同一商品重复提交会累加数量而不是建新行。
+
+自定义端点：
+
+- `POST checkout/` — body `{cart_ids: [], address_id, pay_method, leave_comment}`。
+  整个过程在一个事务里：`select_for_update()` 按 id 升序锁商品行 → 校验库存 →
+  建单 → 扣 `stock_quantity`、加 `sold` → 清购物车。库存不够返回 400
+  `库存不足：<商品名>`；下单成功返回 201 和 `order_sn`。订单初始状态是 2（发货中）。
+- `POST orders/<order_id>/refund/` — body `{reason, refund_type}`。未发货
+  （`order_status < 2`）、已退货、重复提交都会 400；已签收的订单超过确认收货 7 天不再受理。
+- `POST orders/<order_id>/confirm/` — 确认收货，写 `confirmed_time`。
+- `POST orders/<order_id>/goods/<order_goods_id>/comment/` — body
+  `{content, rating}`，`rating` 必须是 1–5 的整数。订单未签收或该商品已评价会 400。
+
+### customer_operation — `/api/operation/`
+
+ViewSet：`favorites/`、`messages/`、`addresses/`、`usercomments/`。前三个都限定当前用户；
+`usercomments/` 的读操作 `AllowAny`、写操作要求登录。另有 `regions/`（省市区级联数据，免认证）。
+
+### merchant — `/api/merchant/`
+
+`advertisements/` — 只读 ViewSet。
+
+### index — `/api/ai/consult/`
+
+`POST`，**需要登录**，限流 scope `ai_consult`（默认 10/min）。body 支持
+`{messages: [{role, content}], question, stream}`。默认 `stream=True`，返回
+`text/event-stream`，每帧形如 `data: {"content": "..."}`，结束帧 `data: {"done": true}`；
+`stream=False` 时返回 `{answer, usage}`。
+
+服务端约束：模型固定 `LongCat-Flash-Chat`，`max_tokens=1200`、
+`temperature=0.7`，**请求体里的同名字段一律忽略**；单条内容超过 2000 字返回 400；
+只保留最近 8 轮对话；命中非宠物话题时不调上游，直接返回引导话术。未配
+`LONGCAT_API_KEY` 返回 503。
+
+### charts — `/api/charts/`
+
+`overview/`、`dashboard/`。两个都是 `@staff_member_required` 的普通 Django
+视图（返回 `JsonResponse`），不是 DRF 端点 —— 未登录会被重定向到 admin 登录页，
+而不是返回 401。
+
+## 6. 已知注意事项
+
+**LocMemCache 与验证码。** 缓存默认是
+`django.core.cache.backends.locmem.LocMemCache`，**不是 Redis**。它是每进程独立的，
+而验证码答案就存在缓存里。单进程 `runserver` 没问题，但一旦多 worker
+（gunicorn/uwsgi）或多机部署，验证码就会随机报「验证码无效」—— 生成和校验落在了不同进程。
+上线前用 `CACHE_BACKEND` / `CACHE_LOCATION` 换成 Redis 或 Memcached。
+
+**`pet_shop_backup.sql` 用不了。** 该文件已从 git 移除，`*.sql` 也进了
+`.gitignore`（导出文件含真实用户数据：密码哈希、邮箱、手机号）。即使你手上有这个文件，
+它也**无法直接导入**：编码是 UTF-16LE，中文内容是乱码，并且有一处未转义的引号会让
+`mysql` 客户端报语法错误。**唯一受支持的建数据路径是 `migrate` +
+`seed_demo_business_data`。**
+
+导出数据库时不要把密码写进命令（会留在 shell 历史里）：
+
+```bash
+mysqldump -u root -p pet_shop > pet_shop_backup.sql
 ```
 
-##### 用户登录
-```http
-POST /api/accounts/login/
-Content-Type: application/json
+**后台图表的 ECharts 来自 CDN。** `templates/admin/index.html` 里通过
+`<script src="https://fastly.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js">`
+引入，Python 侧没有任何图表库（`pyecharts`、`django-echarts`、`django-chartjs`
+都已移除）。离线环境下后台图表会渲染不出来。
 
-{
-    "username": "testuser",
-    "password": "password123"
-}
+**依赖已精简到 14 个直接依赖**，见 `pyproject.toml`，传递依赖由 `uv.lock` 锁定。
+已移除：两个 alipay SDK、`django-jazzmin`、`django-grappelli`、`django-chartjs`、
+`django-echarts`、`echarts-python`、`pyecharts`。`INSTALLED_APPS` 里的后台皮肤只有
+`simpleui`。
 
-Response:
-{
-    "access": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
-    "refresh": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
-    "user": {
-        "id": 1,
-        "username": "testuser",
-        "email": "test@example.com"
-    }
-}
+**前端有两套 axios 配置。** `src/api/index.js` 是主要的那套（JWT 拦截器 +
+自动刷新，baseURL 走 `/api` 代理）；`src/axios/index.js` 是另一份带 CSRF 头处理、
+baseURL 硬编码为 `http://localhost:8010/api/` 的实例。新代码用前者。
+
+## 7. 测试
+
+```bash
+cd backstage/pet_shop
+uv run --python 3.12 python manage.py test
 ```
 
-#### 商品接口
+当前 **52 个测试全部通过**。测试集中在 `charts/tests/`（分析服务、seed 命令、
+admin 视图、端到端 smoke），其余 app 的 `tests.py` 多为空壳。
 
-##### 获取商品列表
-```http
-GET /api/commodity/goods/
-Authorization: Bearer <access_token>
+前端只有 ESLint，没有单元测试：
 
-Query Parameters:
-- page: 页码 (默认: 1)
-- page_size: 每页数量 (默认: 12)
-- search: 搜索关键词
-- category: 分类ID
-- ordering: 排序方式 (price, -price, add_time, -add_time)
-
-Response:
-{
-    "count": 100,
-    "next": "http://localhost:8010/api/commodity/goods/?page=2",
-    "previous": null,
-    "results": [
-        {
-            "id": 1,
-            "name": "宠物玩具",
-            "shop_price": "29.90",
-            "goods_front_image": "/media/product_photos/goods_01.png",
-            "is_new": true,
-            "is_hot": false
-        }
-    ]
-}
+```bash
+cd frontstage/pet_shop
+npm run lint
 ```
 
-##### 获取商品详情
-```http
-GET /api/commodity/goods/{id}/
-Authorization: Bearer <access_token>
+## 8. 排查
 
-Response:
-{
-    "id": 1,
-    "name": "宠物玩具",
-    "description": "高质量宠物玩具，安全无毒",
-    "shop_price": "29.90",
-    "market_price": "39.90",
-    "goods_front_image": "/media/product_photos/goods_01.png",
-    "goods_detail_image": "/media/product_photos_details/goods_details_01.png",
-    "goods_num": 100,
-    "sold_num": 50,
-    "fav_num": 20
-}
-```
+**前端能打开但没数据**：确认后端在 `127.0.0.1:8000`、前端在 `8010`、
+`/api` 代理生效、数据库已 `migrate`（需要演示数据就跑 `seed_demo_business_data`）。
 
-#### 购物车接口
+**后台图表空白**：确认跑过 `seed_demo_business_data`、当前账号是
+staff（`/api/charts/` 两个端点要求 `staff_member_required`）、能访问 jsdelivr CDN。
 
-##### 添加到购物车
-```http
-POST /api/trade/shopping-carts/
-Authorization: Bearer <access_token>
-Content-Type: application/json
+**登录一直提示验证码无效**：验证码只有 60 秒且一次性；每次提交前重新拉一张图。
+如果是多进程部署，看第 6 节的 LocMemCache 问题。
 
-{
-    "goods": 1,
-    "nums": 2
-}
-```
-
-##### 获取购物车列表
-```http
-GET /api/trade/shopping-carts/
-Authorization: Bearer <access_token>
-
-Response:
-{
-    "count": 2,
-    "results": [
-        {
-            "id": 1,
-            "goods": {
-                "id": 1,
-                "name": "宠物玩具",
-                "shop_price": "29.90",
-                "goods_front_image": "/media/product_photos/goods_01.png"
-            },
-            "nums": 2,
-            "add_time": "2024-01-01T10:00:00Z"
-        }
-    ]
-}
-```
-
-#### AI对话接口
-
-##### 发送消息
-```http
-POST /api/ai-chat/
-Authorization: Bearer <access_token>
-Content-Type: application/json
-
-{
-    "message": "我的猫咪不吃饭怎么办？",
-    "conversation_id": "uuid-string" // 可选，用于维持对话上下文
-}
-
-Response (流式):
-data: {"type": "message", "content": "您好！猫咪不吃饭可能有以下几个原因：\n\n"}
-data: {"type": "message", "content": "1. **环境变化**：搬家、新宠物等环境变化可能导致猫咪食欲不振\n"}
-data: {"type": "message", "content": "2. **健康问题**：口腔疾病、消化问题等\n"}
-data: {"type": "end"}
-```
-
-### 🎨 前端组件开发
-
-#### 通用组件规范
-
-##### 按钮组件使用
-```vue
-<template>
-  <!-- 主要按钮 -->
-  <button class="pet-btn pet-btn-primary">
-    <el-icon><Plus /></el-icon>
-    添加到购物车
-  </button>
-  
-  <!-- 次要按钮 -->
-  <button class="pet-btn pet-btn-secondary">
-    查看详情
-  </button>
-  
-  <!-- 成功按钮 -->
-  <button class="pet-btn pet-btn-success">
-    确认订单
-  </button>
-  
-  <!-- 小尺寸按钮 -->
-  <button class="pet-btn pet-btn-primary pet-btn-sm">
-    编辑
-  </button>
-</template>
-```
-
-##### 卡片组件使用
-```vue
-<template>
-  <div class="pet-card">
-    <div class="pet-card-header">
-      <h3 class="pet-card-title">商品名称</h3>
-      <p class="pet-card-subtitle">商品描述</p>
-    </div>
-    
-    <div class="pet-card-body">
-      <!-- 卡片内容 -->
-    </div>
-  </div>
-</template>
-```
-
-##### 表单组件使用
-```vue
-<template>
-  <div class="pet-form-group">
-    <label class="pet-form-label">商品名称</label>
-    <input 
-      type="text" 
-      class="pet-form-input" 
-      placeholder="请输入商品名称"
-      v-model="productName"
-    />
-  </div>
-</template>
-```
-
-#### 状态管理 (Vuex)
-
-##### Store结构
-```javascript
-// store/index.js
-export default createStore({
-  state: {
-    user: null,
-    isLoggedIn: false,
-    cart: [],
-    products: []
-  },
-  
-  mutations: {
-    SET_USER(state, user) {
-      state.user = user;
-      state.isLoggedIn = !!user;
-    },
-    
-    ADD_TO_CART(state, product) {
-      const existingItem = state.cart.find(item => item.id === product.id);
-      if (existingItem) {
-        existingItem.quantity += product.quantity;
-      } else {
-        state.cart.push(product);
-      }
-    },
-    
-    REMOVE_FROM_CART(state, productId) {
-      state.cart = state.cart.filter(item => item.id !== productId);
-    }
-  },
-  
-  actions: {
-    async login({ commit }, credentials) {
-      try {
-        const response = await api.post('/accounts/login/', credentials);
-        const { access, refresh, user } = response.data;
-        
-        localStorage.setItem('access_token', access);
-        localStorage.setItem('refresh_token', refresh);
-        
-        commit('SET_USER', user);
-        return response.data;
-      } catch (error) {
-        throw error;
-      }
-    },
-    
-    async addToCart({ commit }, product) {
-      try {
-        await api.post('/trade/shopping-carts/', {
-          goods: product.id,
-          nums: product.quantity
-        });
-        commit('ADD_TO_CART', product);
-      } catch (error) {
-        throw error;
-      }
-    }
-  }
-});
-```
-
-### 🔒 安全配置
-
-#### Django安全设置
-```python
-# settings.py
-
-# CORS配置
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:8011",
-    "http://127.0.0.1:8011",
-]
-
-CORS_ALLOW_CREDENTIALS = True
-
-# JWT配置
-from datetime import timedelta
-
-SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
-    'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True,
-}
-
-# 安全中间件
-MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-]
-
-# 安全设置
-SECURE_BROWSER_XSS_FILTER = True
-SECURE_CONTENT_TYPE_NOSNIFF = True
-X_FRAME_OPTIONS = 'DENY'
-```
-
-#### 前端安全配置
-```javascript
-// axios配置
-import axios from 'axios';
-
-const api = axios.create({
-  baseURL: 'http://localhost:8010/api',
-  timeout: 10000,
-});
-
-// 请求拦截器
-api.interceptors.request.use(
-  config => {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  error => Promise.reject(error)
-);
-
-// 响应拦截器
-api.interceptors.response.use(
-  response => response,
-  async error => {
-    if (error.response?.status === 401) {
-      // Token过期，尝试刷新
-      try {
-        const refreshToken = localStorage.getItem('refresh_token');
-        const response = await axios.post('/accounts/token/refresh/', {
-          refresh: refreshToken
-        });
-        
-        localStorage.setItem('access_token', response.data.access);
-        return api.request(error.config);
-      } catch (refreshError) {
-        // 刷新失败，跳转到登录页
-        localStorage.clear();
-        window.location.href = '/accounts/login';
-      }
-    }
-    return Promise.reject(error);
-  }
-);
-```
-
-### 🧪 测试指南
-
-#### 后端测试
-```python
-# tests/test_models.py
-from django.test import TestCase
-from accounts.models import UserProfile
-
-class UserProfileTestCase(TestCase):
-    def setUp(self):
-        self.user = UserProfile.objects.create_user(
-            username='testuser',
-            email='test@example.com',
-            password='testpass123'
-        )
-    
-    def test_user_creation(self):
-        self.assertEqual(self.user.username, 'testuser')
-        self.assertEqual(self.user.email, 'test@example.com')
-        self.assertTrue(self.user.check_password('testpass123'))
-
-# tests/test_views.py
-from rest_framework.test import APITestCase
-from rest_framework import status
-
-class ProductAPITestCase(APITestCase):
-    def test_get_products(self):
-        response = self.client.get('/api/commodity/goods/')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-```
-
-#### 前端测试
-```javascript
-// tests/unit/components/ProductCard.spec.js
-import { mount } from '@vue/test-utils';
-import ProductCard from '@/components/ProductCard.vue';
-
-describe('ProductCard.vue', () => {
-  it('renders product information correctly', () => {
-    const product = {
-      id: 1,
-      name: 'Test Product',
-      price: '29.90',
-      image: '/test-image.jpg'
-    };
-    
-    const wrapper = mount(ProductCard, {
-      props: { product }
-    });
-    
-    expect(wrapper.text()).toContain('Test Product');
-    expect(wrapper.text()).toContain('29.90');
-  });
-});
-```
-
-### 📊 性能优化
-
-#### 后端优化
-```python
-# 数据库查询优化
-from django.db import models
-
-class ProductViewSet(viewsets.ModelViewSet):
-    def get_queryset(self):
-        return CommodityInfos.objects.select_related(
-            'category'
-        ).prefetch_related(
-            'images'
-        ).filter(is_active=True)
-
-# 缓存配置
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': 'redis://127.0.0.1:6379/1',
-    }
-}
-
-# 使用缓存
-from django.core.cache import cache
-
-def get_hot_products():
-    cache_key = 'hot_products'
-    products = cache.get(cache_key)
-    
-    if products is None:
-        products = CommodityInfos.objects.filter(
-            is_hot=True
-        ).order_by('-sold_num')[:10]
-        cache.set(cache_key, products, 300)  # 缓存5分钟
-    
-    return products
-```
-
-#### 前端优化
-```javascript
-// 路由懒加载
-const routes = [
-  {
-    path: '/',
-    name: 'Home',
-    component: () => import('@/views/Home.vue')
-  },
-  {
-    path: '/products',
-    name: 'Products',
-    component: () => import('@/views/Products.vue')
-  }
-];
-
-// 图片懒加载
-<template>
-  <img 
-    v-lazy="product.image" 
-    :alt="product.name"
-    class="product-image"
-  />
-</template>
-
-// 虚拟滚动（大列表优化）
-<template>
-  <virtual-list
-    :data-sources="products"
-    :data-key="'id'"
-    :keeps="30"
-    :estimate-size="200"
-  >
-    <template #ite{ record }">
-      <ProductCard :product="record" />
-    </template>
-  </virtual-list>
-</template>
-```
-
-### 🚀 #### Docker配置
-```dockerfile
-# Dockerfile.backend
-FROM python:3.10-slim
-
-WORKDIR /app
-
-COPY requirements.txt .
-RUN pip install -r rents.txt
-
-COPY . .
-
-EXPOSE 8000
-
-CMD ["gunicorn", "pet_shop.wsgi:application", "--bind", "0.0.0.0:8000"]
-```
-
-```dockerfile
-# Dockerfile.frontend
-FROM node:16-alpine as build
-
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-
-COPY . .
-RUN nuild
-
-FROM nginx:alpine
-COPY --from=build /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/nginx.conf
-
-EXPOSE 80
-```
-
-#### Docker Compose
-```yaml
-# docker-compose.yml
-version: '3.8'
-
-services:
-  db:
-    image: mysql:8.0
-    environment:
-      MYSQL_DATABASE: pet_shop
-      MYSQL_ROOT_PASSWORD: password
-    volumes:
-      - mysql_data:/var/lib/mysql
-    ports:
-      - "3306:3306"
-
-  backend:
-    build:
-      context: ./backstage/pet_shop
-      dockerfile: Dockerfile
-    depends_on:
-      - db
-    environment:
-      - DB_HOST=db
-      - DB_NAME=pet_shop
-      - DB_USER=root
-      - DB_PASSWORD=password
-    ports:
-      - "8000:8000"
-
-  frontend:
-    build:
-      context: ./frontstage/pet_shop
-      dockerfile: Dockerfile
-    ports:
-      - "80:80"
-
-volumes:
-  mysql_data:
-```
-
-### 📈 监控和日志
-
-#### 日志配置
-```python
-# settings.py
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
-            'style': '{',
-        },
-    },
-    'handlers': {
-        'file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': 'logs/django.log',
-            'formatter': 'verbose',
-        },
-        'console': {
-            'level': 'DEBUG',
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
-        },
-    },
-    'root': {
-        'handlers': ['console', 'file'],
-        'level': 'INFO',
-    },
-}
-```
-
-这份开发文档提供了项目的详细技术实现指南，包括数据库设计、API接口、前端组件、安全配置、测试方法、性能优化和部署实践。开发者可以根据这份文档快速上手项目开发和维护。
+**`uv sync` 编译 pillow 失败**：用的是 Python 3.13。加 `--python 3.12`。
