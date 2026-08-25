@@ -1,3 +1,8 @@
-使用 mysqldump 导出数据库的基本命令：
-mysqldump -u root -pxllzy123 pet_shop > pet_shop_backup.sql
+导出数据库（不要把密码写进命令，避免留在 shell 历史里）：
+mysqldump -u root -p pet_shop > pet_shop_backup.sql
 
+导入：
+mysql -u root -p pet_shop < pet_shop_backup.sql
+
+注意：*.sql 已加入 .gitignore —— 数据库导出文件包含真实用户数据
+（密码哈希、邮箱、手机号），不要提交进仓库。
