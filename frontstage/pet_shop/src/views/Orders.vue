@@ -450,15 +450,20 @@ export default {
 	align-items: flex-start;
 	justify-content: space-between;
 	gap: var(--space-4);
+	padding-bottom: var(--space-4);
+	border-bottom: 1px solid var(--line-ink);
 }
 
 .section-header h2 {
-	font-size: clamp(1.55rem, 2.2vw, 1.85rem);
+	font-family: var(--font-family-heading);
+	font-size: clamp(1.5rem, 2.2vw, 1.8rem);
+	font-weight: 900;
 }
 
 .section-header p {
 	margin-top: var(--space-2);
 	color: var(--text-muted);
+	font-size: var(--font-size-sm);
 }
 
 .orders-empty {
@@ -485,7 +490,7 @@ export default {
 	content: "↔";
 	display: inline-block;
 	margin-right: var(--space-1);
-	color: var(--brand-accent-strong);
+	color: var(--vermilion);
 }
 
 .table-scroll-wrap :deep(.el-table) {
@@ -501,16 +506,18 @@ export default {
 
 .status-note {
 	color: var(--text-muted);
-	font-size: var(--font-size-sm);
+	font-family: var(--font-family-mono);
+	font-size: var(--font-size-xs);
+	letter-spacing: 0.03em;
 }
 
 .status-note--waiting {
-	color: var(--text-subtle);
+	color: var(--ink-faint);
 }
 
 .status-note--success {
-	color: var(--state-success);
-	font-weight: 600;
+	color: var(--pine);
+	font-weight: 500;
 }
 
 .detail-table-wrap {
@@ -566,7 +573,7 @@ export default {
 		width: 28px;
 		height: calc(100% - var(--space-2));
 		pointer-events: none;
-		background: linear-gradient(270deg, rgba(247, 243, 237, 0.95) 0%, rgba(247, 243, 237, 0) 100%);
+		background: linear-gradient(270deg, var(--paper-raised) 0%, rgba(247, 243, 237, 0) 100%);
 	}
 
 	.table-scroll-wrap :deep(.el-table) {

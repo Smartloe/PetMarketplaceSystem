@@ -215,16 +215,17 @@ export default {
   margin-top: var(--space-1);
 }
 
-.auth-primary-button {
-  width: 100%;
-  min-height: 46px;
-  font-size: var(--font-size-md);
-}
-
 .register-note {
   margin: var(--space-3) 0 0;
   color: var(--text-subtle);
   font-size: var(--font-size-xs);
   line-height: 1.5;
+}
+
+.auth-primary-button {
+  width: 100%;
+  min-height: 46px;
+  font-size: var(--font-size-md);
+  box-shadow: 0 2px 0 var(--vermilion-deep);
 }
 </style>

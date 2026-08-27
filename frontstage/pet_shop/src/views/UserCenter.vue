@@ -266,7 +266,7 @@ const normalizeCollection = (payload) => {
 
 const buildFallbackAvatar = (name = '') => {
   const initial = (name || '宠').trim().charAt(0) || '宠';
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='#f4d1c3'/><stop offset='100%' stop-color='#e79f8a'/></linearGradient></defs><rect width='120' height='120' rx='60' fill='url(#g)'/><text x='50%' y='54%' text-anchor='middle' dominant-baseline='middle' fill='#7a3e2d' font-size='52' font-family='sans-serif' font-weight='700'>${initial}</text></svg>`;
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='#f0cdc3'/><stop offset='100%' stop-color='#d4674f'/></linearGradient></defs><rect width='120' height='120' rx='60' fill='url(#g)'/><text x='50%' y='54%' text-anchor='middle' dominant-baseline='middle' fill='#a3341f' font-size='52' font-family='sans-serif' font-weight='700'>${initial}</text></svg>`;
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 };
 
@@ -736,8 +736,9 @@ export default {
   height: 108px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid rgba(219, 124, 93, 0.28);
-  box-shadow: 0 10px 24px rgba(120, 88, 71, 0.2);
+  border: 2px solid var(--line-strong);
+  background: var(--paper-white);
+  box-shadow: var(--shadow-medium);
 }
 
 .avatar-actions {
@@ -758,23 +759,27 @@ export default {
 }
 
 .inline-feedback--success {
-  color: #2f7a52;
+  color: var(--pine);
 }
 
 .inline-feedback--error {
-  color: #c44242;
+  color: var(--vermilion-deep);
 }
 
 .overview-main h1 {
   margin: var(--space-2) 0;
   font-size: clamp(1.6rem, 2.2vw, 2rem);
+  font-weight: 900;
 }
 
 .overview-kicker {
   margin: 0;
-  color: var(--brand-primary-strong);
-  font-size: var(--font-size-sm);
-  letter-spacing: 0.04em;
+  color: var(--vermilion-deep);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-2xs);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
 }
 
 .overview-description {
@@ -791,7 +796,7 @@ export default {
 }
 
 .overview-side {
-  border-left: 1px solid rgba(82, 57, 46, 0.12);
+  border-left: 1px solid var(--line-hair);
   padding-left: var(--space-5);
   display: flex;
   flex-direction: column;
@@ -800,8 +805,12 @@ export default {
 
 .meta-label {
   margin: 0;
-  color: var(--text-muted);
-  font-size: var(--font-size-xs);
+  color: var(--text-subtle);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-2xs);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
 }
 
 .meta-value {
@@ -817,10 +826,13 @@ export default {
   align-items: flex-start;
   gap: var(--space-4);
   margin-bottom: var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--line-ink);
 }
 
 .section-header h2 {
   margin: 0;
+  font-weight: 900;
 }
 
 .section-header p {
@@ -848,6 +860,7 @@ export default {
   grid-column: 1 / -1;
 }
 
+/* Summary strip: counts in mono, framed by hairlines. */
 .address-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -857,22 +870,27 @@ export default {
 
 .summary-card {
   padding: var(--space-4);
-  border: 1px solid var(--line-soft);
+  border: 1px solid var(--line-hair);
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--paper-white);
 }
 
 .summary-card p {
   margin: 0;
   color: var(--text-muted);
-  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-2xs);
+  letter-spacing: 0.08em;
 }
 
 .summary-card strong {
   display: inline-block;
   margin-top: var(--space-2);
+  font-family: var(--font-family-mono);
   font-size: var(--font-size-xl);
-  color: var(--text-strong);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--vermilion-deep);
 }
 
 .address-grid {
@@ -886,9 +904,10 @@ export default {
   flex-direction: column;
   gap: var(--space-3);
   padding: var(--space-4);
-  border: 1px solid var(--line-soft);
+  border: 1px solid var(--line-hair);
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-soft);
 }
 
 .address-card-header {
@@ -918,7 +937,9 @@ export default {
 .address-region {
   margin: 0;
   color: var(--text-muted);
-  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-2xs);
+  letter-spacing: 0.03em;
 }
 
 .address-actions {
@@ -935,7 +956,7 @@ export default {
 }
 
 .dialog-error {
-  color: #c44242;
+  color: var(--vermilion-deep);
   font-size: var(--font-size-sm);
 }
 
@@ -952,7 +973,7 @@ export default {
 
   .overview-side {
     border-left: none;
-    border-top: 1px solid rgba(82, 57, 46, 0.12);
+    border-top: 1px solid var(--line-hair);
     padding-left: 0;
     padding-top: var(--space-4);
     flex-direction: row;

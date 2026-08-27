@@ -330,15 +330,20 @@ export default {
 	align-items: flex-start;
 	justify-content: space-between;
 	gap: var(--space-4);
+	padding-bottom: var(--space-4);
+	border-bottom: 1px solid var(--line-ink);
 }
 
 .section-header h2 {
-	font-size: clamp(1.55rem, 2.2vw, 1.85rem);
+	font-family: var(--font-family-heading);
+	font-size: clamp(1.5rem, 2.2vw, 1.8rem);
+	font-weight: 900;
 }
 
 .section-header p {
 	margin-top: var(--space-2);
 	color: var(--text-muted);
+	font-size: var(--font-size-sm);
 }
 
 .cart-empty {
@@ -349,9 +354,9 @@ export default {
 	max-height: 220px;
 	overflow-y: auto;
 	padding: var(--space-2) 0;
-	border: 1px solid var(--line-soft);
+	border: 1px solid var(--line-hair);
 	border-radius: var(--radius-sm);
-	background: rgba(255, 255, 255, 0.62);
+	background: var(--paper-white);
 }
 
 .address-radio {
@@ -388,7 +393,7 @@ export default {
 	content: "↔";
 	display: inline-block;
 	margin-right: var(--space-1);
-	color: var(--brand-accent-strong);
+	color: var(--vermilion);
 }
 
 .table-scroll-wrap :deep(.el-table) {
@@ -397,20 +402,25 @@ export default {
 }
 
 .commodity-link {
-	color: var(--brand-primary-strong);
+	color: var(--vermilion-deep);
 	font-weight: 600;
+	padding-bottom: 1px;
+	border-bottom: 1px solid transparent;
+	transition: color var(--motion-fast), border-color var(--motion-fast);
 }
 
 .commodity-link:hover {
-	color: var(--brand-primary);
+	color: var(--vermilion);
+	border-bottom-color: var(--vermilion);
 }
 
 .commodity-image {
 	width: 56px;
 	height: 56px;
-	border-radius: var(--radius-sm);
+	border-radius: var(--radius-xs);
 	object-fit: cover;
-	border: 1px solid var(--line-soft);
+	border: 1px solid var(--line-hair);
+	background: var(--paper-white);
 }
 
 .checkout-bar {
@@ -419,13 +429,17 @@ export default {
 	justify-content: space-between;
 	gap: var(--space-3);
 	flex-wrap: wrap;
-	padding-top: var(--space-2);
+	padding-top: var(--space-4);
+	border-top: 1px solid var(--line-ink);
 }
 
 .total-price {
-	color: var(--text-strong);
-	font-size: var(--font-size-lg);
-	font-weight: 700;
+	color: var(--vermilion-deep);
+	font-family: var(--font-family-mono);
+	font-size: 1.35rem;
+	font-variant-numeric: tabular-nums;
+	font-weight: 600;
+	letter-spacing: -0.01em;
 }
 
 .dialog-footer {
@@ -471,7 +485,7 @@ export default {
 		width: 28px;
 		height: calc(100% - var(--space-2));
 		pointer-events: none;
-		background: linear-gradient(270deg, rgba(247, 243, 237, 0.95) 0%, rgba(247, 243, 237, 0) 100%);
+		background: linear-gradient(270deg, var(--paper-raised) 0%, rgba(247, 243, 237, 0) 100%);
 	}
 
 	.table-scroll-wrap :deep(.el-table) {

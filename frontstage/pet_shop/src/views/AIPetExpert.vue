@@ -417,9 +417,11 @@ export default {
 
 .section-kicker {
   margin: 0 0 var(--space-2);
-  color: var(--brand-primary-strong);
-  font-size: var(--font-size-xs);
-  letter-spacing: 0.08em;
+  color: var(--vermilion-deep);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-2xs);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
   text-transform: uppercase;
 }
 
@@ -444,8 +446,8 @@ export default {
   max-width: 300px;
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--line-soft);
-  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid var(--line-hair);
+  background: var(--paper-white);
 }
 
 .intro-logo,
@@ -454,9 +456,10 @@ export default {
   height: 48px;
   flex-shrink: 0;
   object-fit: contain;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.9);
+  border-radius: var(--radius-sm);
+  background: var(--paper-white);
   padding: var(--space-2);
+  border: 1px solid var(--line-hair);
 }
 
 .intro-note {
@@ -476,6 +479,8 @@ export default {
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--line-hair);
 }
 
 .header-copy {
@@ -486,8 +491,10 @@ export default {
 
 .header-copy p {
   margin: var(--space-1) 0 0;
+  font-size: var(--font-size-xs);
 }
 
+/* The correspondence column: ruled paper, not a floating chat card. */
 .chat-body {
   min-height: 420px;
   max-height: min(60vh, 680px);
@@ -496,9 +503,17 @@ export default {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--line-soft);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(247, 243, 237, 0.84));
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-hair);
+  background:
+    repeating-linear-gradient(
+      180deg,
+      transparent 0px,
+      transparent 26px,
+      rgba(27, 25, 22, 0.035) 26px,
+      rgba(27, 25, 22, 0.035) 27px
+    ),
+    var(--paper-raised);
 }
 
 .chat-bubble {
@@ -511,34 +526,37 @@ export default {
   flex-direction: row-reverse;
 }
 
+/* Advisor mark: a small vermilion seal block. */
 .bubble-avatar {
-  flex: 0 0 50px;
-  min-height: 50px;
+  flex: 0 0 46px;
+  min-height: 46px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 16px;
-  background: rgba(219, 124, 93, 0.12);
-  border: 1px solid rgba(219, 124, 93, 0.16);
-  color: var(--brand-primary-strong);
-  font-size: var(--font-size-2xs);
+  border-radius: var(--radius-xs);
+  background: var(--vermilion-wash);
+  border: 1px solid rgba(200, 69, 43, 0.35);
+  color: var(--vermilion-deep);
+  font-family: var(--font-family-heading);
+  font-size: var(--font-size-xs);
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
 }
 
 .bubble-avatar[data-role='user'] {
-  background: rgba(127, 162, 166, 0.14);
-  border-color: rgba(127, 162, 166, 0.22);
-  color: var(--brand-accent-strong);
+  background: var(--pine-wash);
+  border-color: rgba(47, 93, 79, 0.32);
+  color: var(--pine-deep);
 }
 
 .bubble-content {
   min-width: 0;
   max-width: min(78%, 720px);
   padding: var(--space-4);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--line-soft);
-  background: var(--bg-elevated);
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--line-hair);
+  border-left: 2px solid var(--vermilion);
+  background: var(--paper-white);
   box-shadow: var(--shadow-soft);
   color: var(--text-default);
   line-height: var(--line-height-base);
@@ -546,15 +564,19 @@ export default {
 }
 
 .chat-bubble.user .bubble-content {
-  background: rgba(127, 162, 166, 0.08);
-  border-color: rgba(127, 162, 166, 0.18);
+  background: var(--pine-wash);
+  border-left: 1px solid var(--line-hair);
+  border-right: 2px solid var(--pine);
+  color: var(--ink-2);
 }
 
 .bubble-label {
   margin: 0 0 var(--space-2);
-  color: var(--text-subtle);
+  color: var(--ink-faint);
+  font-family: var(--font-family-mono);
   font-size: var(--font-size-2xs);
-  letter-spacing: 0.08em;
+  font-weight: 500;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
@@ -572,10 +594,10 @@ export default {
 }
 
 .typing-dots span {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: var(--brand-accent-strong);
+  background: var(--pine);
   animation: typing-bounce 1.4s ease-in-out infinite both;
 }
 
@@ -590,8 +612,8 @@ export default {
 .chat-prompts {
   padding: var(--space-4);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--line-soft);
-  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid var(--line-hair);
+  background: var(--paper-raised);
 }
 
 .prompt-tags {
@@ -602,17 +624,21 @@ export default {
 
 .prompt-tag {
   cursor: pointer;
-  background: rgba(255, 255, 255, 0.92);
-  border-color: rgba(219, 124, 93, 0.2);
-  color: var(--text-default);
-  transition: transform var(--motion-standard), background-color var(--motion-standard),
-    color var(--motion-standard);
+  background: transparent;
+  border-color: var(--line-strong);
+  color: var(--ink-2);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-2xs) !important;
+  letter-spacing: 0.04em;
+  transition: transform var(--motion-fast), background-color var(--motion-fast),
+    color var(--motion-fast), border-color var(--motion-fast);
 }
 
 .prompt-tag:hover {
   transform: translateY(-1px);
-  background: rgba(219, 124, 93, 0.12);
-  color: var(--brand-primary-strong);
+  background: var(--vermilion-wash);
+  border-color: var(--vermilion);
+  color: var(--vermilion-deep);
 }
 
 .chat-input {
@@ -667,17 +693,18 @@ export default {
 
 .bubble-content :deep(code) {
   padding: 2px 6px;
-  border-radius: 6px;
-  background: rgba(63, 51, 45, 0.08);
-  font-family: 'SFMono-Regular', 'Consolas', 'Liberation Mono', monospace;
-  font-size: 0.9em;
+  border-radius: var(--radius-xs);
+  background: rgba(27, 25, 22, 0.07);
+  font-family: var(--font-family-mono);
+  font-size: 0.88em;
 }
 
 .bubble-content :deep(pre) {
   overflow-x: auto;
   padding: var(--space-3);
-  border-radius: var(--radius-sm);
-  background: rgba(63, 51, 45, 0.05);
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--line-hair);
+  background: rgba(27, 25, 22, 0.04);
 }
 
 .bubble-content :deep(pre code) {
@@ -691,13 +718,13 @@ export default {
 
 .bubble-content :deep(blockquote) {
   padding-left: var(--space-3);
-  border-left: 3px solid rgba(219, 124, 93, 0.35);
+  border-left: 3px solid var(--vermilion);
   color: var(--text-muted);
 }
 
 .streaming-cursor {
   display: inline-block;
-  color: var(--brand-primary-strong);
+  color: var(--vermilion);
   font-weight: 700;
   animation: blink-cursor 1s infinite;
 }

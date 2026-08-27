@@ -43,7 +43,7 @@
               type="button"
               class="captcha-preview"
               :disabled="!loginForm.username.trim()"
-              @click="fetchCaptcha"
+              @click="fetchCaptcha()"
             >
               <img v-if="captchaSrc" :src="captchaSrc" alt="验证码，点击刷新">
               <span v-else>输入用户名后显示验证码</span>
@@ -97,7 +97,8 @@ export default {
     };
 
     const fetchCaptcha = (username = loginForm.value.username) => {
-      const normalizedUsername = username.trim();
+      // 兜底:调用方可能传入事件对象等非字符串值(历史上 @click 直接绑定过本函数)
+      const normalizedUsername = String(username ?? '').trim();
       if (!normalizedUsername) {
         resetCaptcha();
         return Promise.resolve();
@@ -217,19 +218,21 @@ export default {
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: 36px;
+  height: 40px;
   aspect-ratio: 4 / 1;
-  border-radius: var(--radius-sm);
-  border: 1px solid rgba(82, 57, 46, 0.2);
-  background: linear-gradient(160deg, rgba(255, 253, 249, 0.98) 0%, rgba(244, 232, 220, 0.64) 100%);
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--line-strong);
+  background: var(--paper-white);
   padding: 0.2rem 0.35rem;
   overflow: hidden;
   cursor: pointer;
-  transition: transform var(--motion-standard), box-shadow var(--motion-standard);
+  transition: transform var(--motion-fast), box-shadow var(--motion-fast),
+    border-color var(--motion-fast);
 }
 
 .captcha-preview:hover:not(:disabled) {
   transform: translateY(-1px);
+  border-color: var(--vermilion);
   box-shadow: var(--shadow-sm);
 }
 
@@ -259,7 +262,9 @@ export default {
 .captcha-tip {
   margin: var(--space-2) 0 0;
   color: var(--text-subtle);
-  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-2xs);
+  letter-spacing: 0.04em;
 }
 
 .form-action-item {

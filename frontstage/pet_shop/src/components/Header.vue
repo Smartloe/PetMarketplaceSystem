@@ -1,11 +1,22 @@
 <template>
   <header class="pet-page-header">
+    <div class="masthead-strip">
+      <div class="container masthead-inner">
+        <span class="masthead-tag">吉祥 · 宠物志</span>
+        <span class="masthead-rule" aria-hidden="true"></span>
+        <span class="masthead-note">同城看宠 · 商家资料可核对 · 售后可追踪</span>
+      </div>
+    </div>
+
     <div class="container">
       <nav class="pet-navbar">
         <div class="navbar-brand">
           <router-link to="/" class="brand-link">
             <img src="/img/logo.png" alt="吉祥宠物商城" class="brand-logo" />
-            <span class="brand-text pet-gradient-text">吉祥宠物</span>
+            <span class="brand-block">
+              <span class="brand-text">吉祥宠物</span>
+              <span class="brand-sub">LUCKY PET MARKET</span>
+            </span>
           </router-link>
         </div>
 
@@ -266,17 +277,51 @@ export default {
   position: sticky;
   top: 0;
   z-index: var(--z-sticky);
-  border-bottom: 1px solid var(--line-soft);
-  background: rgba(255, 253, 249, 0.94);
-  background: color-mix(in srgb, var(--bg-elevated) 90%, white 10%);
-  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line-ink);
+  background: rgba(246, 241, 231, 0.92);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+}
+
+/* Thin editorial strip above the masthead. */
+.masthead-strip {
+  border-bottom: 1px solid var(--line-hair);
+  background: var(--ink);
+  color: rgba(253, 249, 242, 0.78);
+}
+
+.masthead-inner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 30px;
+}
+
+.masthead-tag,
+.masthead-note {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-2xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.masthead-tag {
+  color: #e8977f;
+  font-weight: 500;
+}
+
+.masthead-rule {
+  flex: 1;
+  height: 1px;
+  background: rgba(253, 249, 242, 0.2);
 }
 
 .pet-navbar {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  min-height: 84px;
+  min-height: 78px;
 }
 
 .navbar-brand {
@@ -290,45 +335,81 @@ export default {
 }
 
 .brand-logo {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   object-fit: contain;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--line-hair);
+  background: var(--paper-white);
+  padding: 2px;
+}
+
+.brand-block {
+  display: grid;
+  gap: 1px;
 }
 
 .brand-text {
-  font-size: var(--font-size-lg);
-  font-weight: 700;
+  font-family: var(--font-family-heading);
+  font-size: 1.3rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  line-height: 1.1;
+}
+
+.brand-sub {
+  font-family: var(--font-family-mono);
+  font-size: 0.58rem;
+  font-weight: 500;
+  letter-spacing: 0.24em;
+  color: var(--vermilion);
+  text-transform: uppercase;
 }
 
 .navbar-nav {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-1);
   margin-left: auto;
-  margin-right: var(--space-2);
+  margin-right: var(--space-3);
 }
 
+/* Nav items are underlined on hover the way a running head is, not pilled. */
 .nav-link {
-  padding: 0.6rem 0.9rem;
-  border-radius: var(--radius-pill);
-  color: var(--text-default);
+  position: relative;
+  padding: 0.55rem 0.75rem;
+  color: var(--ink-2);
   font-size: var(--font-size-sm);
   font-weight: 600;
-  transition: color var(--motion-fast), background-color var(--motion-fast),
-    box-shadow var(--motion-fast), transform var(--motion-fast);
+  transition: color var(--motion-fast);
+}
+
+.nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: 0.22rem;
+  height: 2px;
+  background: var(--vermilion);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--motion-standard);
 }
 
 .nav-link:hover {
-  background: rgba(219, 124, 93, 0.12);
-  color: var(--brand-primary-strong);
-  transform: translateY(-1px);
+  color: var(--vermilion-deep);
+}
+
+.nav-link:hover::after,
+.nav-link.active::after {
+  transform: scaleX(1);
 }
 
 .nav-link.active {
-  background: rgba(219, 124, 93, 0.18);
-  color: var(--brand-primary-strong);
-  box-shadow: inset 0 0 0 1px rgba(199, 101, 70, 0.24);
+  color: var(--ink);
+  font-weight: 700;
 }
 
 .navbar-account {
@@ -340,35 +421,39 @@ export default {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.78);
-  padding: 0.58rem 0.9rem;
-  color: var(--text-default);
-  font-size: var(--font-size-sm);
+  border: 1px solid var(--line-ink);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  padding: 0.5rem 0.85rem;
+  color: var(--ink);
+  font-size: var(--font-size-xs);
   font-weight: 600;
+  letter-spacing: 0.02em;
   cursor: pointer;
-  transition: border-color var(--motion-fast), background-color var(--motion-fast),
-    box-shadow var(--motion-fast);
+  transition: background-color var(--motion-fast), color var(--motion-fast),
+    border-color var(--motion-fast), box-shadow var(--motion-fast);
 }
 
 .account-trigger:hover {
-  border-color: rgba(127, 162, 166, 0.5);
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 10px 20px rgba(83, 56, 40, 0.1);
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper-white);
+}
+
+.account-trigger:hover .account-arrow {
+  color: var(--paper-white);
 }
 
 .account-trigger.active {
-  border-color: rgba(127, 162, 166, 0.5);
-  background: rgba(127, 162, 166, 0.18);
-  color: var(--brand-accent-strong);
-  box-shadow: inset 0 0 0 1px rgba(99, 141, 145, 0.2);
+  border-color: var(--pine);
+  background: var(--pine-wash);
+  color: var(--pine-deep);
 }
 
 .account-arrow {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  transition: transform var(--motion-fast);
+  font-size: 0.62rem;
+  color: var(--ink-faint);
+  transition: transform var(--motion-fast), color var(--motion-fast);
 }
 
 .account-arrow.open {
@@ -377,16 +462,29 @@ export default {
 
 .account-menu {
   position: absolute;
-  top: calc(100% + 0.55rem);
+  top: calc(100% + 0.6rem);
   right: 0;
-  min-width: 210px;
-  border: 1px solid var(--line-soft);
+  min-width: 218px;
+  border: 1px solid var(--line-ink);
   border-radius: var(--radius-sm);
-  background: rgba(255, 253, 249, 0.98);
-  box-shadow: var(--shadow-medium);
+  background: var(--paper-white);
+  box-shadow: var(--shadow-strong);
   padding: var(--space-3);
   display: grid;
   gap: var(--space-3);
+  animation: menu-drop var(--motion-fast) both;
+}
+
+@keyframes menu-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .account-group {
@@ -395,39 +493,48 @@ export default {
 }
 
 .group-title {
-  margin: 0 0 0.2rem;
-  color: var(--text-subtle);
+  margin: 0 0 0.25rem;
+  color: var(--ink-faint);
+  font-family: var(--font-family-mono);
   font-size: var(--font-size-2xs);
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
 }
 
 .account-divider {
   height: 1px;
-  background: var(--line-soft);
+  background: var(--line-hair);
 }
 
 .account-menu-item {
   width: 100%;
   display: block;
-  padding: 0.5rem 0.6rem;
-  border-radius: 0.55rem;
+  padding: 0.48rem 0.6rem;
+  border-radius: var(--radius-xs);
+  border-left: 2px solid transparent;
   font-size: var(--font-size-sm);
   color: var(--text-default);
   text-align: left;
   background: transparent;
-  border: none;
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
   cursor: pointer;
-  transition: background-color var(--motion-fast), color var(--motion-fast);
+  transition: background-color var(--motion-fast), color var(--motion-fast),
+    border-color var(--motion-fast), padding-left var(--motion-fast);
 }
 
 .account-menu-item:hover {
-  background: rgba(219, 124, 93, 0.12);
-  color: var(--brand-primary-strong);
+  background: var(--vermilion-wash);
+  border-left-color: var(--vermilion);
+  color: var(--vermilion-deep);
+  padding-left: 0.75rem;
 }
 
 .account-menu-item.active {
-  background: rgba(127, 162, 166, 0.16);
-  color: var(--brand-accent-strong);
+  background: var(--pine-wash);
+  border-left-color: var(--pine);
+  color: var(--pine-deep);
 }
 
 .account-logout {
@@ -447,38 +554,43 @@ export default {
   gap: 4px;
   width: 38px;
   height: 38px;
-  border-radius: 10px;
-  border: 1px solid var(--line-soft);
-  background: rgba(255, 255, 255, 0.84);
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--line-ink);
+  background: transparent;
   padding: 0;
   cursor: pointer;
+  transition: background-color var(--motion-fast);
 }
 
 .mobile-menu-btn span {
-  width: 18px;
-  height: 2px;
-  border-radius: 999px;
-  background: var(--text-default);
+  width: 17px;
+  height: 1.5px;
+  background: var(--ink);
   margin: 0 auto;
   transition: background-color var(--motion-fast);
 }
 
+.mobile-menu-btn:hover {
+  background: var(--ink);
+}
+
 .mobile-menu-btn:hover span {
-  background: var(--brand-primary-strong);
+  background: var(--paper-white);
 }
 
 .mobile-menu {
   position: absolute;
-  top: calc(100% + 0.55rem);
+  top: calc(100% + 0.6rem);
   right: 0;
   width: min(84vw, 320px);
-  border: 1px solid var(--line-soft);
+  border: 1px solid var(--line-ink);
   border-radius: var(--radius-sm);
-  background: rgba(255, 253, 249, 0.98);
-  box-shadow: var(--shadow-medium);
+  background: var(--paper-white);
+  box-shadow: var(--shadow-strong);
   padding: var(--space-4);
   display: grid;
   gap: var(--space-4);
+  animation: menu-drop var(--motion-fast) both;
 }
 
 .mobile-menu-section {
@@ -488,28 +600,34 @@ export default {
 
 .mobile-section-title {
   margin: 0 0 0.25rem;
-  color: var(--text-subtle);
+  color: var(--ink-faint);
+  font-family: var(--font-family-mono);
   font-size: var(--font-size-2xs);
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
 }
 
 .mobile-nav-item {
   width: 100%;
   display: block;
-  padding: 0.58rem 0.62rem;
-  border-radius: 0.6rem;
+  padding: 0.56rem 0.62rem;
+  border-radius: var(--radius-xs);
   border: none;
+  border-left: 2px solid transparent;
   background: transparent;
   text-align: left;
   color: var(--text-default);
   font-size: var(--font-size-sm);
   cursor: pointer;
+  transition: background-color var(--motion-fast), color var(--motion-fast),
+    border-color var(--motion-fast);
 }
 
 .mobile-nav-item.active,
 .mobile-nav-item:hover {
-  background: rgba(219, 124, 93, 0.14);
-  color: var(--brand-primary-strong);
+  background: var(--vermilion-wash);
+  border-left-color: var(--vermilion);
+  color: var(--vermilion-deep);
 }
 
 .mobile-logout {
@@ -517,14 +635,18 @@ export default {
 }
 
 @media (max-width: 1100px) {
-  .brand-text {
+  .brand-sub {
+    display: none;
+  }
+
+  .masthead-note {
     display: none;
   }
 }
 
 @media (max-width: 900px) {
   .pet-navbar {
-    min-height: 74px;
+    min-height: 70px;
   }
 
   .navbar-nav {
@@ -542,16 +664,20 @@ export default {
   }
 
   .brand-logo {
-    width: 42px;
-    height: 42px;
+    width: 38px;
+    height: 38px;
+  }
+
+  .brand-text {
+    font-size: 1.1rem;
   }
 
   .account-trigger {
-    padding-inline: 0.72rem;
+    padding-inline: 0.68rem;
   }
 
   .account-label {
-    font-size: var(--font-size-xs);
+    font-size: var(--font-size-2xs);
   }
 }
 </style>

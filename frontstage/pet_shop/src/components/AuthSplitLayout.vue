@@ -2,6 +2,8 @@
   <section class="auth-layout shell-surface">
     <aside class="auth-visual" :style="visualBackgroundStyle">
       <div class="auth-visual-overlay"></div>
+      <span class="seal auth-seal" aria-hidden="true">吉祥<br>宠物</span>
+
       <div class="auth-visual-content">
         <p class="auth-visual-kicker">{{ visualKicker }}</p>
         <h1 class="auth-visual-title">{{ visualTitle }}</h1>
@@ -98,9 +100,11 @@ export default {
   grid-template-columns: minmax(0, 1.06fr) minmax(0, 0.94fr);
   min-height: clamp(580px, 72vh, 700px);
   overflow: hidden;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
+  border-color: var(--line-ink);
 }
 
+/* Left panel: the cover plate. Deep ink duotone over the photo. */
 .auth-visual {
   position: relative;
   display: flex;
@@ -116,75 +120,96 @@ export default {
   position: absolute;
   inset: 0;
   background: linear-gradient(
-    136deg,
-    rgba(56, 38, 29, 0.74) 5%,
-    rgba(79, 47, 35, 0.48) 48%,
-    rgba(108, 66, 51, 0.38) 100%
+    150deg,
+    rgba(20, 18, 16, 0.9) 0%,
+    rgba(34, 46, 41, 0.7) 45%,
+    rgba(120, 44, 28, 0.52) 100%
   );
   z-index: -2;
 }
 
+/* Fine ruled scan lines, so the plate reads as printed rather than photographic. */
 .auth-visual-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 249, 240, 0.07) 0%,
-    rgba(33, 22, 18, 0.42) 100%
-  );
   z-index: -1;
+  background-image: repeating-linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.13) 0px,
+      rgba(0, 0, 0, 0.13) 1px,
+      transparent 1px,
+      transparent 4px
+    ),
+    linear-gradient(180deg, rgba(0, 0, 0, 0) 40%, rgba(14, 12, 10, 0.55) 100%);
+}
+
+.auth-seal {
+  position: absolute;
+  top: clamp(1.1rem, 2.4vw, 1.9rem);
+  right: clamp(1.1rem, 2.4vw, 1.9rem);
+  width: 3.4rem;
+  height: 3.4rem;
+  font-size: 0.85rem;
+  border-color: rgba(255, 236, 228, 0.72);
+  color: rgba(255, 244, 238, 0.95);
+  background: rgba(200, 69, 43, 0.4);
+  backdrop-filter: blur(3px);
 }
 
 .auth-visual-content {
   max-width: min(34ch, 100%);
   display: grid;
   gap: var(--space-4);
-  color: rgba(255, 245, 237, 0.95);
+  color: rgba(253, 249, 242, 0.95);
 }
 
 .auth-visual-kicker {
-  display: inline-flex;
-  align-items: center;
-  width: fit-content;
   margin: 0;
-  padding: 0.36rem 0.78rem;
-  border-radius: var(--radius-pill);
-  border: 1px solid rgba(255, 240, 229, 0.48);
-  background: rgba(255, 247, 239, 0.2);
-  font-size: var(--font-size-xs);
-  letter-spacing: 0.08em;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-2xs);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: #f0a68f;
 }
 
 .auth-visual-title {
   margin: 0;
-  color: rgba(255, 248, 242, 0.98);
+  color: var(--paper-white);
   font-family: var(--font-family-heading);
-  font-size: clamp(1.8rem, 2.5vw, 2.35rem);
-  line-height: 1.28;
+  font-size: clamp(1.85rem, 2.7vw, 2.5rem);
+  font-weight: 900;
+  line-height: 1.22;
+  letter-spacing: -0.01em;
 }
 
 .auth-visual-description {
   margin: 0;
-  color: rgba(255, 241, 232, 0.88);
+  color: rgba(253, 249, 242, 0.76);
+  font-size: var(--font-size-sm);
   line-height: var(--line-height-relaxed);
 }
 
+/* Highlights become a hairline-ruled list, matching the storefront index style. */
 .auth-visual-highlights {
   margin: 0;
   padding: 0;
   list-style: none;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
+  display: grid;
+  border-top: 1px solid rgba(253, 249, 242, 0.22);
 }
 
 .auth-visual-highlights li {
-  padding: 0.34rem 0.74rem;
-  border-radius: var(--radius-pill);
-  border: 1px solid rgba(255, 232, 216, 0.42);
-  background: rgba(255, 241, 232, 0.16);
-  color: rgba(255, 246, 237, 0.94);
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(253, 249, 242, 0.22);
+  color: rgba(253, 249, 242, 0.9);
   font-size: var(--font-size-xs);
+}
+
+.auth-visual-highlights li::before {
+  content: "—";
+  margin-right: 0.55rem;
+  color: #f0a68f;
 }
 
 .auth-panel {
@@ -193,7 +218,7 @@ export default {
   justify-content: space-between;
   gap: var(--space-6);
   padding: clamp(var(--space-5), 2.6vw, var(--space-8));
-  background: rgba(255, 253, 248, 0.94);
+  background: var(--paper-white);
 }
 
 .auth-header {
@@ -208,16 +233,22 @@ export default {
 
 .auth-kicker {
   margin: 0;
-  font-size: var(--font-size-sm);
-  color: var(--brand-accent-strong);
-  letter-spacing: 0.03em;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-2xs);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--pine);
 }
 
 .auth-title {
   margin: 0;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--line-ink);
   font-family: var(--font-family-heading);
-  font-size: clamp(1.38rem, 2vw, 1.95rem);
-  line-height: 1.34;
+  font-size: clamp(1.45rem, 2.1vw, 2rem);
+  font-weight: 900;
+  line-height: 1.28;
 }
 
 .auth-description {
@@ -238,28 +269,33 @@ export default {
 
 .auth-body :deep(.el-form-item__label) {
   padding-bottom: var(--space-2);
-  color: var(--text-default);
-  font-weight: 600;
-  letter-spacing: 0.01em;
+  color: var(--ink-soft);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-2xs);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
 }
 
 .auth-body :deep(.el-input__wrapper) {
-  min-height: 44px;
+  min-height: 46px;
 }
 
 .auth-body :deep(.el-form-item__error) {
   position: static;
   margin-top: 0.38rem;
-  padding: 0.2rem 0.55rem;
-  border-radius: 8px;
-  background: rgba(196, 90, 88, 0.08);
-  color: rgba(132, 68, 66, 0.96);
+  padding: 0.22rem 0.55rem;
+  border-radius: var(--radius-xs);
+  border-left: 2px solid var(--state-danger);
+  background: var(--vermilion-wash);
+  color: var(--vermilion-deep);
+  font-size: var(--font-size-xs);
   line-height: 1.45;
 }
 
 .auth-body :deep(.el-form-item.is-error .el-input__wrapper) {
-  box-shadow: 0 0 0 1px rgba(196, 90, 88, 0.45) inset,
-    0 0 0 3px rgba(196, 90, 88, 0.12);
+  box-shadow: 0 0 0 1px var(--state-danger) inset,
+    0 0 0 3px rgba(178, 58, 47, 0.12);
 }
 
 .auth-footer {
@@ -268,7 +304,7 @@ export default {
   align-items: center;
   gap: var(--space-3);
   padding-top: var(--space-4);
-  border-top: 1px solid var(--line-soft);
+  border-top: 1px solid var(--line-hair);
   font-size: var(--font-size-sm);
 }
 

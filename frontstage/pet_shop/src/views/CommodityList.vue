@@ -518,25 +518,29 @@ export default {
 }
 
 .intro-kicker {
-  display: inline-flex;
-  align-items: center;
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-pill);
-  background: rgba(127, 162, 166, 0.14);
-  color: var(--brand-accent-strong);
-  font-size: var(--font-size-xs);
-  letter-spacing: 0.08em;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-2xs);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--pine);
 }
 
 .intro-title {
-  margin-top: var(--space-4);
-  max-width: 18em;
+  margin-top: var(--space-3);
+  max-width: 20em;
+  font-size: clamp(1.6rem, 2.6vw, 2.2rem);
+  font-weight: 900;
+  line-height: 1.24;
 }
 
 .intro-description {
   margin-top: var(--space-4);
-  max-width: 44ch;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line-hair);
+  max-width: 46ch;
   color: var(--text-muted);
+  font-size: var(--font-size-sm);
   line-height: var(--line-height-relaxed);
 }
 
@@ -547,28 +551,33 @@ export default {
   gap: var(--space-2);
 }
 
+/* Meta reads as filing tags: mono, square, hairline. */
 .meta-chip {
   display: inline-flex;
   align-items: center;
-  padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius-pill);
-  font-size: var(--font-size-sm);
-  color: var(--text-default);
-  background: rgba(255, 255, 255, 0.72);
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-xs);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-2xs);
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
+  background: transparent;
 }
 
 .intro-feedback {
   display: flex;
   align-items: center;
   padding: var(--space-5);
-  border-radius: var(--radius-md);
-  border: 1px dashed rgba(127, 162, 166, 0.38);
-  background: rgba(127, 162, 166, 0.1);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(47, 93, 79, 0.24);
+  border-left: 3px solid var(--pine);
+  background: var(--pine-wash);
 }
 
 .feedback-text {
   color: var(--text-default);
+  font-size: var(--font-size-sm);
   line-height: var(--line-height-relaxed);
 }
 
@@ -590,38 +599,43 @@ export default {
 
 .panel-header h2 {
   font-size: var(--font-size-lg);
+  font-weight: 700;
 }
 
 .panel-header p {
   margin-top: var(--space-2);
   color: var(--text-muted);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
+  line-height: 1.6;
 }
 
 .category-reset {
-  border: 1px solid var(--line-soft);
-  background: rgba(255, 255, 255, 0.78);
-  color: var(--text-default);
-  border-radius: var(--radius-pill);
+  border: 1px solid var(--line-ink);
+  background: transparent;
+  color: var(--ink);
+  border-radius: var(--radius-sm);
   padding: 10px var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
   cursor: pointer;
-  transition: border-color var(--motion-standard), color var(--motion-standard), transform var(--motion-standard);
+  transition: background-color var(--motion-fast), color var(--motion-fast),
+    border-color var(--motion-fast);
 }
 
 .category-reset:hover {
-  border-color: rgba(219, 124, 93, 0.5);
-  color: var(--brand-primary-strong);
-  transform: translateY(-1px);
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper-white);
 }
 
 .category-reset.active {
-  border-color: rgba(219, 124, 93, 0.4);
-  color: var(--brand-primary-strong);
-  background: rgba(219, 124, 93, 0.12);
+  border-color: var(--vermilion);
+  color: var(--vermilion-deep);
+  background: var(--vermilion-wash);
 }
 
 .category-collapse {
-  border-top: 1px solid var(--line-soft);
+  border-top: 1px solid var(--line-ink);
   padding-top: var(--space-3);
 }
 
@@ -644,39 +658,50 @@ export default {
 }
 
 .category-title strong {
+  font-family: var(--font-family-heading);
   font-size: var(--font-size-sm);
+  font-weight: 700;
   color: var(--text-strong);
 }
 
 .category-title span {
-  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-2xs);
+  letter-spacing: 0.04em;
   color: var(--text-subtle);
 }
 
+/* Subcategories are a ruled index, marked on hover with a seal-coloured edge. */
 .subcategory-item {
   width: 100%;
-  border: 1px solid transparent;
+  border: none;
+  border-left: 2px solid transparent;
+  border-bottom: 1px solid var(--line-hair);
   background: transparent;
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: var(--space-2) var(--space-3);
-  margin-bottom: var(--space-2);
   cursor: pointer;
   color: var(--text-default);
-  transition: border-color var(--motion-standard), background-color var(--motion-standard), transform var(--motion-standard);
+  font-size: var(--font-size-sm);
+  text-align: left;
+  transition: border-color var(--motion-fast), background-color var(--motion-fast),
+    padding-left var(--motion-fast), color var(--motion-fast);
 }
 
 .subcategory-item:hover {
-  border-color: rgba(127, 162, 166, 0.35);
-  background: rgba(127, 162, 166, 0.08);
-  transform: translateX(2px);
+  border-left-color: var(--vermilion);
+  background: var(--vermilion-wash);
+  color: var(--vermilion-deep);
+  padding-left: calc(var(--space-3) + 4px);
 }
 
 .subcategory-item em {
   font-style: normal;
-  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-2xs);
   color: var(--text-subtle);
 }
 
@@ -705,14 +730,16 @@ export default {
 }
 
 .summary-title {
-  font-weight: 600;
+  font-family: var(--font-family-heading);
+  font-size: var(--font-size-md);
+  font-weight: 700;
   color: var(--text-strong);
 }
 
 .summary-description {
   color: var(--text-muted);
   line-height: var(--line-height-base);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
 }
 
 .summary-inline-status {
@@ -739,9 +766,11 @@ export default {
 .unlocked-feedback {
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(95, 154, 122, 0.35);
-  background: rgba(95, 154, 122, 0.12);
-  color: #3f7557;
+  border: 1px solid rgba(61, 122, 92, 0.3);
+  border-left: 3px solid var(--state-success);
+  background: var(--pine-wash);
+  color: var(--pine-deep);
+  font-size: var(--font-size-sm);
   font-weight: 500;
 }
 
@@ -755,37 +784,59 @@ export default {
   gap: var(--space-4);
 }
 
+/* Product card: a specimen plate. Hairline frame, ruled caption, mono price. */
 .commodity-card {
-  border: 1px solid var(--line-soft);
+  position: relative;
+  border: 1px solid var(--line-hair);
   overflow: hidden;
   cursor: pointer;
-  transition: transform var(--motion-standard), box-shadow var(--motion-standard), border-color var(--motion-standard);
+  transition: transform var(--motion-standard), box-shadow var(--motion-standard),
+    border-color var(--motion-standard);
+}
+
+.commodity-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-top: 2px solid var(--vermilion);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--motion-standard);
 }
 
 .commodity-card:hover,
 .commodity-card:focus-visible {
-  transform: translateY(-4px);
+  transform: translateY(-3px);
   box-shadow: var(--shadow-medium);
-  border-color: rgba(219, 124, 93, 0.35);
+  border-color: var(--line-strong);
   outline: none;
+}
+
+.commodity-card:hover::after,
+.commodity-card:focus-visible::after {
+  transform: scaleX(1);
 }
 
 .card-image-wrap {
   position: relative;
   height: 220px;
   overflow: hidden;
+  border-bottom: 1px solid var(--line-hair);
 }
 
 .commodity-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform var(--motion-slow);
+  filter: saturate(0.92);
+  transition: transform var(--motion-slow), filter var(--motion-slow);
 }
 
 .commodity-card:hover .commodity-image,
 .commodity-card:focus-visible .commodity-image {
-  transform: scale(1.04);
+  transform: scale(1.05);
+  filter: saturate(1.04);
 }
 
 .card-content {
@@ -797,67 +848,84 @@ export default {
 
 .card-title {
   min-height: calc(var(--font-size-md) * 2.6);
+  font-family: var(--font-family-heading);
   font-weight: 600;
   color: var(--text-strong);
-  line-height: 1.35;
+  line-height: 1.4;
 }
 
 .card-price {
-  font-size: var(--font-size-lg);
-  font-weight: 700;
-  color: var(--brand-primary-strong);
+  font-family: var(--font-family-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.2rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--vermilion-deep);
 }
 
 .card-hints {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line-hair);
 }
 
 .card-hints span {
   display: inline-flex;
   align-items: center;
-  padding: 6px 10px;
-  border-radius: var(--radius-pill);
-  background: rgba(63, 51, 45, 0.08);
+  padding: 0.2rem 0.45rem;
+  border: 1px solid var(--line-hair);
+  border-radius: var(--radius-xs);
+  background: transparent;
   color: var(--text-muted);
-  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-2xs);
+  letter-spacing: 0.04em;
 }
 
 .unlock-cue {
   margin-top: var(--space-2);
-  padding: var(--space-5);
-  border: 1px dashed rgba(219, 124, 93, 0.4);
-  background: rgba(244, 209, 195, 0.34);
+  padding: var(--space-6);
+  border: 1px solid var(--line-ink);
+  border-left: 3px solid var(--vermilion);
+  background: var(--vermilion-wash);
 }
 
 .unlock-cue h3 {
   font-size: var(--font-size-lg);
+  font-weight: 700;
 }
 
 .unlock-cue p {
   margin-top: var(--space-2);
+  max-width: 60ch;
   color: var(--text-default);
+  font-size: var(--font-size-sm);
   line-height: var(--line-height-relaxed);
 }
 
 .unlock-link {
-  margin-top: var(--space-3);
+  margin-top: var(--space-4);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 var(--space-5);
-  border-radius: var(--radius-pill);
-  background: var(--brand-primary);
+  border-radius: var(--radius-sm);
+  background: var(--vermilion);
   color: var(--text-on-brand);
   font-weight: 600;
-  transition: transform var(--motion-standard), background-color var(--motion-standard);
+  font-size: var(--font-size-sm);
+  box-shadow: 0 2px 0 var(--vermilion-deep);
+  transition: transform var(--motion-fast), background-color var(--motion-fast),
+    box-shadow var(--motion-fast);
 }
 
 .unlock-link:hover {
-  transform: translateY(-1px);
-  background: var(--brand-primary-strong);
+  transform: translateY(-2px);
+  background: var(--vermilion-deep);
+  box-shadow: 0 4px 0 #8a2a18, 0 12px 24px rgba(163, 52, 31, 0.18);
 }
 
 .commodity-pagination {

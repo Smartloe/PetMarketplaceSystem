@@ -1,115 +1,167 @@
 <template>
   <div class="home-page">
-    <section class="hero shell-surface shell-section">
+    <!-- ============ Hero: asymmetric masthead ============ -->
+    <section class="hero">
       <div class="hero-copy">
-        <p class="hero-kicker">吉祥宠物商城</p>
-        <h1 class="hero-title">帮你安心找到适合新手家庭的宠物与用品</h1>
-        <p class="hero-description">
+        <p class="hero-kicker reveal reveal-1">
+          <span class="kicker-dot" aria-hidden="true"></span>
+          创刊号 · 新手养宠导购
+        </p>
+
+        <h1 class="hero-title reveal reveal-2">
+          帮你安心找到<br>
+          适合<em>新手家庭</em>的<br>
+          宠物与用品
+        </h1>
+
+        <div class="hero-rule reveal-rule" aria-hidden="true"></div>
+
+        <p class="hero-description reveal reveal-3">
           从在售宠物到日常用品，我们整理了同城看宠、家庭经验和沟通准备的导购建议，帮助你先建立判断框架，再进入完整目录慢慢挑选。
         </p>
-        <div class="hero-actions">
+
+        <div class="hero-actions reveal reveal-4">
           <router-link to="/commodity" class="hero-action hero-action-primary">
             浏览在售商品
+            <span class="action-arrow" aria-hidden="true">→</span>
           </router-link>
           <button type="button" class="hero-action hero-action-secondary" @click="scrollToTrustGuide">
             查看同城看宠指引
           </button>
         </div>
-        <ul class="hero-points">
-          <li>适合新手家庭</li>
-          <li>支持同城看宠</li>
-          <li>可先核对商家资料更新时间</li>
+
+        <ul class="hero-points reveal reveal-5">
+          <li v-for="(point, i) in heroPoints" :key="point">
+            <span class="point-index">{{ String(i + 1).padStart(2, '0') }}</span>
+            {{ point }}
+          </li>
         </ul>
       </div>
-      <div class="hero-media">
-        <img src="/img/index/top.gif" alt="吉祥宠物商城首页视觉" class="hero-image">
+
+      <div class="hero-media reveal reveal-3">
+        <div class="hero-frame">
+          <img src="/img/index/top.gif" alt="吉祥宠物商城首页视觉" class="hero-image">
+          <span class="hero-frame-tag">本期封面</span>
+        </div>
+
+        <div class="seal reveal-stamp hero-seal" aria-hidden="true">吉祥<br>宠物</div>
+
         <div class="hero-media-card">
-          <img src="/img/logo.png" alt="吉祥宠物商城" class="hero-logo">
-          <p>本周导购重点：先看同城可见，再按家庭经验筛选。</p>
+          <img src="/img/logo.png" alt="" class="hero-logo">
+          <p><strong>本周导购重点</strong>先看同城可见，再按家庭经验筛选。</p>
         </div>
       </div>
     </section>
 
+    <!-- ============ 01 快速浏览 ============ -->
     <section class="storefront-section">
-      <div class="section-heading">
-        <h2>快速浏览</h2>
-        <p>按照家庭阶段和看宠方式开始，先缩小范围再进入完整目录。</p>
-      </div>
+      <header class="field-heading">
+        <span class="field-index">01 / 快速浏览</span>
+        <div class="heading-body">
+          <h2>按家庭阶段开始</h2>
+          <p>先按照家庭阶段和看宠方式缩小范围，再进入完整目录。</p>
+        </div>
+      </header>
+
       <div class="shortcut-grid">
         <article
-          v-for="shortcut in quickShortcuts"
+          v-for="(shortcut, i) in quickShortcuts"
           :key="shortcut.title"
-          class="shortcut-card shell-surface"
+          class="shortcut-card"
         >
-          <img
-            :src="shortcut.image"
-            :alt="shortcut.title"
-            class="shortcut-image"
-            loading="lazy"
-            decoding="async"
-          >
+          <div class="shortcut-figure">
+            <img
+              :src="shortcut.image"
+              :alt="shortcut.title"
+              class="shortcut-image"
+              loading="lazy"
+              decoding="async"
+            >
+            <span class="shortcut-index">{{ String(i + 1).padStart(2, '0') }}</span>
+          </div>
           <div class="shortcut-content">
             <h3>{{ shortcut.title }}</h3>
             <p>{{ shortcut.description }}</p>
             <router-link to="/commodity" class="shortcut-link">
               {{ shortcut.actionText }}
+              <span class="action-arrow" aria-hidden="true">→</span>
             </router-link>
           </div>
         </article>
       </div>
     </section>
 
-    <section class="storefront-section shell-surface shell-section">
-      <div class="section-heading">
-        <h2>精选预览</h2>
-        <p>以下是我们整理的常见入门方向，进入目录可查看更多在售信息。</p>
-      </div>
+    <!-- ============ 02 精选预览 ============ -->
+    <section class="storefront-section featured-section shell-surface shell-section">
+      <header class="field-heading">
+        <span class="field-index">02 / 精选预览</span>
+        <div class="heading-body">
+          <h2>常见入门方向</h2>
+          <p>以下是我们整理的常见入门方向，进入目录可查看更多在售信息。</p>
+        </div>
+      </header>
+
       <div class="featured-grid">
         <article
-          v-for="product in featuredProducts"
+          v-for="(product, i) in featuredProducts"
           :key="product.name"
           class="featured-card"
         >
-          <img
-            :src="product.image"
-            :alt="product.name"
-            class="featured-image"
-            loading="lazy"
-            decoding="async"
-          >
+          <div class="featured-figure">
+            <img
+              :src="product.image"
+              :alt="product.name"
+              class="featured-image"
+              loading="lazy"
+              decoding="async"
+            >
+          </div>
           <div class="featured-content">
+            <span class="featured-tag">方向 {{ String(i + 1).padStart(2, '0') }}</span>
             <h3>{{ product.name }}</h3>
             <p>{{ product.copy }}</p>
             <p class="featured-meta">{{ product.meta }}</p>
             <router-link to="/commodity" class="featured-link">
               查看同类在售
+              <span class="action-arrow" aria-hidden="true">→</span>
             </router-link>
           </div>
         </article>
       </div>
     </section>
 
-    <section id="trust-guide" class="trust-strip shell-surface shell-section">
-      <div class="section-heading">
-        <h2>购买与看宠指引</h2>
-        <p>不追求花哨口号，先把决策关键信息说明白。</p>
-      </div>
+    <!-- ============ 03 购买与看宠指引 ============ -->
+    <section id="trust-guide" class="storefront-section trust-strip">
+      <header class="field-heading trust-heading">
+        <span class="field-index">03 / 购买指引</span>
+        <div class="heading-body">
+          <h2>购买与看宠指引</h2>
+          <p>不追求花哨口号，先把决策关键信息说明白。</p>
+        </div>
+      </header>
+
       <div class="trust-grid">
-        <article v-for="item in trustGuides" :key="item.title" class="trust-item">
+        <article v-for="(item, i) in trustGuides" :key="item.title" class="trust-item">
+          <span class="trust-numeral" aria-hidden="true">{{ numerals[i] }}</span>
           <h3>{{ item.title }}</h3>
           <p>{{ item.description }}</p>
         </article>
       </div>
     </section>
 
-    <section class="ai-entry shell-surface shell-section">
+    <!-- ============ Colophon / AI entry ============ -->
+    <section class="ai-entry">
       <div class="ai-copy">
+        <span class="text-label">附录 · AI 宠物顾问</span>
         <h2>还想了解喂养细节？</h2>
         <p>
           AI 宠物顾问可作为补充咨询，帮助你准备喂养清单和到家前注意事项。建议先完成商品筛选，再按问题咨询。
         </p>
       </div>
-      <router-link to="/ai-pet-expert" class="ai-link">进入 AI 宠物顾问</router-link>
+      <router-link to="/ai-pet-expert" class="ai-link">
+        进入 AI 宠物顾问
+        <span class="action-arrow" aria-hidden="true">→</span>
+      </router-link>
     </section>
   </div>
 </template>
@@ -119,6 +171,8 @@ export default {
   name: 'Home',
   data() {
     return {
+      numerals: ['壹', '貳', '參'],
+      heroPoints: ['适合新手家庭', '支持同城看宠', '商家资料可核对更新时间'],
       quickShortcuts: [
         {
           title: '新手家庭专区',
@@ -196,42 +250,88 @@ export default {
 .home-page {
   display: flex;
   flex-direction: column;
-  gap: var(--space-7);
-  padding-block: var(--space-3) var(--space-8);
+  gap: clamp(var(--space-8), 5vw, var(--space-10));
+  padding-block: var(--space-5) var(--space-9);
 }
+
+/* ==================== Hero ==================== */
 
 .hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
-  gap: clamp(var(--space-5), 2.8vw, var(--space-8));
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+  gap: clamp(var(--space-6), 4vw, var(--space-10));
   align-items: center;
 }
 
 .hero-kicker {
   display: inline-flex;
   align-items: center;
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-pill);
-  background: rgba(219, 124, 93, 0.12);
-  color: var(--brand-primary-strong);
-  font-size: var(--font-size-xs);
-  letter-spacing: 0.08em;
+  gap: 0.6rem;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-2xs);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink-soft);
 }
 
+.kicker-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--vermilion);
+  animation: kicker-pulse 2.6s ease-in-out infinite;
+}
+
+@keyframes kicker-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.82); }
+}
+
+/* The one oversized moment on the page. */
 .hero-title {
   margin-top: var(--space-4);
-  max-width: 16em;
+  font-family: var(--font-family-heading);
+  font-size: clamp(2.1rem, 4.6vw, 3.45rem);
+  font-weight: 900;
+  line-height: 1.16;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+/* Ink-wash highlight painted behind the emphasised phrase. Drawn as a
+   background on the element itself so it never lands behind the page ground. */
+.hero-title em {
+  font-style: normal;
+  color: var(--vermilion-deep);
+  background-image: linear-gradient(
+    180deg,
+    rgba(200, 69, 43, 0) 0%,
+    rgba(200, 69, 43, 0.16) 100%
+  );
+  background-repeat: no-repeat;
+  background-size: 100% 0.3em;
+  background-position: 0 88%;
+  padding-inline: 0.04em;
+}
+
+.hero-rule {
+  height: 1px;
+  margin-top: var(--space-5);
+  background: var(--line-ink);
+  animation-delay: 280ms;
 }
 
 .hero-description {
-  margin-top: var(--space-4);
-  max-width: 42ch;
+  margin-top: var(--space-5);
+  max-width: 40ch;
   color: var(--text-muted);
+  font-size: var(--font-size-lg);
   line-height: var(--line-height-relaxed);
 }
 
 .hero-actions {
-  margin-top: var(--space-5);
+  margin-top: var(--space-6);
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
@@ -240,140 +340,264 @@ export default {
 .hero-action {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  padding: 0 var(--space-5);
-  border-radius: var(--radius-pill);
+  gap: 0.5rem;
+  min-height: 50px;
+  padding: 0 var(--space-6);
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
   font-size: var(--font-size-md);
   font-weight: 600;
-  text-decoration: none;
-  transition: transform var(--motion-standard), box-shadow var(--motion-standard),
-    background-color var(--motion-standard), color var(--motion-standard);
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: transform var(--motion-fast), box-shadow var(--motion-fast),
+    background-color var(--motion-fast), color var(--motion-fast),
+    border-color var(--motion-fast);
 }
 
-.hero-action:hover {
-  transform: translateY(-1px);
+.action-arrow {
+  display: inline-block;
+  transition: transform var(--motion-standard);
+}
+
+.hero-action:hover .action-arrow,
+.shortcut-link:hover .action-arrow,
+.featured-link:hover .action-arrow,
+.ai-link:hover .action-arrow {
+  transform: translateX(4px);
 }
 
 .hero-action-primary {
-  background: var(--brand-primary);
+  background: var(--vermilion);
   color: var(--text-on-brand);
-  box-shadow: 0 10px 20px rgba(199, 101, 70, 0.2);
+  box-shadow: 0 2px 0 var(--vermilion-deep);
 }
 
 .hero-action-primary:hover {
-  background: var(--brand-primary-strong);
-  color: var(--text-on-brand);
+  background: var(--vermilion-deep);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 0 #8a2a18, 0 14px 28px rgba(163, 52, 31, 0.2);
+}
+
+.hero-action-primary:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 #8a2a18;
 }
 
 .hero-action-secondary {
-  border: 1px solid var(--line-soft);
-  background: rgba(255, 255, 255, 0.76);
-  color: var(--text-default);
-  cursor: pointer;
+  background: transparent;
+  border-color: var(--line-ink);
+  color: var(--ink);
 }
 
 .hero-action-secondary:hover {
-  border-color: rgba(127, 162, 166, 0.42);
-  color: var(--brand-accent-strong);
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper-white);
+  transform: translateY(-2px);
 }
 
 .hero-points {
-  margin: var(--space-5) 0 0;
+  margin: var(--space-6) 0 0;
   padding: 0;
   list-style: none;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--line-hair);
+  max-width: 34rem;
 }
 
+/* Points read as an index table, not as pills. */
 .hero-points li {
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-pill);
-  border: 1px solid rgba(127, 162, 166, 0.35);
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: 0.62rem 0;
+  border-bottom: 1px solid var(--line-hair);
   color: var(--text-default);
-  background: rgba(127, 162, 166, 0.1);
   font-size: var(--font-size-sm);
 }
+
+.point-index {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-2xs);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--vermilion);
+}
+
+/* ==================== Hero media ==================== */
 
 .hero-media {
   position: relative;
 }
 
-.hero-image {
-  width: 100%;
-  min-height: 340px;
-  object-fit: cover;
-  border-radius: var(--radius-md);
+.hero-frame {
+  position: relative;
+  border: 1px solid var(--line-ink);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem;
+  background: var(--paper-white);
   box-shadow: var(--shadow-medium);
 }
 
-.hero-media-card {
+.hero-image {
+  width: 100%;
+  min-height: 350px;
+  max-height: 460px;
+  object-fit: cover;
+  border-radius: var(--radius-xs);
+  filter: saturate(0.94) contrast(1.03);
+}
+
+.hero-frame-tag {
   position: absolute;
-  left: var(--space-4);
-  right: var(--space-4);
-  bottom: var(--space-4);
+  top: 1.1rem;
+  left: 1.1rem;
+  padding: 0.28rem 0.6rem;
+  border-radius: var(--radius-xs);
+  background: rgba(27, 25, 22, 0.82);
+  color: rgba(253, 249, 242, 0.92);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-2xs);
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  backdrop-filter: blur(4px);
+}
+
+.hero-seal {
+  position: absolute;
+  top: -1rem;
+  right: -0.9rem;
+  z-index: 2;
+  width: 4rem;
+  height: 4rem;
+  font-size: 0.95rem;
+  background: var(--paper-white);
+  box-shadow: var(--shadow-soft);
+  animation-delay: 520ms;
+}
+
+.hero-media-card {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  margin-top: calc(var(--space-4) * -1);
+  margin-left: var(--space-6);
+  margin-right: calc(var(--space-4) * -1);
+  position: relative;
+  z-index: 2;
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  background: rgba(255, 252, 247, 0.9);
-  box-shadow: 0 10px 24px rgba(63, 43, 32, 0.12);
+  border: 1px solid var(--line-ink);
+  background: var(--paper-white);
+  box-shadow: var(--shadow-medium);
 }
 
 .hero-logo {
-  width: 42px;
-  height: 42px;
-  border-radius: 10px;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-xs);
+  flex-shrink: 0;
 }
 
 .hero-media-card p {
   color: var(--text-default);
-  font-size: var(--font-size-sm);
-  line-height: var(--line-height-base);
+  font-size: var(--font-size-xs);
+  line-height: 1.55;
 }
+
+.hero-media-card strong {
+  display: block;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-2xs);
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--vermilion);
+  margin-bottom: 0.1rem;
+}
+
+/* ==================== Section headings ==================== */
 
 .storefront-section {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
+  gap: var(--space-6);
 }
 
-.section-heading h2 {
-  font-size: clamp(1.3rem, 1.7vw, 1.7rem);
+.heading-body h2 {
+  font-size: clamp(1.5rem, 2.2vw, 1.95rem);
+  font-weight: 700;
 }
 
-.section-heading p {
+.heading-body p {
   margin-top: var(--space-2);
   color: var(--text-muted);
-  max-width: 54ch;
+  font-size: var(--font-size-sm);
+  max-width: 52ch;
 }
+
+/* ==================== 01 Shortcuts ==================== */
 
 .shortcut-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--space-4);
+  gap: var(--space-5);
 }
 
 .shortcut-card {
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+  transition: transform var(--motion-standard);
+}
+
+.shortcut-card:hover {
+  transform: translateY(-3px);
+}
+
+.shortcut-figure {
+  position: relative;
   overflow: hidden;
-  border-radius: var(--radius-md);
+  border: 1px solid var(--line-hair);
+  border-radius: var(--radius-sm);
+  background: var(--paper-white);
 }
 
 .shortcut-image {
   width: 100%;
-  height: 144px;
+  height: 168px;
   object-fit: cover;
+  filter: saturate(0.9);
+  transition: transform var(--motion-slow), filter var(--motion-slow);
+}
+
+.shortcut-card:hover .shortcut-image {
+  transform: scale(1.05);
+  filter: saturate(1.05);
+}
+
+.shortcut-index {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 0.3rem 0.55rem;
+  background: var(--ink);
+  color: var(--paper-white);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-2xs);
+  font-weight: 500;
+  letter-spacing: 0.08em;
 }
 
 .shortcut-content {
-  padding: var(--space-4);
+  padding-top: var(--space-4);
 }
 
 .shortcut-content h3 {
   font-size: var(--font-size-lg);
+  font-weight: 700;
 }
 
 .shortcut-content p {
@@ -384,148 +608,270 @@ export default {
 }
 
 .shortcut-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   margin-top: var(--space-3);
-  border: 0;
-  background: transparent;
-  color: var(--brand-primary-strong);
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--vermilion);
+  color: var(--vermilion-deep);
   font-weight: 600;
-  font-size: var(--font-size-sm);
-  cursor: pointer;
-  padding: 0;
+  font-size: var(--font-size-xs);
+  transition: gap var(--motion-fast);
 }
 
 .shortcut-link:hover {
-  color: var(--brand-primary);
+  color: var(--vermilion);
+}
+
+/* ==================== 02 Featured ==================== */
+
+.featured-section {
+  background: var(--paper-raised);
 }
 
 .featured-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-4);
+  gap: 0;
 }
 
+/* Vertical hairlines between columns, like a print grid. */
 .featured-card {
-  background: rgba(255, 255, 255, 0.66);
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  padding: 0 var(--space-5);
+  border-left: 1px solid var(--line-hair);
+}
+
+.featured-card:first-child {
+  border-left: 0;
+  padding-left: 0;
+}
+
+.featured-card:last-child {
+  padding-right: 0;
+}
+
+.featured-figure {
   overflow: hidden;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--line-hair);
 }
 
 .featured-image {
   width: 100%;
-  height: 176px;
+  height: 190px;
   object-fit: cover;
+  filter: saturate(0.9);
+  transition: transform var(--motion-slow), filter var(--motion-slow);
+}
+
+.featured-card:hover .featured-image {
+  transform: scale(1.04);
+  filter: saturate(1.05);
 }
 
 .featured-content {
-  padding: var(--space-4);
+  padding-top: var(--space-4);
+}
+
+.featured-tag {
+  display: inline-block;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-2xs);
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pine);
+  margin-bottom: var(--space-2);
 }
 
 .featured-content h3 {
   font-size: var(--font-size-lg);
+  font-weight: 700;
 }
 
-.featured-content p {
+.featured-content > p {
   margin-top: var(--space-2);
   color: var(--text-muted);
+  font-size: var(--font-size-sm);
   line-height: var(--line-height-base);
 }
 
 .featured-meta {
-  font-size: var(--font-size-xs);
+  margin-top: var(--space-3) !important;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line-hair);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-2xs) !important;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint) !important;
 }
 
 .featured-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   margin-top: var(--space-3);
-  border: 0;
-  background: transparent;
-  color: var(--brand-accent-strong);
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--pine);
+  color: var(--pine-deep);
   font-weight: 600;
-  font-size: var(--font-size-sm);
-  cursor: pointer;
-  padding: 0;
+  font-size: var(--font-size-xs);
 }
 
 .featured-link:hover {
-  color: var(--brand-primary-strong);
+  color: var(--vermilion-deep);
+  border-bottom-color: var(--vermilion);
 }
 
+/* ==================== 03 Trust ==================== */
+
 .trust-strip {
-  background: linear-gradient(
-    140deg,
-    rgba(255, 252, 247, 0.9) 0%,
-    rgba(127, 162, 166, 0.15) 100%
-  );
-  scroll-margin-top: clamp(86px, 12vw, 128px);
+  scroll-margin-top: clamp(90px, 12vw, 130px);
 }
 
 .trust-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-4);
+  gap: var(--space-5);
 }
 
 .trust-item {
-  padding: var(--space-4);
+  position: relative;
+  padding: var(--space-6) var(--space-5);
+  border: 1px solid var(--line-hair);
+  border-top: 2px solid var(--pine);
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(127, 162, 166, 0.25);
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--paper-raised);
+  overflow: hidden;
+  transition: transform var(--motion-standard), box-shadow var(--motion-standard),
+    border-top-color var(--motion-standard);
+}
+
+.trust-item:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-medium);
+  border-top-color: var(--vermilion);
+}
+
+/* Oversized Chinese numeral as a watermark. */
+.trust-numeral {
+  position: absolute;
+  top: -0.4rem;
+  right: 0.4rem;
+  font-family: var(--font-family-heading);
+  font-size: 5.5rem;
+  font-weight: 900;
+  line-height: 1;
+  color: rgba(27, 25, 22, 0.055);
+  pointer-events: none;
+  user-select: none;
 }
 
 .trust-item h3 {
-  font-size: var(--font-size-md);
+  position: relative;
+  font-size: var(--font-size-lg);
+  font-weight: 700;
 }
 
 .trust-item p {
-  margin-top: var(--space-2);
+  position: relative;
+  margin-top: var(--space-3);
   color: var(--text-muted);
   font-size: var(--font-size-sm);
+  line-height: var(--line-height-base);
 }
+
+/* ==================== Colophon ==================== */
 
 .ai-entry {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-4);
-  background: rgba(255, 252, 247, 0.76);
+  gap: var(--space-6);
+  padding: clamp(var(--space-6), 3vw, var(--space-8));
+  border-radius: var(--radius-md);
+  background: var(--ink);
+  color: rgba(253, 249, 242, 0.86);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Faint ruled texture inside the dark block. */
+.ai-entry::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(253, 249, 242, 0.05) 0px,
+    rgba(253, 249, 242, 0.05) 1px,
+    transparent 1px,
+    transparent 26px
+  );
+}
+
+.ai-copy {
+  position: relative;
+}
+
+.ai-copy .text-label {
+  color: #e8977f;
 }
 
 .ai-copy h2 {
-  font-size: clamp(1.2rem, 1.6vw, 1.5rem);
+  margin-top: var(--space-2);
+  font-size: clamp(1.35rem, 2vw, 1.7rem);
+  color: var(--paper-white);
 }
 
 .ai-copy p {
-  margin-top: var(--space-2);
-  max-width: 58ch;
-  color: var(--text-muted);
+  margin-top: var(--space-3);
+  max-width: 56ch;
+  color: rgba(253, 249, 242, 0.68);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-base);
 }
 
 .ai-link {
+  position: relative;
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  min-height: 40px;
-  padding: 0 var(--space-4);
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--line-soft);
-  color: var(--text-default);
+  gap: 0.5rem;
+  min-height: 48px;
+  padding: 0 var(--space-6);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(253, 249, 242, 0.32);
+  color: var(--paper-white);
   font-size: var(--font-size-sm);
   font-weight: 600;
-  text-decoration: none;
-  background: rgba(255, 255, 255, 0.82);
-  transition: border-color var(--motion-standard), color var(--motion-standard),
-    transform var(--motion-standard);
+  transition: background-color var(--motion-fast), color var(--motion-fast),
+    border-color var(--motion-fast), transform var(--motion-fast);
 }
 
 .ai-link:hover {
-  border-color: rgba(127, 162, 166, 0.45);
-  color: var(--brand-accent-strong);
-  transform: translateY(-1px);
+  background: var(--paper-white);
+  border-color: var(--paper-white);
+  color: var(--ink);
+  transform: translateY(-2px);
 }
+
+/* ==================== Responsive ==================== */
 
 @media (max-width: 1024px) {
   .hero {
     grid-template-columns: 1fr;
+    gap: var(--space-7);
+  }
+
+  .hero-seal {
+    top: -0.6rem;
+    right: 0.4rem;
   }
 
   .shortcut-grid {
@@ -533,7 +879,20 @@ export default {
   }
 
   .featured-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+  }
+
+  .featured-card {
+    border-left: 0;
+    padding: 0;
+    border-top: 1px solid var(--line-hair);
+    padding-top: var(--space-5);
+  }
+
+  .featured-card:first-child {
+    border-top: 0;
+    padding-top: 0;
   }
 
   .trust-grid {
@@ -543,34 +902,44 @@ export default {
 
 @media (max-width: 768px) {
   .home-page {
-    gap: var(--space-6);
+    gap: var(--space-8);
   }
 
-  .hero-title {
-    max-width: 100%;
+  .hero-description {
+    font-size: var(--font-size-md);
   }
 
   .hero-action {
     width: 100%;
+    justify-content: center;
   }
 
   .hero-image {
-    min-height: 230px;
+    min-height: 240px;
   }
 
   .hero-media-card {
-    position: static;
+    margin-inline: 0;
     margin-top: var(--space-3);
   }
 
-  .shortcut-grid,
-  .featured-grid {
+  .field-heading {
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+  }
+
+  .shortcut-grid {
     grid-template-columns: 1fr;
   }
 
   .ai-entry {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .ai-link {
+    width: 100%;
+    justify-content: center;
   }
 }
 </style>

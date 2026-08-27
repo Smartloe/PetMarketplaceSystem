@@ -378,13 +378,15 @@ export default {
 .image-placeholder {
   width: 100%;
   aspect-ratio: 1 / 1;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--line-soft);
-  background: rgba(255, 255, 255, 0.68);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-ink);
+  background: var(--paper-white);
+  box-shadow: var(--shadow-soft);
 }
 
 .main-image {
   object-fit: cover;
+  filter: saturate(0.94);
 }
 
 .image-placeholder {
@@ -396,7 +398,9 @@ export default {
 
 .media-note {
   color: var(--text-muted);
-  font-size: var(--font-size-sm);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-2xs);
+  letter-spacing: 0.05em;
 }
 
 .hero-content {
@@ -406,27 +410,29 @@ export default {
 }
 
 .hero-kicker {
-  display: inline-flex;
-  align-items: center;
-  width: fit-content;
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-pill);
-  background: rgba(127, 162, 166, 0.16);
-  color: var(--brand-accent-strong);
-  font-size: var(--font-size-xs);
-  letter-spacing: 0.06em;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-2xs);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--pine);
 }
 
 .hero-title {
   margin: 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line-ink);
   word-break: break-word;
 }
 
 .hero-price {
   margin: 0;
-  color: var(--brand-primary-strong);
-  font-size: clamp(1.6rem, 3vw, 2.1rem);
-  font-weight: 700;
+  color: var(--vermilion-deep);
+  font-family: var(--font-family-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(1.7rem, 3vw, 2.2rem);
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .hero-description {
@@ -436,28 +442,40 @@ export default {
   max-width: 56ch;
 }
 
+/* Highlights: the "specimen notes" under the title. Ruled, not boxed. */
 .decision-highlights {
   display: grid;
   grid-template-columns: repeat(1, minmax(0, 1fr));
-  gap: var(--space-3);
+  gap: 0;
+  border-top: 1px solid var(--line-hair);
+  border-bottom: 1px solid var(--line-hair);
 }
 
 .highlight-item {
-  padding: var(--space-4);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--line-soft);
-  background: rgba(255, 255, 255, 0.7);
+  display: grid;
+  grid-template-columns: 5.5em minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--line-hair);
+}
+
+.highlight-item:last-child {
+  border-bottom: 0;
 }
 
 .highlight-item h3 {
   margin: 0;
-  font-size: var(--font-size-sm);
-  color: var(--text-strong);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-2xs);
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
 }
 
 .highlight-item p {
-  margin-top: var(--space-2);
-  color: var(--text-muted);
+  margin-top: 0;
+  color: var(--text-default);
   font-size: var(--font-size-sm);
   line-height: var(--line-height-base);
 }
@@ -470,58 +488,65 @@ export default {
 }
 
 .action-btn {
-  min-height: 44px;
+  min-height: 46px;
   padding: 0 var(--space-5);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-sm);
   font-weight: 600;
   cursor: pointer;
-  transition: transform var(--motion-standard), box-shadow var(--motion-standard),
-    border-color var(--motion-standard), background-color var(--motion-standard);
+  transition: transform var(--motion-fast), box-shadow var(--motion-fast),
+    border-color var(--motion-fast), background-color var(--motion-fast);
 }
 
 .action-btn:hover {
   transform: translateY(-1px);
 }
 
+.action-btn:active {
+  transform: translateY(1px);
+}
+
 .action-btn:disabled {
   cursor: not-allowed;
-  opacity: 0.62;
+  opacity: 0.55;
   transform: none;
   box-shadow: none;
 }
 
 .primary-action {
   border: none;
-  background: var(--brand-primary);
+  background: var(--vermilion);
   color: var(--text-on-brand);
-  box-shadow: 0 10px 20px rgba(199, 101, 70, 0.22);
+  box-shadow: 0 2px 0 var(--vermilion-deep);
 }
 
 .primary-action:hover {
-  background: var(--brand-primary-strong);
+  background: var(--vermilion-deep);
+  box-shadow: 0 4px 0 #8a2a18, 0 12px 24px rgba(163, 52, 31, 0.18);
 }
 
 .primary-action:disabled,
 .primary-action:disabled:hover {
-  background: rgba(199, 101, 70, 0.45);
-  color: rgba(255, 250, 245, 0.85);
+  background: rgba(200, 69, 43, 0.45);
+  color: rgba(253, 249, 242, 0.85);
+  box-shadow: none;
 }
 
 .secondary-action {
-  border: 1px solid var(--line-strong);
-  background: rgba(255, 255, 255, 0.86);
-  color: var(--text-default);
+  border: 1px solid var(--line-ink);
+  background: transparent;
+  color: var(--ink);
 }
 
 .secondary-action:hover {
-  border-color: rgba(127, 162, 166, 0.45);
-  background: rgba(255, 255, 255, 0.96);
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--paper-white);
 }
 
 .secondary-action:disabled,
 .secondary-action:disabled:hover {
-  border-color: rgba(82, 57, 46, 0.14);
-  background: rgba(255, 255, 255, 0.66);
+  border-color: var(--line-hair);
+  background: transparent;
   color: var(--text-subtle);
 }
 
@@ -533,10 +558,11 @@ export default {
 
 .login-guidance.is-logged-in {
   color: var(--state-success);
+  font-weight: 500;
 }
 
 .detail-tabs {
-  border: 1px solid var(--line-soft);
+  border: 1px solid var(--line-hair);
   border-radius: var(--radius-md);
   padding: clamp(var(--space-4), 2vw, var(--space-6));
 }
@@ -550,7 +576,7 @@ export default {
 }
 
 .commodity-tabs :deep(.el-tabs__nav-wrap::after) {
-  background-color: var(--line-soft);
+  background-color: var(--line-hair);
 }
 
 .detail-pane {
@@ -566,7 +592,7 @@ export default {
 .detail-image {
   width: 100%;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--line-soft);
+  border: 1px solid var(--line-hair);
   object-fit: cover;
 }
 
@@ -575,25 +601,27 @@ export default {
   align-items: center;
   justify-content: center;
   min-height: 220px;
-  border: 1px dashed var(--line-soft);
+  border: 1px dashed var(--line-strong);
   border-radius: var(--radius-sm);
   color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.62);
+  background: rgba(255, 253, 248, 0.5);
   text-align: center;
   padding: var(--space-5);
 }
 
 .detail-state-error {
   border-style: solid;
-  border-color: rgba(196, 90, 88, 0.3);
-  color: #9a4a48;
-  background: rgba(196, 90, 88, 0.08);
+  border-color: rgba(200, 69, 43, 0.3);
+  border-left: 3px solid var(--vermilion);
+  color: var(--vermilion-deep);
+  background: var(--vermilion-wash);
 }
 
+/* Reviews: signed entries in the guest book, hairline-ruled. */
 .reviews-container {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: 0;
 }
 
 .review-item {
@@ -601,10 +629,12 @@ export default {
   grid-template-columns: 56px minmax(0, 1fr);
   gap: var(--space-4);
   align-items: start;
-  padding: var(--space-4);
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.7);
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--line-hair);
+}
+
+.review-item:last-child {
+  border-bottom: 0;
 }
 
 .review-avatar {
@@ -612,7 +642,8 @@ export default {
   height: 56px;
   border-radius: 50%;
   object-fit: cover;
-  border: 1px solid var(--line-soft);
+  border: 1px solid var(--line-strong);
+  background: var(--paper-white);
 }
 
 .review-content {
@@ -621,13 +652,16 @@ export default {
 
 .review-username {
   margin: 0;
+  font-family: var(--font-family-heading);
   font-size: var(--font-size-md);
+  font-weight: 700;
   color: var(--text-strong);
 }
 
 .review-text {
   margin-top: var(--space-2);
   color: var(--text-default);
+  font-size: var(--font-size-sm);
   line-height: var(--line-height-base);
   word-break: break-word;
 }
@@ -635,7 +669,9 @@ export default {
 .review-date {
   margin-top: var(--space-2);
   color: var(--text-subtle);
-  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-2xs);
+  letter-spacing: 0.04em;
 }
 
 @media (max-width: 1024px) {
