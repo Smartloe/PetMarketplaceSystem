@@ -12,7 +12,7 @@
 				<p>还没有收藏商品，去商品列表挑选喜欢的宠物好物吧。</p>
 			</div>
 			<div v-else class="table-scroll-wrap">
-				<p class="table-scroll-hint">左右滑动查看更多列和操作</p>
+				<TableScrollHint />
 				<el-table :data="favorites">
 					<el-table-column label="商品名称" min-width="220">
 						<template #default="{ row }">
@@ -85,9 +85,11 @@
 import {ref, onMounted} from 'vue';
 import {ElMessage} from 'element-plus';
 import {getUserFavorites, getCommodityDetail, removeFromFavorites} from '@/api';
+import TableScrollHint from '@/components/TableScrollHint.vue';
 
 export default {
 	name: 'Favorites',
+	components: {TableScrollHint},
 	setup() {
 		const favorites = ref([]);
 		const currentCommodity = ref({});
@@ -230,21 +232,6 @@ export default {
 	padding-bottom: var(--space-2);
 }
 
-.table-scroll-hint {
-	display: none;
-	margin: 0 0 var(--space-2);
-	color: var(--text-subtle);
-	font-size: var(--font-size-xs);
-	line-height: 1.4;
-}
-
-.table-scroll-hint::before {
-	content: "↔";
-	display: inline-block;
-	margin-right: var(--space-1);
-	color: var(--vermilion);
-}
-
 .table-scroll-wrap :deep(.el-table) {
 	min-width: 820px;
 	border-radius: var(--radius-sm);
@@ -287,10 +274,6 @@ export default {
 @media (max-width: 768px) {
 	.favorites-panel {
 		gap: var(--space-4);
-	}
-
-	.table-scroll-hint {
-		display: block;
 	}
 
 	.table-scroll-wrap::after {

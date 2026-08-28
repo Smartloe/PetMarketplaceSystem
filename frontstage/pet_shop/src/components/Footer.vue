@@ -1,7 +1,7 @@
 <template>
   <footer class="pet-page-footer">
     <div class="container footer-inner">
-      <section class="service-promises" aria-label="服务承诺">
+      <section v-reveal.stagger class="service-promises reveal-stagger-only" aria-label="服务承诺">
         <article
           v-for="(item, i) in servicePromises"
           :key="item.title"
@@ -19,7 +19,7 @@
             <span class="seal footer-seal" aria-hidden="true">吉祥<br>宠物</span>
             <div>
               <p class="brand-name">吉祥宠物商城</p>
-              <p class="brand-copy">陪你把每一次相遇，变成安心的长期陪伴。</p>
+              <p class="brand-copy">把每天的喂养和照护，做得省心一点。</p>
             </div>
           </div>
           <p class="brand-meta">© {{ currentYear }} 吉祥宠物商城 · 上海 · LUCKY PET MARKET</p>
@@ -47,12 +47,12 @@ import { useStore } from 'vuex';
 
 const servicePromises = [
   {
-    title: '真实在售信息',
-    copy: '商家信息与商品状态持续更新，帮助你更快完成靠谱筛选。'
+    title: '成分规格透明',
+    copy: '配料表、适用体重与库存状态持续更新，帮助你更快完成比较。'
   },
   {
     title: '下单前可咨询',
-    copy: '支持 AI 顾问与站内留言咨询，减少新手养宠决策压力。'
+    copy: '支持 AI 顾问与站内留言咨询，帮你确认用量和规格是否合适。'
   },
   {
     title: '售后流程可追踪',

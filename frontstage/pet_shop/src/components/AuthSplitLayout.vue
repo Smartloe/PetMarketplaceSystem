@@ -200,6 +200,9 @@ export default {
 }
 
 .auth-visual-highlights li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
   padding: 0.5rem 0;
   border-bottom: 1px solid rgba(253, 249, 242, 0.22);
   color: rgba(253, 249, 242, 0.9);
@@ -207,9 +210,12 @@ export default {
 }
 
 .auth-visual-highlights li::before {
-  content: "—";
-  margin-right: 0.55rem;
-  color: #f0a68f;
+  content: "";
+  flex-shrink: 0;
+  width: 0.85rem;
+  height: 1px;
+  translate: 0 -0.3em;
+  background: #f0a68f;
 }
 
 .auth-panel {

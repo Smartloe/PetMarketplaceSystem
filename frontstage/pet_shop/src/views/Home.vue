@@ -3,73 +3,89 @@
     <!-- ============ Hero: asymmetric masthead ============ -->
     <section class="hero">
       <div class="hero-copy">
-        <p class="hero-kicker reveal reveal-1">
+        <p v-reveal class="hero-kicker">
           <span class="kicker-dot" aria-hidden="true"></span>
-          创刊号 · 新手养宠导购
+          创刊号 · 宠物用品选购指南
         </p>
 
-        <h1 class="hero-title reveal reveal-2">
-          帮你安心找到<br>
-          适合<em>新手家庭</em>的<br>
-          宠物与用品
+        <h1 v-reveal class="hero-title">
+          <KineticText text="帮你为家里的猫狗|挑对*每天要用的*|主粮与用品" />
         </h1>
 
-        <div class="hero-rule reveal-rule" aria-hidden="true"></div>
+        <div v-reveal class="hero-rule rule-draw" aria-hidden="true"></div>
 
-        <p class="hero-description reveal reveal-3">
-          从在售宠物到日常用品，我们整理了同城看宠、家庭经验和沟通准备的导购建议，帮助你先建立判断框架，再进入完整目录慢慢挑选。
+        <p v-reveal class="hero-description">
+          从主粮零食到清洁、保健、玩具与出行装备，我们把配料表、适用体重和使用周期整理清楚，帮你先建立判断标准，再进入完整目录慢慢挑选。
         </p>
 
-        <div class="hero-actions reveal reveal-4">
+        <div v-reveal class="hero-actions">
           <router-link to="/commodity" class="hero-action hero-action-primary">
-            浏览在售商品
-            <span class="action-arrow" aria-hidden="true">→</span>
+            <span>浏览在售商品</span>
+            <el-icon class="action-arrow"><Right /></el-icon>
           </router-link>
-          <button type="button" class="hero-action hero-action-secondary" @click="scrollToTrustGuide">
-            查看同城看宠指引
+          <button
+            type="button"
+            class="hero-action hero-action-secondary"
+            @click="scrollToTrustGuide"
+          >
+            <span>查看选购指引</span>
+            <el-icon class="action-caret"><ArrowDownBold /></el-icon>
           </button>
         </div>
 
-        <ul class="hero-points reveal reveal-5">
+        <ul v-reveal.stagger class="hero-points reveal-stagger-only">
           <li v-for="(point, i) in heroPoints" :key="point">
-            <span class="point-index">{{ String(i + 1).padStart(2, '0') }}</span>
+            <span class="point-index">{{ pad(i + 1) }}</span>
             {{ point }}
           </li>
         </ul>
       </div>
 
-      <div class="hero-media reveal reveal-3">
-        <div class="hero-frame">
+      <div v-reveal class="hero-media">
+        <div v-parallax="34" v-tilt="5" class="hero-frame parallax-layer tilt-plate tilt-sheen">
           <img src="/img/index/top.gif" alt="吉祥宠物商城首页视觉" class="hero-image">
           <span class="hero-frame-tag">本期封面</span>
         </div>
 
         <div class="seal reveal-stamp hero-seal" aria-hidden="true">吉祥<br>宠物</div>
 
-        <div class="hero-media-card">
+        <div v-parallax="-16" class="hero-media-card parallax-layer">
           <img src="/img/logo.png" alt="" class="hero-logo">
           <p><strong>本周导购重点</strong>先看同城可见，再按家庭经验筛选。</p>
         </div>
       </div>
     </section>
 
+    <!-- ============ Running head: an infinite editorial ticker ============ -->
+    <div class="ticker" aria-hidden="true">
+      <div class="ticker-track">
+        <span v-for="pass in 2" :key="`pass-${pass}`" class="ticker-group">
+          <span v-for="word in tickerWords" :key="`${pass}-${word}`" class="ticker-word">
+            {{ word }}
+            <span class="ticker-sep">—</span>
+          </span>
+        </span>
+      </div>
+    </div>
+
     <!-- ============ 01 快速浏览 ============ -->
     <section class="storefront-section">
-      <header class="field-heading">
+      <header v-reveal class="field-heading">
         <span class="field-index">01 / 快速浏览</span>
         <div class="heading-body">
-          <h2>按家庭阶段开始</h2>
-          <p>先按照家庭阶段和看宠方式缩小范围，再进入完整目录。</p>
+          <h2>按使用场景开始</h2>
+          <p>先按日常喂养、清洁、护理和出行几个场景缩小范围，再进入完整目录。</p>
         </div>
       </header>
 
-      <div class="shortcut-grid">
+      <div v-reveal.stagger class="shortcut-grid reveal-stagger-only">
         <article
           v-for="(shortcut, i) in quickShortcuts"
           :key="shortcut.title"
-          class="shortcut-card"
+          v-tilt="4"
+          class="shortcut-card tilt-plate"
         >
-          <div class="shortcut-figure">
+          <div class="shortcut-figure tilt-sheen">
             <img
               :src="shortcut.image"
               :alt="shortcut.title"
@@ -77,14 +93,15 @@
               loading="lazy"
               decoding="async"
             >
-            <span class="shortcut-index">{{ String(i + 1).padStart(2, '0') }}</span>
+            <span class="shortcut-index">{{ pad(i + 1) }}</span>
           </div>
           <div class="shortcut-content">
             <h3>{{ shortcut.title }}</h3>
             <p>{{ shortcut.description }}</p>
-            <router-link to="/commodity" class="shortcut-link">
-              {{ shortcut.actionText }}
-              <span class="action-arrow" aria-hidden="true">→</span>
+            <router-link to="/commodity" class="shortcut-link magnetic">
+              <span>{{ shortcut.actionText }}</span>
+              <el-icon class="action-arrow"><Right /></el-icon>
+              <span class="magnetic-rule" aria-hidden="true"></span>
             </router-link>
           </div>
         </article>
@@ -93,21 +110,21 @@
 
     <!-- ============ 02 精选预览 ============ -->
     <section class="storefront-section featured-section shell-surface shell-section">
-      <header class="field-heading">
+      <header v-reveal class="field-heading">
         <span class="field-index">02 / 精选预览</span>
         <div class="heading-body">
-          <h2>常见入门方向</h2>
-          <p>以下是我们整理的常见入门方向，进入目录可查看更多在售信息。</p>
+          <h2>常见选购方向</h2>
+          <p>以下是几类常见的选购思路，进入目录可查看更多在售商品。</p>
         </div>
       </header>
 
-      <div class="featured-grid">
+      <div v-reveal.stagger class="featured-grid reveal-stagger-only">
         <article
           v-for="(product, i) in featuredProducts"
           :key="product.name"
           class="featured-card"
         >
-          <div class="featured-figure">
+          <div class="featured-figure tilt-sheen">
             <img
               :src="product.image"
               :alt="product.name"
@@ -117,31 +134,36 @@
             >
           </div>
           <div class="featured-content">
-            <span class="featured-tag">方向 {{ String(i + 1).padStart(2, '0') }}</span>
+            <span class="featured-tag">方向 {{ pad(i + 1) }}</span>
             <h3>{{ product.name }}</h3>
             <p>{{ product.copy }}</p>
             <p class="featured-meta">{{ product.meta }}</p>
-            <router-link to="/commodity" class="featured-link">
-              查看同类在售
-              <span class="action-arrow" aria-hidden="true">→</span>
+            <router-link to="/commodity" class="featured-link magnetic">
+              <span>查看同类在售</span>
+              <el-icon class="action-arrow"><Right /></el-icon>
+              <span class="magnetic-rule" aria-hidden="true"></span>
             </router-link>
           </div>
         </article>
       </div>
     </section>
-
-    <!-- ============ 03 购买与看宠指引 ============ -->
+    <!-- ============ 03 选购指引 ============ -->
     <section id="trust-guide" class="storefront-section trust-strip">
-      <header class="field-heading trust-heading">
-        <span class="field-index">03 / 购买指引</span>
+      <header v-reveal class="field-heading trust-heading">
+        <span class="field-index">03 / 选购指引</span>
         <div class="heading-body">
-          <h2>购买与看宠指引</h2>
+          <h2>选购与用量指引</h2>
           <p>不追求花哨口号，先把决策关键信息说明白。</p>
         </div>
       </header>
 
-      <div class="trust-grid">
-        <article v-for="(item, i) in trustGuides" :key="item.title" class="trust-item">
+      <div v-reveal.stagger class="trust-grid reveal-stagger-only">
+        <article
+          v-for="(item, i) in trustGuides"
+          :key="item.title"
+          v-tilt="4"
+          class="trust-item tilt-plate"
+        >
           <span class="trust-numeral" aria-hidden="true">{{ numerals[i] }}</span>
           <h3>{{ item.title }}</h3>
           <p>{{ item.description }}</p>
@@ -150,92 +172,104 @@
     </section>
 
     <!-- ============ Colophon / AI entry ============ -->
-    <section class="ai-entry">
+    <section v-reveal class="ai-entry">
       <div class="ai-copy">
         <span class="text-label">附录 · AI 宠物顾问</span>
         <h2>还想了解喂养细节？</h2>
         <p>
-          AI 宠物顾问可作为补充咨询，帮助你准备喂养清单和到家前注意事项。建议先完成商品筛选，再按问题咨询。
+          AI 宠物顾问可作为补充咨询，帮助你确认主粮换粮节奏、驱虫周期和用品搭配。建议先完成商品筛选，再按问题咨询。
         </p>
       </div>
       <router-link to="/ai-pet-expert" class="ai-link">
-        进入 AI 宠物顾问
-        <span class="action-arrow" aria-hidden="true">→</span>
+        <span>进入 AI 宠物顾问</span>
+        <el-icon class="action-arrow"><Right /></el-icon>
       </router-link>
     </section>
   </div>
 </template>
 
 <script>
+import { ArrowDownBold, Right } from '@element-plus/icons-vue';
+import KineticText from '@/components/KineticText.vue';
+
 export default {
   name: 'Home',
+  components: {
+    ArrowDownBold,
+    KineticText,
+    Right,
+  },
   data() {
     return {
       numerals: ['壹', '貳', '參'],
-      heroPoints: ['适合新手家庭', '支持同城看宠', '商家资料可核对更新时间'],
+      tickerWords: ['正品行货', '配料表可查', '成分透明', '按体重选规格', '售后可追踪'],
+      heroPoints: ['主粮零食成分可查', '规格按犬猫体重区分', '驱虫洗护标注适用范围'],
       quickShortcuts: [
         {
-          title: '新手家庭专区',
-          description: '先查看饲养门槛更清晰的在售信息，避免一开始就选择高维护类型。',
+          title: '主粮与零食',
+          description: '按配料表和适用体重挑选，进口国产分开陈列，换粮建议同步标注。',
           image: '/img/index/a1.png',
-          actionText: '浏览新手友好目录',
+          actionText: '浏览主粮零食',
         },
         {
-          title: '同城看宠提示',
-          description: '可先筛选支持同城看宠的条目，方便先约看再决定。',
+          title: '清洁与除臭',
+          description: '猫砂尿垫、宠物厕所和除臭用品，按家里空间与使用频率选规格。',
           image: '/img/index/b1.png',
-          actionText: '查看同城可见内容',
+          actionText: '查看清洁用品',
         },
         {
-          title: '家庭用品清单',
-          description: '从基础用品到到家准备，先补全日常必需品再安排宠物接回。',
+          title: '保健与驱虫',
+          description: '益生菌、羊奶粉到体内外驱虫，均标注适用体重与用法用量。',
           image: '/img/index/p2.png',
-          actionText: '进入用品目录',
+          actionText: '进入保健护理',
         },
         {
-          title: '商家沟通准备',
-          description: '先核对商家资料是否近期更新、说明是否完整，再进入详细咨询。',
+          title: '玩具与出行',
+          description: '磨牙益智玩具、牵引颈圈和外出装备，按体型和使用场景区分。',
           image: '/img/index/a5.png',
-          actionText: '查看沟通前检查点',
+          actionText: '查看玩具牵引',
         },
       ],
       featuredProducts: [
         {
-          name: '布偶猫幼猫方向',
-          copy: '适合室内陪伴场景，建议先确认家庭作息和毛发打理时间。',
-          meta: '可结合同城看宠与商家说明做对比',
+          name: '主粮：按成分与体重选',
+          copy: '无谷低升糖、羊奶糙米等配方分列，包装规格从小袋试喂到家庭装。',
+          meta: '建议先看配料表与适用犬猫体型',
           image: '/img/index/a2.png',
         },
         {
-          name: '小型犬家庭陪伴方向',
-          copy: '更关注日常互动和基础训练，适合希望建立固定陪伴节奏的家庭。',
-          meta: '新手家庭可先看饲养说明',
+          name: '洗护驱虫：看适用范围',
+          copy: '香波浴盆到体内外驱虫滴剂，每件都写明适用体重区间和使用周期。',
+          meta: '驱虫类请按体重严格对应规格',
           image: '/img/index/b2.png',
         },
         {
-          name: '到家基础用品方向',
-          copy: '围绕吃、住、清洁做标准化准备，减少宠物到家后的临时采购压力。',
-          meta: '建议先补齐喂养与清洁组合',
+          name: '玩具服饰：按体型挑',
+          copy: '发声磨牙玩具、漏食球到冬装配饰，尺码与耐咬程度分别标注。',
+          meta: '尺码建议对照实测三围再下单',
           image: '/img/index/p3.png',
         },
       ],
       trustGuides: [
         {
-          title: '先看再定',
-          description: '支持同城看宠的条目会明确标注，可先约时间确认状态再沟通交易。',
+          title: '成分可查',
+          description: '主粮零食保健品均提供配料与规格说明，便于比较后再决定。',
         },
         {
-          title: '信息透明',
-          description: '先核对商家资料更新时间、健康说明和服务范围，再做下一步沟通。',
+          title: '规格清楚',
+          description: '驱虫、洗护和服饰都标注适用体重或尺码，避免买错规格。',
         },
         {
           title: '步骤清晰',
-          description: '建议按“浏览目录 → 对比商家 → 咨询细节 → 决定下单”完成选择。',
+          description: '建议按“浏览品类、比较成分、咨询用量、决定下单”完成选购。',
         },
       ],
     };
   },
   methods: {
+    pad(value) {
+      return String(value).padStart(2, '0');
+    },
     scrollToTrustGuide() {
       const target = document.getElementById('trust-guide');
       if (target) {
@@ -245,7 +279,6 @@ export default {
   },
 };
 </script>
-
 <style scoped>
 .home-page {
   display: flex;
@@ -299,11 +332,9 @@ export default {
   color: var(--ink);
 }
 
-/* Ink-wash highlight painted behind the emphasised phrase. Drawn as a
-   background on the element itself so it never lands behind the page ground. */
-.hero-title em {
-  font-style: normal;
-  color: var(--vermilion-deep);
+/* Ink-wash highlight painted behind each accented character. Applied per
+   character rather than on the run, so it follows the rise animation. */
+.hero-title :deep(.kinetic-accent .kinetic-char) {
   background-image: linear-gradient(
     180deg,
     rgba(200, 69, 43, 0) 0%,
@@ -312,14 +343,12 @@ export default {
   background-repeat: no-repeat;
   background-size: 100% 0.3em;
   background-position: 0 88%;
-  padding-inline: 0.04em;
 }
 
 .hero-rule {
   height: 1px;
   margin-top: var(--space-5);
   background: var(--line-ink);
-  animation-delay: 280ms;
 }
 
 .hero-description {
@@ -354,8 +383,8 @@ export default {
     border-color var(--motion-fast);
 }
 
-.action-arrow {
-  display: inline-block;
+.action-arrow,
+.action-caret {
   transition: transform var(--motion-standard);
 }
 
@@ -364,6 +393,10 @@ export default {
 .featured-link:hover .action-arrow,
 .ai-link:hover .action-arrow {
   transform: translateX(4px);
+}
+
+.hero-action-secondary:hover .action-caret {
+  transform: translateY(3px);
 }
 
 .hero-action-primary {
@@ -424,7 +457,6 @@ export default {
   letter-spacing: 0.08em;
   color: var(--vermilion);
 }
-
 /* ==================== Hero media ==================== */
 
 .hero-media {
@@ -438,6 +470,10 @@ export default {
   padding: 0.5rem;
   background: var(--paper-white);
   box-shadow: var(--shadow-medium);
+}
+
+.hero-frame:hover {
+  box-shadow: var(--shadow-strong);
 }
 
 .hero-image {
@@ -469,7 +505,7 @@ export default {
   position: absolute;
   top: -1rem;
   right: -0.9rem;
-  z-index: 2;
+  z-index: 4;
   width: 4rem;
   height: 4rem;
   font-size: 0.95rem;
@@ -518,6 +554,49 @@ export default {
   margin-bottom: 0.1rem;
 }
 
+/* ==================== Running head ticker ==================== */
+
+.ticker {
+  overflow: hidden;
+  padding-block: var(--space-3);
+  border-block: 1px solid var(--line-ink);
+  user-select: none;
+}
+
+.ticker-track {
+  display: flex;
+  width: max-content;
+  animation: ticker-scroll 34s linear infinite;
+}
+
+.ticker-group {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.ticker-word {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding-inline: var(--space-6);
+  font-family: var(--font-family-display);
+  font-size: clamp(1.1rem, 2vw, 1.6rem);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.ticker-sep {
+  color: var(--vermilion);
+}
+
+/* The track holds two identical groups, so -50% is a seamless loop point. */
+@keyframes ticker-scroll {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-50%, 0, 0); }
+}
+
 /* ==================== Section headings ==================== */
 
 .storefront-section {
@@ -537,7 +616,6 @@ export default {
   font-size: var(--font-size-sm);
   max-width: 52ch;
 }
-
 /* ==================== 01 Shortcuts ==================== */
 
 .shortcut-grid {
@@ -550,11 +628,6 @@ export default {
   display: flex;
   flex-direction: column;
   background: transparent;
-  transition: transform var(--motion-standard);
-}
-
-.shortcut-card:hover {
-  transform: translateY(-3px);
 }
 
 .shortcut-figure {
@@ -582,6 +655,7 @@ export default {
   position: absolute;
   top: 0;
   left: 0;
+  z-index: 4;
   padding: 0.3rem 0.55rem;
   background: var(--ink);
   color: var(--paper-white);
@@ -608,16 +682,11 @@ export default {
 }
 
 .shortcut-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
   margin-top: var(--space-3);
-  padding-bottom: 2px;
-  border-bottom: 1px solid var(--vermilion);
   color: var(--vermilion-deep);
   font-weight: 600;
   font-size: var(--font-size-xs);
-  transition: gap var(--motion-fast);
+  transition: color var(--motion-fast);
 }
 
 .shortcut-link:hover {
@@ -710,22 +779,16 @@ export default {
 }
 
 .featured-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
   margin-top: var(--space-3);
-  padding-bottom: 2px;
-  border-bottom: 1px solid var(--pine);
   color: var(--pine-deep);
   font-weight: 600;
   font-size: var(--font-size-xs);
+  transition: color var(--motion-fast);
 }
 
 .featured-link:hover {
   color: var(--vermilion-deep);
-  border-bottom-color: var(--vermilion);
 }
-
 /* ==================== 03 Trust ==================== */
 
 .trust-strip {
@@ -746,12 +809,9 @@ export default {
   border-radius: var(--radius-sm);
   background: var(--paper-raised);
   overflow: hidden;
-  transition: transform var(--motion-standard), box-shadow var(--motion-standard),
-    border-top-color var(--motion-standard);
 }
 
 .trust-item:hover {
-  transform: translateY(-2px);
   box-shadow: var(--shadow-medium);
   border-top-color: var(--vermilion);
 }
@@ -768,6 +828,12 @@ export default {
   color: rgba(27, 25, 22, 0.055);
   pointer-events: none;
   user-select: none;
+  transition: color var(--motion-slow), transform var(--motion-slow);
+}
+
+.trust-item:hover .trust-numeral {
+  color: rgba(200, 69, 43, 0.09);
+  transform: scale(1.06);
 }
 
 .trust-item h3 {
@@ -932,6 +998,10 @@ export default {
     grid-template-columns: 1fr;
   }
 
+  .ticker-track {
+    animation-duration: 24s;
+  }
+
   .ai-entry {
     flex-direction: column;
     align-items: flex-start;
@@ -940,6 +1010,13 @@ export default {
   .ai-link {
     width: 100%;
     justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track,
+  .kicker-dot {
+    animation: none;
   }
 }
 </style>

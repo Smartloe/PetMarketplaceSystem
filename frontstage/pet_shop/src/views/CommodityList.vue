@@ -1,11 +1,13 @@
 <template>
   <div class="commodity-directory">
-    <section class="directory-intro shell-surface shell-section">
+    <section v-reveal class="directory-intro shell-surface shell-section">
       <div class="intro-copy">
         <p class="intro-kicker">在售目录</p>
-        <h1 class="intro-title">先浏览真实在售内容，再决定是否解锁完整目录</h1>
+        <h1 class="intro-title">
+          <KineticText text="先浏览真实在售商品，|再决定是否解锁完整目录" />
+        </h1>
         <p class="intro-description">
-          我们会优先展示真实商品，再根据登录状态提供完整目录。你可以先搜索、先看分类，再决定下一步。
+          这里只售宠物用品，不售活体宠物。你可以先按品类搜索、比较成分与规格，再决定下一步。
         </p>
         <div class="intro-meta">
           <span class="meta-chip">当前范围：{{ selectedContextLabel }}</span>
@@ -70,7 +72,7 @@
         <div class="search-summary shell-surface">
           <el-input
             v-model="searchQuery"
-            placeholder="搜索宠物或用品名称"
+            placeholder="搜索主粮、零食、玩具等用品"
             clearable
             class="search-input"
             @clear="fetchCommodities"
@@ -119,16 +121,17 @@
           <el-button type="primary" @click="resetToAllCommodities">返回全部目录</el-button>
         </div>
         <template v-else>
-          <div class="commodity-grid">
+          <div :key="gridRevealKey" v-reveal.stagger class="commodity-grid reveal-stagger-only">
             <article
               v-for="commodity in paginatedCommodities"
               :key="commodity.id"
-              class="commodity-card shell-surface"
+              v-tilt="4"
+              class="commodity-card shell-surface tilt-plate"
               tabindex="0"
               @click="getCommodityDetail(commodity.id)"
               @keyup.enter="getCommodityDetail(commodity.id)"
             >
-              <div class="card-image-wrap">
+              <div class="card-image-wrap tilt-sheen">
                 <img
                   :src="getFullImageUrl(commodity.main_image)"
                   :alt="commodity.sku_title"
@@ -179,9 +182,11 @@ import { useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import { Search } from '@element-plus/icons-vue';
 import { getCommodities, searchCommodities } from '@/api';
+import KineticText from '@/components/KineticText.vue';
 
 export default {
   name: 'CommodityList',
+  components: { KineticText },
   setup() {
     const commodities = ref({});
     const filteredCommodities = ref([]);
@@ -402,6 +407,10 @@ export default {
       return effectiveCommodities.value.slice(start, start + pageSize.value);
     });
 
+    // Changing this key remounts the grid, so the stagger replays whenever the
+    // result set changes rather than only on first paint.
+    const gridRevealKey = computed(() => `${selectedContextLabel.value}-${currentPage.value}`);
+
     const totalCommodities = computed(() => effectiveCommodities.value.length);
     const hasAnyCommodities = computed(() => totalCommodities.value > 0);
     const previewLimitDisplay = computed(() => guestPreviewLimit.value || 6);
@@ -476,6 +485,7 @@ export default {
       formatPrice,
       getCommodityDetail,
       getFullImageUrl,
+      gridRevealKey,
       handleCurrentChange,
       hasAnyCommodities,
       hasLoadError,
@@ -805,9 +815,11 @@ export default {
   transition: transform var(--motion-standard);
 }
 
+/* Lift composes with the pointer tilt rather than replacing its transform. */
 .commodity-card:hover,
 .commodity-card:focus-visible {
-  transform: translateY(-3px);
+  transform: perspective(1000px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg))
+    translateZ(0) translateY(-3px);
   box-shadow: var(--shadow-medium);
   border-color: var(--line-strong);
   outline: none;

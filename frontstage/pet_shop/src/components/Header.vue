@@ -4,7 +4,7 @@
       <div class="container masthead-inner">
         <span class="masthead-tag">吉祥 · 宠物志</span>
         <span class="masthead-rule" aria-hidden="true"></span>
-        <span class="masthead-note">同城看宠 · 商家资料可核对 · 售后可追踪</span>
+        <span class="masthead-note">正品行货 · 成分规格可核对 · 售后可追踪</span>
       </div>
     </div>
 
@@ -40,7 +40,9 @@
             @click="toggleAccountMenu"
           >
             <span class="account-label">{{ accountLabel }}</span>
-            <span :class="['account-arrow', { open: showAccountMenu }]">▾</span>
+            <el-icon :class="['account-arrow', { open: showAccountMenu }]">
+              <CaretBottom />
+            </el-icon>
           </button>
 
           <div v-show="showAccountMenu" class="account-menu">
@@ -148,6 +150,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
+import { CaretBottom } from '@element-plus/icons-vue';
 
 const primaryNav = [
   { label: '首页', href: '/' },
@@ -177,6 +180,9 @@ const accountActivePrefixes = [
 ];
 
 export default {
+  components: {
+    CaretBottom,
+  },
   setup() {
     const route = useRoute();
     const store = useStore();
@@ -451,9 +457,9 @@ export default {
 }
 
 .account-arrow {
-  font-size: 0.62rem;
+  font-size: 0.78rem;
   color: var(--ink-faint);
-  transition: transform var(--motion-fast), color var(--motion-fast);
+  transition: transform var(--motion-standard), color var(--motion-fast);
 }
 
 .account-arrow.open {

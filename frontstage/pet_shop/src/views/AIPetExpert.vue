@@ -1,11 +1,11 @@
 <template>
   <div class="ai-pet-page">
-    <section class="intro-panel shell-surface shell-section">
+    <section v-reveal class="intro-panel shell-surface shell-section">
       <div class="intro-copy">
         <p class="section-kicker">AI 宠物顾问</p>
-        <h1>把选宠和喂养问题先问清楚</h1>
+        <h1>把喂养和用品问题先问清楚</h1>
         <p class="intro-description">
-          可用于咨询选宠、到家准备、饮食和基础护理，适合作为浏览商品时的补充判断。涉及明显异常或急症时，仍建议尽快联系线下医生。
+          可用于咨询主粮选择、换粮节奏、驱虫周期和用品搭配，适合作为浏览商品时的补充判断。涉及明显异常或急症时，仍建议尽快联系线下医生。
         </p>
       </div>
       <div class="intro-side">
@@ -54,7 +54,7 @@
           <div class="bubble-content">
             <p class="bubble-label">顾问回复</p>
             <div v-html="renderMarkdown(streamingContent)"></div>
-            <span class="streaming-cursor">|</span>
+            <span class="streaming-cursor" aria-hidden="true"></span>
           </div>
         </div>
 
@@ -121,7 +121,7 @@
       </p>
     </section>
 
-    <section v-else class="guest-panel shell-surface shell-section">
+    <section v-else v-reveal class="guest-panel shell-surface shell-section">
       <div class="guest-copy">
         <p class="section-kicker">登录后可用</p>
         <h2>登录后继续咨询</h2>
@@ -139,7 +139,7 @@ import { marked } from 'marked';
 
 const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || '/api';
 const INITIAL_ASSISTANT_MESSAGE =
-  '你好，这里是吉祥宠物商城 AI 顾问。我可以协助梳理选宠、到家准备、喂养和基础护理问题。';
+  '你好，这里是吉祥宠物商城 AI 顾问。我可以协助梳理主粮选择、换粮节奏、驱虫洗护和用品搭配问题。';
 
 function resolveStreamingEndpoint() {
   const basePath = API_BASE_URL.replace(/\/$/, '');
@@ -190,10 +190,10 @@ export default {
         },
       ],
       suggestedPrompts: [
-        '适合陪伴老人的小型犬怎么选？',
-        '猫咪换季掉毛非常严重，怎么办？',
-        '仓鼠粮应该怎么搭配才营养均衡？',
-        '刚接回家的幼猫如何快速适应新环境？',
+        '给成年小型犬换主粮，怎么过渡才不容易拉稀？',
+        '猫咪换季掉毛严重，该补充什么营养？',
+        '体内和体外驱虫可以同一天用吗？间隔多久合适？',
+        '猫砂、尿垫和宠物厕所怎么搭配比较省心？',
       ],
     };
   },
@@ -722,11 +722,14 @@ export default {
   color: var(--text-muted);
 }
 
+/* A typesetter's caret: a solid vermilion block, not a pipe character. */
 .streaming-cursor {
   display: inline-block;
-  color: var(--vermilion);
-  font-weight: 700;
-  animation: blink-cursor 1s infinite;
+  width: 0.5em;
+  height: 1.05em;
+  vertical-align: text-bottom;
+  background: var(--vermilion);
+  animation: blink-cursor 1s steps(1, end) infinite;
 }
 
 @keyframes typing-bounce {

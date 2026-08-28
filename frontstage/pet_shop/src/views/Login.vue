@@ -3,7 +3,7 @@
     <AuthSplitLayout
       kicker="欢迎回来"
       title="登录查看完整商城内容"
-      description="登录后可查看全部在售宠物、收藏心仪商品、下单并管理订单。"
+      description="登录后可查看全部在售商品、收藏心仪用品、下单并管理订单。"
       visual-kicker="吉祥宠物商城"
       visual-title="进入完整商城体验"
       visual-description="这里是你在商城中的个人入口。登录后即可继续浏览、收藏和下单流程。"
@@ -83,7 +83,7 @@ export default {
       code: '',
     });
     const visualHighlights = [
-      '查看全部在售宠物与用品',
+      '查看全部在售宠物用品',
       '收藏并持续跟踪心仪商品',
       '下单后可随时管理订单进度',
     ];

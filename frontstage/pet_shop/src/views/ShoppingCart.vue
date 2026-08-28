@@ -12,7 +12,7 @@
 				<p>购物车还是空的，先去挑选喜欢的商品吧。</p>
 			</div>
 			<div v-else class="table-scroll-wrap">
-				<p class="table-scroll-hint">左右滑动查看更多列和操作</p>
+				<TableScrollHint />
 				<el-table
 					:data="cartItems"
 					@selection-change="handleSelectionChange"
@@ -121,9 +121,11 @@ import {
 	getUserAddresses,
 	checkoutOrder
 } from '@/api';
+import TableScrollHint from '@/components/TableScrollHint.vue';
 
 export default {
 	name: 'ShoppingCart',
+	components: {TableScrollHint},
 	setup() {
 		const router = useRouter();
 		const cartItems = ref([]);
@@ -381,21 +383,6 @@ export default {
 	padding-bottom: var(--space-2);
 }
 
-.table-scroll-hint {
-	display: none;
-	margin: 0 0 var(--space-2);
-	color: var(--text-subtle);
-	font-size: var(--font-size-xs);
-	line-height: 1.4;
-}
-
-.table-scroll-hint::before {
-	content: "↔";
-	display: inline-block;
-	margin-right: var(--space-1);
-	color: var(--vermilion);
-}
-
 .table-scroll-wrap :deep(.el-table) {
 	min-width: 980px;
 	border-radius: var(--radius-sm);
@@ -471,10 +458,6 @@ export default {
 @media (max-width: 768px) {
 	.shopping-cart-panel {
 		gap: var(--space-4);
-	}
-
-	.table-scroll-hint {
-		display: block;
 	}
 
 	.table-scroll-wrap::after {

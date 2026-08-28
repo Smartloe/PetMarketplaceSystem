@@ -3,9 +3,9 @@
     <AuthSplitLayout
       kicker="快速开始"
       title="创建账号，立刻进入完整商城"
-      description="注册后即可浏览全部在售宠物、收藏感兴趣商品，并随时查看订单进度。"
+      description="注册后即可浏览全部在售商品、收藏感兴趣用品，并随时查看订单进度。"
       visual-kicker="新手也能轻松开始"
-      visual-title="用 1 分钟创建账户，开启你的宠物挑选计划"
+      visual-title="用 1 分钟创建账户，备齐日常养宠用品"
       visual-description="从浏览到下单都在同一账号里完成，收藏、订单和个人偏好会自动同步。"
       :visual-highlights="visualHighlights"
       visual-image="/img/注册.png"

@@ -1,7 +1,7 @@
 <template>
   <div class="commodity-detail-page">
-    <section class="detail-hero shell-surface shell-section">
-      <div class="hero-media">
+    <section v-reveal class="detail-hero shell-surface shell-section">
+      <div v-tilt="5" class="hero-media tilt-plate">
         <img
           v-if="mainImageUrl"
           :src="mainImageUrl"
@@ -24,7 +24,7 @@
           {{ commodityDetail.sku_description || '暂未提供补充说明，建议结合详情图与评价一起判断。' }}
         </p>
 
-        <div class="decision-highlights">
+        <div v-reveal.stagger class="decision-highlights reveal-stagger-only">
           <article
             v-for="item in decisionHighlights"
             :key="item.title"
@@ -63,7 +63,7 @@
       </div>
     </section>
 
-    <section class="detail-tabs shell-surface">
+    <section v-reveal class="detail-tabs shell-surface">
       <el-tabs v-model="activeTab" class="commodity-tabs">
         <el-tab-pane label="商品详情" name="details">
           <div class="detail-pane">
