@@ -19,3 +19,6 @@ frontstage/pet_shop/dist/
 
 # Database dumps — may contain real user data (password hashes, emails, phones)
 *.sql
+
+# macOS
+.DS_Store

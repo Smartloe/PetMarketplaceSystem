@@ -701,6 +701,188 @@ p {
 }
 
 /* ==========================================================================
+   Scroll-driven reveal — paired with the v-reveal directive
+   --------------------------------------------------------------------------
+   The directive only toggles .is-revealed; every timing decision lives here.
+   Elements start hidden ONLY once .reveal-target is applied by the directive,
+   so a JS failure leaves content visible rather than permanently blank.
+   ========================================================================== */
+
+.reveal-target {
+  opacity: 0;
+  transform: translate3d(0, 22px, 0);
+  transition: opacity 760ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 760ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 760ms cubic-bezier(0.16, 1, 0.3, 1);
+  filter: blur(6px);
+  will-change: opacity, transform;
+}
+
+.reveal-target.is-revealed {
+  opacity: 1;
+  transform: none;
+  filter: blur(0);
+}
+
+/* Children walk in one after another. --stagger-index is written by the
+   directive's .stagger modifier. */
+.reveal-target.is-revealed > * {
+  animation: fg-rise-blur 760ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--stagger-index, 0) * 90ms);
+}
+
+/* A parent that only staggers its children should not itself move. */
+.reveal-stagger-only.reveal-target {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+@keyframes fg-rise-blur {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+    filter: blur(5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+}
+
+/* Hairline rules draw themselves open. */
+.reveal-target.rule-draw {
+  transform: none;
+  filter: none;
+  opacity: 1;
+  scale: 0 1;
+  transform-origin: left center;
+  transition: scale 900ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal-target.rule-draw.is-revealed {
+  scale: 1 1;
+}
+
+/* ==========================================================================
+   Kinetic display type — per-character choreography
+   --------------------------------------------------------------------------
+   Each character is its own span with a --char-index, so a headline can rise,
+   clip, or settle character by character rather than as one block.
+   ========================================================================== */
+
+.kinetic {
+  display: block;
+}
+
+.kinetic-line {
+  display: block;
+  overflow: hidden;
+  /* Descenders must survive the clip that makes characters rise from a mask. */
+  padding-bottom: 0.12em;
+  margin-bottom: -0.12em;
+}
+
+.kinetic-char {
+  display: inline-block;
+  white-space: pre;
+  will-change: transform, opacity;
+}
+
+.reveal-target.is-revealed .kinetic-char,
+.kinetic-play .kinetic-char {
+  animation: kinetic-rise 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--char-index, 0) * 26ms + var(--line-delay, 0ms));
+}
+
+@keyframes kinetic-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 0.9em, 0) rotate(3deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ==========================================================================
+   Tilt plate — paired with the v-tilt directive
+   ========================================================================== */
+
+.tilt-plate {
+  transform: perspective(1000px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
+  transform-style: preserve-3d;
+  transition: transform 420ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* A light sheen that tracks the pointer across the plate. */
+.tilt-sheen {
+  position: relative;
+  isolation: isolate;
+}
+
+.tilt-sheen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 420ms ease;
+  background: radial-gradient(
+    circle 40% at var(--pointer-x, 50%) var(--pointer-y, 50%),
+    rgba(255, 253, 248, 0.34) 0%,
+    rgba(255, 253, 248, 0) 62%
+  );
+}
+
+.tilt-sheen:hover::after {
+  opacity: 1;
+}
+
+/* ==========================================================================
+   Parallax — paired with the v-parallax directive
+   ========================================================================== */
+
+.parallax-layer {
+  transform: translate3d(0, var(--parallax-shift, 0px), 0);
+  will-change: transform;
+}
+
+/* ==========================================================================
+   Magnetic link — the recurring arrow-led action
+   ========================================================================== */
+
+.magnetic {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.magnetic-rule {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 460ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.magnetic:hover .magnetic-rule,
+.magnetic:focus-visible .magnetic-rule {
+  transform: scaleX(1);
+}
+
+/* ==========================================================================
    Legacy bridge — helpers still referenced by existing views
    ========================================================================== */
 

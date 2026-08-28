@@ -15,6 +15,9 @@ import 'element-plus/dist/index.css';
 import './assets/design-system.css';
 import './assets/style.css';
 
+// 动效指令 (v-reveal / v-tilt / v-parallax)
+import { registerMotion } from './composables/motion';
+
 // 防抖函数
 const debounce = (fn, delay) => {
     let timer = null;
@@ -42,6 +45,9 @@ const app = createApp(App);
 
 // 全局使用Element Plus
 app.use(ElementPlus);
+
+// 注册全局动效指令
+registerMotion(app);
 
 axios.defaults.xsrfCookieName = 'csrftoken';
 axios.defaults.xsrfHeaderName = 'X-CSRFToken';
