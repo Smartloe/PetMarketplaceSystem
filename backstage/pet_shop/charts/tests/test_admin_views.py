@@ -34,8 +34,14 @@ class AnalyticsAdminViewTests(TestCase):
         self.assertContains(response, "admin_analytics/shared.js")
         self.assertSimpleUiMenuLeakRemoved(response)
 
-    def test_admin_index_renders_overview_and_app_list(self):
-        response = self.client.get(reverse("admin:index"))
+    def test_overview_page_renders_overview_and_app_list(self):
+        """
+        经营概览现在是一个独立内页（charts-overview-page），由
+        SIMPLEUI_HOME_PAGE 挂进 SimpleUI 外壳的第一个标签页。
+        它以前覆盖的是 templates/admin/index.html —— 而那个模板就是 SimpleUI
+        的外壳本身，覆盖它会让后台登录后丢失侧边栏与 logo。
+        """
+        response = self.client.get(reverse("charts-overview-page"))
         overview_url = reverse("charts-overview")
 
         self.assertContains(response, "经营概览")
@@ -48,6 +54,23 @@ class AnalyticsAdminViewTests(TestCase):
         self.assertSimpleUiMenuLeakRemoved(response)
         self.assertNotContains(response, " dashboard admin-overview-index")
         self.assertOverviewCopyRemoved(response)
+
+    def test_overview_page_requires_staff(self):
+        self.client.logout()
+        response = self.client.get(reverse("charts-overview-page"))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/admin/login/", response["Location"])
+
+    def test_admin_index_keeps_simpleui_shell(self):
+        """
+        后台首页必须保留 SimpleUI 外壳：logo 走 SIMPLEUI_LOGO，首页内容通过
+        iframe 加载概览页，而不是把概览直接铺在 /admin/ 上。
+        """
+        response = self.client.get(reverse("admin:index"))
+
+        self.assertContains(response, "/static/admin_brand/logo.png")
+        self.assertContains(response, reverse("charts-overview-page"))
+        self.assertSimpleUiMenuLeakRemoved(response)
 
 
 class AnalyticsStaticRegressionTests(SimpleTestCase):

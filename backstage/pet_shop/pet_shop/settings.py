@@ -215,6 +215,14 @@ USE_TZ = False
 STATIC_ROOT = os.path.join(BASE_DIR, "static")
 STATIC_URL = 'static/'
 
+# 后台自有静态资源（分析看板的 CSS/JS、后台品牌 logo）放在 pet_shop/static/。
+# 这个目录必须登记进 STATICFILES_DIRS —— 只配 STATIC_ROOT 是不够的：
+# STATIC_ROOT 是 collectstatic 的输出目录，不是查找源。少了这一行，
+# admin_analytics/*.css|js 会全部 404，后台首页只剩没有样式的“正在加载”文本。
+STATICFILES_DIRS = [
+	BASE_DIR / 'pet_shop' / 'static',
+]
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
@@ -307,6 +315,23 @@ COMMODITY_PREVIEW_LIMIT = int(os.environ.get('COMMODITY_PREVIEW_LIMIT', 6))
 # 隐藏右侧SimpleUI广告链接和使用分析
 SIMPLEUI_HOME_INFO = False
 SIMPLEUI_ANALYSIS = False
+
+# 后台 logo 与前台共用同一个文件（pet_shop/static/admin_brand/logo.png 从
+# frontstage/pet_shop/public/img/logo.png 复制而来）。
+# 注意：SimpleUI 的 logo 只能通过这个 setting 配置。它的 base.html 里没有
+# {% block branding %}，所以在 base_site.html 里覆盖 branding 会被静默丢弃。
+# STATIC_URL 是 'static/'（无前导斜杠），直接拼接会得到相对地址，在
+# /admin/login/ 这类子路径下会解析成 /admin/login/static/... 而 404。
+# 这里显式补上前导斜杠，保证是站点根绝对路径。
+SIMPLEUI_LOGO = '/' + STATIC_URL.lstrip('/') + 'admin_brand/logo.png'
+
+# 后台首页加载经营概览页。这是 SimpleUI 支持的自定义首页方式：概览会渲染在
+# 外壳的第一个标签页里，侧边栏与 logo 保持完整。
+# 不要改回覆盖 templates/admin/index.html —— 那个模板就是 SimpleUI 的外壳本身，
+# 覆盖它会导致后台登录后布局全部丢失。
+SIMPLEUI_HOME_PAGE = '/api/charts/overview/page/'
+SIMPLEUI_HOME_TITLE = '经营概览'
+SIMPLEUI_HOME_ICON = 'el-icon-data-line'
 
 # 设置缓存
 # 注意：LocMemCache 是每进程独立的。验证码用它存储，因此在多进程/多机

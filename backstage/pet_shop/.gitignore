@@ -54,6 +54,12 @@ Thumbs.db
 media/
 static/
 
+# 例外：pet_shop/static/ 放的是后台自有静态源文件（分析看板的 CSS/JS、
+# 品牌 logo），不是 collectstatic 的产物，必须入库。
+# 上面的 static/ 是无锚定模式，会连这个目录一起匹配，所以显式放行。
+!pet_shop/static/
+!pet_shop/static/**
+
 # Virtual environment
 venv/
 env/

@@ -1,6 +1,13 @@
 {% extends "admin/base_site.html" %}
 {% load i18n static log %}
 
+{# 首页经营概览。
+   这个页面以前是 templates/admin/index.html —— 但 SimpleUI 的 index.html
+   本身就是整个后台外壳（侧边栏、logo、标签页），覆盖它会把外壳整个替换掉，
+   于是后台登录后只剩一列没有样式的链接。
+   现在它作为一个独立的内页，通过 settings.SIMPLEUI_HOME_PAGE 挂进外壳的
+   第一个标签里，侧边栏和 logo 都保持完整。 #}
+
 {% block extrastyle %}
 {{ block.super }}
 <link rel="stylesheet" href="{% static 'admin/css/dashboard.css' %}">
@@ -13,8 +20,6 @@
 <script src="{% static 'admin_analytics/shared.js' %}" defer></script>
 <script src="{% static 'admin_analytics/overview.js' %}" defer></script>
 {% endblock %}
-
-{% block coltype %}colMS{% endblock %}
 
 {% block bodyclass %}admin-overview-index{% endblock %}
 
