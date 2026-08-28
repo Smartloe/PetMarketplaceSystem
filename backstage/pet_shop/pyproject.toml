@@ -42,4 +42,9 @@ dependencies = [
 	"requests==2.32.3",
 	# .env loading in settings.py
 	"python-dotenv==1.0.0",
+	"langchain>=0.3,<0.4",
+	"langchain-core>=0.3,<0.4",
+	"langchain-openai>=0.2,<0.4",
+	"langgraph>=0.2,<0.7",
+	"numpy>=1.26,<3",
 ]
