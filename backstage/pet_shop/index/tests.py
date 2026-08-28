@@ -211,6 +211,179 @@ class RetrievalTests(APITestCase):
 		self.assertEqual(self.document.chunks.count(), 0)
 
 
+class StreamingTests(APITestCase):
+	"""
+	Token-level streaming, and the boundary that matters most: while the model
+	is assembling a tool call it emits tokens too, and those must never reach
+	the user as answer text.
+	"""
+
+	def _stub_llm(self, responses):
+		from langchain_core.language_models.fake_chat_models import (
+			FakeMessagesListChatModel,
+		)
+
+		class StubLLM(FakeMessagesListChatModel):
+			def bind_tools(self, tools, **kwargs):
+				return self
+
+		return StubLLM(responses=responses)
+
+	def test_plain_answer_streams_token_by_token(self):
+		"""
+		FakeListChatModel streams character by character, which is what a real
+		model does. FakeMessagesListChatModel returns whole messages instead,
+		so it cannot show whether streaming actually happens.
+		"""
+		from langchain_core.language_models.fake_chat_models import FakeListChatModel
+
+		from index import agent
+
+		class StubLLM(FakeListChatModel):
+			def bind_tools(self, tools, **kwargs):
+				return self
+
+		llm = StubLLM(responses=['七天过渡法。'])
+		with patch.object(agent, '_build_llm', return_value=llm):
+			events = list(agent.stream_agent([], '换粮怎么过渡'))
+
+		kinds = [kind for kind, _ in events]
+		self.assertEqual(kinds[-1], 'final')
+		# More than one token event means it really streamed, not one blob
+		self.assertGreater(kinds.count('token'), 1)
+		streamed = ''.join(data for kind, data in events if kind == 'token')
+		self.assertEqual(streamed, '七天过渡法。')
+
+	def test_tool_call_emits_tool_event_and_hides_its_arguments(self):
+		from langchain_core.messages import AIMessage
+
+		from index import agent
+
+		tool_turn = AIMessage(content='', tool_calls=[{
+			'name': 'search_knowledge_base',
+			'args': {'question': '驱虫间隔'},
+			'id': 'call_1',
+		}])
+		answer_turn = AIMessage(content='体内每3个月一次。')
+		llm = self._stub_llm([tool_turn, answer_turn])
+
+		with patch.object(agent, '_build_llm', return_value=llm):
+			events = list(agent.stream_agent([], '驱虫间隔多久'))
+
+		kinds = [kind for kind, _ in events]
+		self.assertIn('tool_start', kinds)
+		self.assertEqual(kinds[-1], 'final')
+
+		# The tool's own arguments must not surface as answer text
+		streamed = ''.join(data for kind, data in events if kind == 'token')
+		self.assertEqual(streamed, '体内每3个月一次。')
+
+		final = events[-1][1]
+		self.assertIn('search_knowledge_base', final['tools_used'])
+
+	def test_event_stream_accept_header_is_negotiable(self):
+		"""
+		The frontend sends Accept: text/event-stream. DRF only configures JSON
+		and BrowsableAPI by default, so negotiation returned 406 and the
+		streaming request never reached the view — it silently fell back to the
+		non-streaming path, which is why this went unnoticed.
+		"""
+		user = User.objects.create_user(username='s4', password='TestPass#2026')
+		self.client.force_login(user)
+
+		def fake_stream(_history, _question):
+			yield ('token', '好的。')
+			yield ('final', {'answer': '好的。', 'tools_used': [], 'cited_chunk_ids': []})
+
+		with patch('index.agent.stream_agent', side_effect=fake_stream):
+			response = self.client.post(
+				'/api/ai/consult/',
+				{'question': '猫粮怎么选', 'stream': True},
+				format='json',
+				HTTP_ACCEPT='text/event-stream',
+			)
+			body = b''.join(response.streaming_content).decode()
+
+		self.assertEqual(response.status_code, status.HTTP_200_OK)
+		self.assertIn('text/event-stream', response['Content-Type'])
+		self.assertIn('好的', body)
+
+	def test_stream_response_sets_no_hop_by_hop_headers(self):
+		"""
+		Connection/Keep-Alive are hop-by-hop headers. WSGI forbids setting
+		them in the application, and Django's dev server raises
+		AssertionError, so the whole endpoint 500s under a real server even
+		though the test client tolerates it.
+		"""
+		user = User.objects.create_user(username='s3', password='TestPass#2026')
+		self.client.force_login(user)
+
+		def fake_stream(_history, _question):
+			yield ('final', {'answer': 'ok', 'tools_used': [], 'cited_chunk_ids': []})
+
+		with patch('index.agent.stream_agent', side_effect=fake_stream):
+			response = self.client.post(
+				'/api/ai/consult/',
+				{'question': '猫粮怎么选', 'stream': True},
+				format='json',
+			)
+			b''.join(response.streaming_content)
+
+		for header in ('Connection', 'Keep-Alive', 'Transfer-Encoding', 'Upgrade'):
+			self.assertNotIn(header, response.headers)
+		self.assertEqual(response['Cache-Control'], 'no-cache')
+
+	def test_stream_endpoint_reports_errors_as_an_sse_frame(self):
+		"""
+		Once streaming starts the headers are already sent, so a failure has
+		to arrive as an error frame rather than an exception.
+		"""
+		user = User.objects.create_user(username='s1', password='TestPass#2026')
+		self.client.force_login(user)
+
+		def boom(*_args, **_kwargs):
+			raise RuntimeError('未配置 LONGCAT_API_KEY。')
+
+		with patch('index.agent.stream_agent', side_effect=boom):
+			response = self.client.post(
+				'/api/ai/consult/',
+				{'question': '猫粮怎么选', 'stream': True},
+				format='json',
+			)
+			body = b''.join(response.streaming_content).decode()
+
+		self.assertEqual(response.status_code, status.HTTP_200_OK)
+		self.assertIn('error', body)
+
+	def test_streamed_turn_is_persisted_with_session_id(self):
+		user = User.objects.create_user(username='s2', password='TestPass#2026')
+		self.client.force_login(user)
+
+		def fake_stream(_history, _question):
+			yield ('token', '建议七天过渡。')
+			yield ('final', {
+				'answer': '建议七天过渡。',
+				'tools_used': [],
+				'cited_chunk_ids': [],
+			})
+
+		with patch('index.agent.stream_agent', side_effect=fake_stream):
+			response = self.client.post(
+				'/api/ai/consult/',
+				{'question': '换粮怎么过渡', 'stream': True},
+				format='json',
+			)
+			body = b''.join(response.streaming_content).decode()
+
+		self.assertIn('session_id', body)
+		from index.models import ConsultMessage, ConsultSession
+
+		session = ConsultSession.objects.filter(user=user).first()
+		self.assertIsNotNone(session)
+		roles = list(session.messages.values_list('role', flat=True))
+		self.assertEqual(roles, [ConsultMessage.ROLE_USER, ConsultMessage.ROLE_ASSISTANT])
+
+
 class ToolBoundaryTests(APITestCase):
 	"""The agent's tools must stay read-only and must not leak internals."""
 

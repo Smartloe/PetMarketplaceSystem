@@ -17,7 +17,13 @@ from __future__ import annotations
 import logging
 import os
 
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
+from langchain_core.messages import (
+	AIMessage,
+	AIMessageChunk,
+	HumanMessage,
+	SystemMessage,
+	ToolMessage,
+)
 from langgraph.graph import END, START, StateGraph
 from langgraph.prebuilt import ToolNode
 from typing_extensions import Annotated, TypedDict
@@ -72,10 +78,14 @@ def _get_api_key() -> str:
 	return key
 
 
-def _build_llm(streaming: bool = False):
+def _build_llm():
 	"""
 	LongCat 兼容 OpenAI 的 chat completions 格式，所以直接用 ChatOpenAI
 	指向它的 base_url，不需要自己实现 ChatModel。
+
+	streaming 恒为 True：stream_mode='messages' 依赖底层模型产出增量，
+	关掉的话流式接口只会在最后收到一整块内容。非流式调用走 invoke()，
+	不受影响。
 	"""
 	from langchain_openai import ChatOpenAI
 
@@ -85,7 +95,7 @@ def _build_llm(streaming: bool = False):
 		base_url=os.environ.get('LONGCAT_BASE_URL') or LONGCAT_API_URL,
 		max_tokens=MAX_TOKENS,
 		temperature=TEMPERATURE,
-		streaming=streaming,
+		streaming=True,
 		timeout=60,
 		max_retries=1,
 	)
@@ -189,3 +199,61 @@ def run_agent(history: list[dict], question: str) -> dict:
 		'tool_rounds': result.get('tool_rounds', 0),
 		'cited_chunk_ids': list(cited),
 	}
+
+
+def stream_agent(history: list[dict], question: str):
+	"""
+	逐 token 流式跑一轮。产出 (事件类型, 数据) 元组：
+
+	    ('tool_start', 工具名)   开始调用某个工具
+	    ('token', 文本片段)      正文增量
+	    ('final', 汇总 dict)     结束，带完整答案/引用/工具列表
+
+	为什么要区分事件：模型在决定调用工具时也会产生 token（工具参数的
+	JSON），那些不是给用户看的内容。只有工具调用结束后、模型基于结果
+	组织的那段输出才是正文。这里靠 tool_calls 是否存在来判断。
+	"""
+	from .tools import citation_recorder
+
+	graph = get_graph()
+	state = {'messages': build_messages(history, question), 'tool_rounds': 0}
+
+	answer_parts: list[str] = []
+	tools_used: list[str] = []
+
+	with citation_recorder() as cited:
+		for chunk, meta in graph.stream(state, stream_mode='messages'):
+			node = (meta or {}).get('langgraph_node')
+
+			if isinstance(chunk, ToolMessage):
+				if chunk.name and chunk.name not in tools_used:
+					tools_used.append(chunk.name)
+				continue
+
+			if not isinstance(chunk, (AIMessage, AIMessageChunk)):
+				continue
+
+			# 模型正在拼工具调用参数，这一段不是正文
+			if getattr(chunk, 'tool_calls', None) or getattr(chunk, 'tool_call_chunks', None):
+				for call in getattr(chunk, 'tool_calls', None) or []:
+					name = call.get('name') if isinstance(call, dict) else None
+					if name:
+						yield ('tool_start', name)
+				continue
+
+			content = chunk.content
+			# 部分模型会把 content 拆成结构化块，取其中的文本
+			if isinstance(content, list):
+				content = ''.join(
+					part.get('text', '') for part in content if isinstance(part, dict)
+				)
+			if content and node == 'agent':
+				answer_parts.append(content)
+				yield ('token', content)
+
+		answer = ''.join(answer_parts).strip()
+		yield ('final', {
+			'answer': answer or '抱歉，我暂时无法回答这个问题。',
+			'tools_used': tools_used,
+			'cited_chunk_ids': list(cited),
+		})

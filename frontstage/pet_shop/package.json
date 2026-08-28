@@ -11,6 +11,7 @@
     "@element-plus/icons-vue": "^2.3.1",
     "axios": "^1.6.8",
     "core-js": "^3.8.3",
+    "dompurify": "3.2.7",
     "element-plus": "^2.7.2",
     "marked": "^17.0.0",
     "vue": "^3.4.26",

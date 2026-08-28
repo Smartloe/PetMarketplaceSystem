@@ -3,6 +3,7 @@ import logging
 
 from django.http import StreamingHttpResponse
 from rest_framework import permissions, status
+from rest_framework.renderers import BaseRenderer, JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -99,6 +100,23 @@ def _sanitize_messages(raw_messages):
 	return cleaned[-MAX_HISTORY_MESSAGES:]
 
 
+class EventStreamRenderer(BaseRenderer):
+	"""
+	让 DRF 的内容协商接受 Accept: text/event-stream。
+
+	前端发起流式请求时带的就是这个 Accept 头，而 DRF 默认只配了 JSON 与
+	BrowsableAPI，协商失败会直接返回 406 —— 流式请求根本进不到 view。
+	实际的 SSE 内容由 StreamingHttpResponse 自己写出，这里不参与渲染。
+	"""
+
+	media_type = 'text/event-stream'
+	format = 'txt'
+	charset = 'utf-8'
+
+	def render(self, data, accepted_media_type=None, renderer_context=None):
+		return data
+
+
 def _sse(payload):
 	return f'data: {json.dumps(payload, ensure_ascii=False)}\n\n'
 
@@ -106,9 +124,11 @@ def _sse(payload):
 def _stream_response(generator):
 	response = StreamingHttpResponse(generator, content_type='text/event-stream')
 	response['Cache-Control'] = 'no-cache'
-	response['Connection'] = 'keep-alive'
 	# 关掉 nginx 的响应缓冲，否则流式内容会被攒着一次性吐出
 	response['X-Accel-Buffering'] = 'no'
+	# 注意：不要设置 Connection: keep-alive。那是 hop-by-hop 头，WSGI 规范
+	# 禁止应用层设置，Django 开发服务器会直接抛 AssertionError，gunicorn
+	# 等生产服务器同样拒绝。连接复用由服务器自己管理。
 	# CORS 头交给 corsheaders 按白名单添加；手写 '*' 与
 	# CORS_ALLOW_CREDENTIALS 组合是非法的，浏览器会拒收。
 	return response
@@ -181,6 +201,8 @@ class AIPetConsultView(APIView):
 
 	permission_classes = (permissions.IsAuthenticated,)
 	throttle_scope = 'ai_consult'
+	# JSON 放在前面，保持非流式请求的默认行为不变
+	renderer_classes = (JSONRenderer, EventStreamRenderer)
 
 	def post(self, request):
 		payload = request.data if isinstance(request.data, dict) else {}
@@ -225,12 +247,17 @@ class AIPetConsultView(APIView):
 			return Response({'answer': REJECTION_MESSAGE}, status=status.HTTP_200_OK)
 
 		try:
-			from .agent import run_agent
+			from .agent import run_agent, stream_agent
 		except ImportError as exc:
 			logger.error('Agent 依赖缺失: %s', exc)
 			return Response(
 				{'detail': 'AI 服务暂未就绪，请联系管理员。'},
 				status=status.HTTP_503_SERVICE_UNAVAILABLE,
+			)
+
+		if stream:
+			return _stream_response(
+				self._agent_event_stream(stream_agent, messages, question, session_id),
 			)
 
 		try:
@@ -244,10 +271,6 @@ class AIPetConsultView(APIView):
 			)
 		except Exception as exc:
 			logger.exception('Agent 执行失败: %s', exc)
-			if stream:
-				def error_stream():
-					yield _sse({'error': 'AI 服务暂不可用，请稍后再试。'})
-				return _stream_response(error_stream())
 			return Response(
 				{'detail': 'AI 服务暂不可用，请稍后再试。'},
 				status=status.HTTP_502_BAD_GATEWAY,
@@ -260,22 +283,6 @@ class AIPetConsultView(APIView):
 			result.get('cited_chunk_ids'), session_id,
 		)
 
-		if stream:
-			# Agent 需要跑完整个图（可能含多轮工具调用）才知道最终答案，
-			# 没法真正逐 token 流式输出。这里按段切分模拟打字机效果，
-			# 保持前端 SSE 协议不变。
-			def answer_stream():
-				chunk_size = 24
-				for start in range(0, len(answer), chunk_size):
-					yield _sse({'content': answer[start:start + chunk_size]})
-				yield _sse({
-					'done': True,
-					'citations': citations,
-					'tools_used': result.get('tools_used', []),
-					'session_id': new_session_id,
-				})
-			return _stream_response(answer_stream())
-
 		return Response(
 			{
 				'answer': answer,
@@ -285,3 +292,38 @@ class AIPetConsultView(APIView):
 			},
 			status=status.HTTP_200_OK,
 		)
+
+	def _agent_event_stream(self, stream_agent, messages, question, session_id):
+		"""
+		把 Agent 的事件流转成 SSE。
+
+		异常必须在生成器内部捕获：StreamingHttpResponse 一旦开始迭代，
+		响应头已经发出，这时再抛异常只会让连接中断，前端拿到的是一个
+		没有 error 帧的截断流。
+		"""
+		user = self.request.user
+		try:
+			for kind, data in stream_agent(messages, question):
+				if kind == 'token':
+					yield _sse({'content': data})
+				elif kind == 'tool_start':
+					# 前端据此显示"正在查询商品/知识库"
+					yield _sse({'tool': data})
+				elif kind == 'final':
+					citations = _build_citations(data.get('cited_chunk_ids'))
+					new_session_id = _persist_turn(
+						user, question, data['answer'],
+						data.get('cited_chunk_ids'), session_id,
+					)
+					yield _sse({
+						'done': True,
+						'citations': citations,
+						'tools_used': data.get('tools_used', []),
+						'session_id': new_session_id,
+					})
+		except RuntimeError as exc:
+			logger.error('Agent 配置错误: %s', exc)
+			yield _sse({'error': 'AI 服务暂未配置，请联系管理员。'})
+		except Exception as exc:
+			logger.exception('Agent 流式执行失败: %s', exc)
+			yield _sse({'error': 'AI 服务暂不可用，请稍后再试。'})

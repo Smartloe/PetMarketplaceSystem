@@ -44,6 +44,17 @@
             <p class="bubble-label">{{ message.role === 'assistant' ? '顾问回复' : '我的问题' }}</p>
             <div v-if="message.role === 'assistant'" v-html="renderMarkdown(message.content)"></div>
             <p v-else>{{ message.content }}</p>
+
+            <!-- 引用来源：让用户能核对回答依据的是哪份店内资料 -->
+            <div v-if="message.citations && message.citations.length" class="bubble-citations">
+              <p class="citations-label">参考资料</p>
+              <ul>
+                <li v-for="citation in message.citations" :key="citation.document_id">
+                  <span class="citation-title">{{ citation.title }}</span>
+                  <span class="citation-excerpt">{{ citation.excerpt }}</span>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
 
@@ -53,8 +64,19 @@
           </div>
           <div class="bubble-content">
             <p class="bubble-label">顾问回复</p>
-            <div v-html="renderMarkdown(streamingContent)"></div>
-            <span class="streaming-cursor" aria-hidden="true"></span>
+
+            <!-- 工具调用期间还没有正文，先说明它在查什么 -->
+            <p v-if="activeTool" class="tool-status">
+              <el-icon class="tool-status-icon"><Search /></el-icon>
+              <span>{{ activeTool }}</span>
+            </p>
+
+            <div v-if="streamingContent" v-html="renderMarkdown(streamingContent)"></div>
+            <span
+              v-if="streamingContent || !activeTool"
+              class="streaming-cursor"
+              aria-hidden="true"
+            ></span>
           </div>
         </div>
 
@@ -134,12 +156,19 @@
 
 <script>
 import { consultPetAdvisor, getAccessToken } from '@/api';
-import { Refresh, Promotion } from '@element-plus/icons-vue';
+import { Promotion, Refresh, Search } from '@element-plus/icons-vue';
+import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 
 const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || '/api';
 const INITIAL_ASSISTANT_MESSAGE =
   '你好，这里是吉祥宠物商城 AI 顾问。我可以协助梳理主粮选择、换粮节奏、驱虫洗护和用品搭配问题。';
+
+// 后端 tool 事件里的工具名 -> 界面提示语
+const TOOL_LABELS = {
+  search_products: '正在查询在售商品',
+  search_knowledge_base: '正在检索店内资料',
+};
 
 function resolveStreamingEndpoint() {
   const basePath = API_BASE_URL.replace(/\/$/, '');
@@ -173,8 +202,9 @@ function createStreamingHeaders() {
 export default {
   name: 'AIPetExpert',
   components: {
-    Refresh,
     Promotion,
+    Refresh,
+    Search,
   },
   data() {
     return {
@@ -183,6 +213,10 @@ export default {
       errorMessage: '',
       streamingContent: '',
       isStreaming: false,
+      // 当前正在调用的工具的提示语，空串表示没有在调工具
+      activeTool: '',
+      // 服务端会话 id，随第一次回答返回，后续请求带上以延续同一会话
+      sessionId: null,
       conversation: [
         {
           role: 'assistant',
@@ -230,13 +264,22 @@ export default {
     renderMarkdown(content) {
       if (!content) return '';
 
-      marked.setOptions({
-        breaks: true,
-        gfm: true,
-        sanitize: false,
-      });
+      // marked 的 sanitize 选项在 v5 就被移除了（本项目用 v17），配了也不生效，
+      // 原始 HTML 会原样透传。这段内容经 v-html 渲染，模型输出又可以被提问
+      // 内容影响，所以必须显式过滤。
+      marked.setOptions({ breaks: true, gfm: true });
 
-      return marked(content);
+      return DOMPurify.sanitize(marked(content), {
+        // 只放行 markdown 会产出的标签
+        ALLOWED_TAGS: [
+          'p', 'br', 'strong', 'em', 'del', 'code', 'pre', 'blockquote',
+          'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+          'a', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'hr',
+        ],
+        ALLOWED_ATTR: ['href', 'title'],
+        // 外链统一在新窗口打开，且不携带 referrer
+        ADD_ATTR: ['target', 'rel'],
+      });
     },
     resetConversation() {
       if (this.isBusy) return;
@@ -248,6 +291,9 @@ export default {
       ];
       this.errorMessage = '';
       this.streamingContent = '';
+      this.activeTool = '';
+      // 开新会话：不再延续服务端那条记录
+      this.sessionId = null;
     },
     async sendMessage() {
       if (this.isBusy) return;
@@ -298,6 +344,7 @@ export default {
           content: item.content,
         })),
         stream: true,
+        session_id: this.sessionId,
       };
 
       this.loading = false;
@@ -326,48 +373,84 @@ export default {
         }
 
         const decoder = new TextDecoder();
-        let finished = false;
+        // SSE 帧不保证和 chunk 边界对齐，一帧可能跨两个 chunk。缓冲未完成
+        // 的尾部，只处理已经收到换行的完整帧。
+        let buffer = '';
+        let streamError = null;
 
-        while (!finished) {
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
           const { done, value } = await reader.read();
           if (done) {
-            finished = true;
             break;
           }
 
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n');
+          buffer += decoder.decode(value, { stream: true });
 
-          for (const line of lines) {
-            if (!line.startsWith('data: ')) {
+          // SSE 以空行分隔事件
+          const frames = buffer.split('\n\n');
+          buffer = frames.pop() ?? '';
+
+          for (const frame of frames) {
+            const line = frame.split('\n').find((item) => item.startsWith('data: '));
+            if (!line) {
               continue;
             }
 
-            const data = line.slice(6);
-            if (!data.trim()) {
+            const raw = line.slice(6).trim();
+            if (!raw) {
               continue;
             }
 
+            let parsed;
             try {
-              const parsed = JSON.parse(data);
-              if (parsed.content) {
-                this.streamingContent += parsed.content;
-                this.$nextTick(this.scrollToBottom);
-              } else if (parsed.done) {
-                this.conversation.push({
-                  role: 'assistant',
-                  content: this.streamingContent,
-                });
-                this.isStreaming = false;
-                this.streamingContent = '';
-                return;
-              } else if (parsed.error) {
-                throw new Error(parsed.error);
-              }
+              parsed = JSON.parse(raw);
             } catch {
-              // Ignore malformed SSE chunks and continue reading subsequent frames.
+              // 只跳过解析失败的帧，不要连同下面的业务错误一起吞掉
+              continue;
+            }
+
+            if (parsed.error) {
+              streamError = new Error(parsed.error);
+              break;
+            }
+
+            if (parsed.tool) {
+              this.activeTool = TOOL_LABELS[parsed.tool] || '正在查询资料';
+              continue;
+            }
+
+            if (parsed.content) {
+              this.activeTool = '';
+              this.streamingContent += parsed.content;
+              this.$nextTick(this.scrollToBottom);
+              continue;
+            }
+
+            if (parsed.done) {
+              this.conversation.push({
+                role: 'assistant',
+                content: this.streamingContent,
+                citations: parsed.citations || [],
+                toolsUsed: parsed.tools_used || [],
+              });
+              if (parsed.session_id) {
+                this.sessionId = parsed.session_id;
+              }
+              this.isStreaming = false;
+              this.activeTool = '';
+              this.streamingContent = '';
+              return;
             }
           }
+
+          if (streamError) {
+            break;
+          }
+        }
+
+        if (streamError) {
+          throw streamError;
         }
       } catch (error) {
         if (error?.response?.status === 401) {
@@ -376,17 +459,28 @@ export default {
 
         this.isStreaming = false;
 
+        this.activeTool = '';
+
         const fallbackPayload = {
           messages: this.conversation.map((item) => ({
             role: item.role,
             content: item.content,
           })),
           stream: false,
+          session_id: this.sessionId,
         };
 
         const { data } = await consultPetAdvisor(fallbackPayload);
         const answer = data?.answer?.trim() || '抱歉，我暂时无法回答这个问题。';
-        this.conversation.push({ role: 'assistant', content: answer });
+        this.conversation.push({
+          role: 'assistant',
+          content: answer,
+          citations: data?.citations || [],
+          toolsUsed: data?.tools_used || [],
+        });
+        if (data?.session_id) {
+          this.sessionId = data.session_id;
+        }
       }
     },
     scrollToBottom() {
@@ -720,6 +814,71 @@ export default {
   padding-left: var(--space-3);
   border-left: 3px solid var(--vermilion);
   color: var(--text-muted);
+}
+
+/* 工具调用提示：正文还没开始时占位，说明它在查什么 */
+.tool-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--pine-deep);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-2xs);
+  letter-spacing: 0.06em;
+}
+
+.tool-status-icon {
+  animation: tool-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes tool-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* 引用来源：与正文用一条细线分隔，读起来像脚注 */
+.bubble-citations {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line-hair);
+}
+
+.citations-label {
+  margin: 0 0 var(--space-2);
+  color: var(--ink-faint);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-2xs);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.bubble-citations ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.bubble-citations li {
+  display: grid;
+  gap: 2px;
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--pine);
+}
+
+.citation-title {
+  color: var(--pine-deep);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.citation-excerpt {
+  color: var(--text-muted);
+  font-size: var(--font-size-2xs);
+  line-height: 1.6;
 }
 
 /* A typesetter's caret: a solid vermilion block, not a pipe character. */
