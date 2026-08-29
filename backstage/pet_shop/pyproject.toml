@@ -17,34 +17,33 @@ requires-python = ">=3.10"
 # reason the project could not build on Python 3.13.
 dependencies = [
 	# Framework and API layer
-	"django==5.0.4",
-	"djangorestframework==3.15.1",
-	"djangorestframework-simplejwt==5.3.1",
+	"django>=5.1,<5.2",
+	"djangorestframework>=3.16,<3.17",
+	"djangorestframework-simplejwt>=5.4,<6",
 	# INSTALLED_APPS entries (loaded by app label, not imported by our code)
-	"django-cors-headers==4.3.1",
-	"django-simpleui==2024.4.1",
+	"django-cors-headers>=4.6,<5",
+	"django-simpleui>=2025,<2026",
 	# Admin import/export actions
-	"django-import-export==4.0.7",
+	"django-import-export>=4.3,<5",
 	# Phone number model field + its validation data
-	"django-phonenumber-field==7.3.0",
-	"phonenumbers==8.13.36",
+	"django-phonenumber-field>=8.0,<9",
+	"phonenumbers>=8.13,<9",
 	# Swagger / ReDoc schema UI
-	"drf-yasg==1.21.7",
-	# drf-yasg 1.21.7 still imports pkg_resources at module load, which ships
-	# with setuptools and is no longer bundled on Python 3.12+. Without this
-	# the whole project fails to import.
-	"setuptools==75.1.0",
+	"drf-yasg>=1.21,<2",
+	# drf-yasg still imports pkg_resources at module load, which ships
+	# with setuptools and is no longer bundled on Python 3.12+.
+	"setuptools>=78,<80",
 	# MySQL driver
-	"pymysql==1.1.0",
+	"pymysql>=1.1,<2",
 	# ImageField handling and captcha image generation
-	"pillow==10.3.0",
+	"pillow>=11.0,<12",
 	# Outbound HTTP for the LongCat AI endpoint
-	"requests==2.32.3",
+	"requests>=2.32,<3",
 	# .env loading in settings.py
-	"python-dotenv==1.0.0",
+	"python-dotenv>=1.1,<2",
 	"langchain>=0.3,<0.4",
 	"langchain-core>=0.3,<0.4",
-	"langchain-openai>=0.2,<0.4",
-	"langgraph>=0.2,<0.7",
-	"numpy>=1.26,<3",
+	"langchain-openai>=0.3,<0.4",
+	"langgraph>=0.3,<0.4",
+	"numpy>=2.0,<3",
 ]
