@@ -94,7 +94,9 @@ MIDDLEWARE = [
 	'django.middleware.csrf.CsrfViewMiddleware',
 	'django.contrib.auth.middleware.AuthenticationMiddleware',
 	'django.contrib.messages.middleware.MessageMiddleware',
-	'django.middleware.clickjacking.XFrameOptionsMiddleware',
+	# SimpleUI's ready() pops XFrameOptionsMiddleware, so we add our own
+	# middleware to restore the header for non-admin paths.
+	'pet_shop.middleware.SecurityHeadersMiddleware',
 ]
 
 ROOT_URLCONF = 'pet_shop.urls'
@@ -365,3 +367,43 @@ if not DEBUG:
 	if SECURE_HSTS_SECONDS:
 		SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 		SECURE_HSTS_PRELOAD = True
+
+# ---- 文件上传安全 ----
+# 限制上传文件大小（单位：字节）
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+
+# 允许的图片类型和扩展名（用于自定义验证）
+ALLOWED_IMAGE_TYPES = {
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+}
+ALLOWED_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
+MAX_UPLOAD_SIZE_MB = 5
+
+# ---- 会话安全 ----
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 7  # 7 天
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+SESSION_COOKIE_HTTPONLY = True  # 防止 JavaScript 访问会话 cookie
+
+# ---- 密码策略 ----
+# 增加密码最小长度要求
+AUTH_PASSWORD_VALIDATORS = [
+	{
+		'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+	},
+	{
+		'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+		'OPTIONS': {
+			'min_length': 8,
+		}
+	},
+	{
+		'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+	},
+	{
+		'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+	},
+]

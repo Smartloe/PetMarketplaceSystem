@@ -40,3 +40,8 @@ class UserProfile(models.Model):
 	class Meta:
 		verbose_name = '用户信息'
 		verbose_name_plural = '用户信息'
+		indexes = [
+			models.Index(fields=['username'], name='idx_profile_username'),
+			models.Index(fields=['user_score'], name='idx_profile_score'),
+			models.Index(fields=['updated_time'], name='idx_profile_updated'),
+		]

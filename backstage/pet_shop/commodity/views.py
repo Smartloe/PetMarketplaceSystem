@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.cache import cache
 from django.db.models import Q
 from django.views.decorators.csrf import csrf_exempt  # 免除csrf认证
 from rest_framework import status
@@ -8,6 +9,17 @@ from rest_framework.views import APIView
 
 from customer_operation.models import UserComment
 from .serializers import *
+
+# Import cache utilities
+import sys
+sys.path.append(str(settings.BASE_DIR))
+from pet_shop.cache_utils import (
+    cache_response,
+    get_cached_commodity_list,
+    set_cached_commodity_list,
+    invalidate_commodity_cache,
+    CACHE_TIMEOUT_SHORT,
+)
 
 
 # Create your views here.
@@ -19,10 +31,19 @@ class commodityView(APIView):
 
 	@csrf_exempt
 	def get(self, request):
+		# Check cache first
 		is_guest = not request.user.is_authenticated
 		preview_limit = getattr(settings, 'COMMODITY_PREVIEW_LIMIT', 6)
-		# 获取所有商品类型
-		categories = CommodityCategories.objects.all()
+
+		# Try to get from cache
+		cached_data = get_cached_commodity_list(category_id=None, page=1)
+		if cached_data and is_guest:
+			return Response(cached_data)
+
+		# 获取所有商品类型，使用prefetch_related优化查询
+		categories = CommodityCategories.objects.prefetch_related(
+			'commodityinfos_set'  # Django自动生成的反向关系
+		).all()
 
 		# 初始化一个字典来存储商品数据
 		data = {}
@@ -50,8 +71,8 @@ class commodityView(APIView):
 						# 'commodities': []
 					}
 
-			# 获取该类型下的所有商品
-			commodities = CommodityInfos.objects.filter(types=category).order_by('-id')
+			# 获取该类型下的所有商品（使用prefetch_related优化）
+			commodities = category.commodityinfos_set.all().order_by('-id')
 			if is_guest:
 				commodities = commodities[:preview_limit]
 
@@ -68,11 +89,17 @@ class commodityView(APIView):
 		# else:
 		# 	data[category.title]['commodities'] = commodities_serializer.data
 
-		return Response({
+		response_data = {
 			'categories': data,
 			'limited': is_guest,
 			'preview_limit': preview_limit
-		})
+		}
+
+		# Cache the response for guest users
+		if is_guest:
+			set_cached_commodity_list(response_data, category_id=None, page=1)
+
+		return Response(response_data)
 
 
 class detailView(APIView):
@@ -83,6 +110,12 @@ class detailView(APIView):
 
 	@csrf_exempt
 	def get(self, request, pk):
+		# Check cache first
+		cache_key = f"commodity_detail:{pk}"
+		cached_data = cache.get(cache_key)
+		if cached_data:
+			return Response(cached_data)
+
 		try:
 			# 获取商品信息
 			commodity_info = CommodityInfos.objects.get(id=pk)
@@ -101,6 +134,9 @@ class detailView(APIView):
 			'category': category_serializer.data,
 			'commodity_info': commodity_info_serializer.data,
 		}
+
+		# Cache the response
+		cache.set(cache_key, data, CACHE_TIMEOUT_SHORT)
 
 		return Response(data)
 

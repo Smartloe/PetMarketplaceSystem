@@ -45,6 +45,15 @@ class OrderInfos(models.Model):
 		verbose_name_plural = '订单信息'
 		# 分页必须建立在有序 queryset 上，否则跨页会重复或漏行
 		ordering = ['-created_time', '-id']
+		indexes = [
+			models.Index(fields=['user'], name='idx_order_user'),
+			models.Index(fields=['order_sn'], name='idx_order_sn'),
+			models.Index(fields=['order_status'], name='idx_order_status'),
+			models.Index(fields=['created_time'], name='idx_order_created'),
+			models.Index(fields=['refund_status'], name='idx_order_refund'),
+			# 复合索引：用于用户订单列表查询（用户+状态+创建时间）
+			models.Index(fields=['user', 'order_status', 'created_time'], name='idx_order_user_list'),
+		]
 
 	def __str__(self):
 		return f"订单号: {self.order_sn}, 用户: {self.user.username}"
@@ -89,3 +98,9 @@ class ShoppingCart(models.Model):
 		verbose_name = '购物车'
 		verbose_name_plural = '购物车'
 		ordering = ['-created_time', '-id']
+		indexes = [
+			models.Index(fields=['user'], name='idx_cart_user'),
+			models.Index(fields=['commodity'], name='idx_cart_commodity'),
+			# 复合索引：用于用户购物车查询（用户+商品）
+			models.Index(fields=['user', 'commodity'], name='idx_cart_user_commodity'),
+		]

@@ -19,6 +19,11 @@ class UserFav(models.Model):
 		verbose_name_plural = verbose_name
 		unique_together = ("user", "goods")
 		ordering = ['-add_time', '-id']
+		indexes = [
+			models.Index(fields=['user'], name='idx_fav_user'),
+			models.Index(fields=['goods'], name='idx_fav_goods'),
+			models.Index(fields=['add_time'], name='idx_fav_time'),
+		]
 
 	def __str__(self):
 		return self.user.username
@@ -56,6 +61,12 @@ class UserLeavingMessage(models.Model):
 		verbose_name = "用户留言"
 		verbose_name_plural = verbose_name
 		ordering = ['-add_time', '-id']
+		indexes = [
+			models.Index(fields=['user'], name='idx_message_user'),
+			models.Index(fields=['message_type'], name='idx_message_type'),
+			models.Index(fields=['is_replied'], name='idx_message_replied'),
+			models.Index(fields=['add_time'], name='idx_message_time'),
+		]
 
 	def __str__(self):
 		return self.subject
@@ -83,6 +94,12 @@ class UserAddress(models.Model):
 		verbose_name_plural = verbose_name
 		# 默认地址排在最前，其余按创建时间倒序
 		ordering = ['-is_default', '-created_time', '-id']
+		indexes = [
+			models.Index(fields=['user'], name='idx_address_user'),
+			models.Index(fields=['is_default'], name='idx_address_default'),
+			# 复合索引：用于查询用户的默认地址
+			models.Index(fields=['user', 'is_default'], name='idx_address_user_default'),
+		]
 
 	def __str__(self):
 		return f"{self.province}{self.city}{self.county}{self.address}"
@@ -114,6 +131,15 @@ class UserComment(models.Model):
 		verbose_name = "用户评论"
 		verbose_name_plural = verbose_name
 		ordering = ['-created_time', '-id']
+		indexes = [
+			models.Index(fields=['user'], name='idx_comment_user'),
+			models.Index(fields=['commodity'], name='idx_comment_commodity'),
+			models.Index(fields=['rating'], name='idx_comment_rating'),
+			models.Index(fields=['is_show'], name='idx_comment_show'),
+			models.Index(fields=['created_time'], name='idx_comment_time'),
+			# 复合索引：用于查询商品的展示评论
+			models.Index(fields=['commodity', 'is_show', 'created_time'], name='idx_comment_product_list'),
+		]
 
 	def __str__(self):
 		# 返回评论的摘要或者其他有意义的字符串表示

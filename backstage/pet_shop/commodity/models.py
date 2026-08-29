@@ -23,6 +23,16 @@ class CommodityInfos(models.Model):
 		verbose_name = '商品信息'
 		verbose_name_plural = '商品信息'
 		ordering = ['-created_time', '-id']
+		indexes = [
+			models.Index(fields=['sku_title'], name='idx_commodity_title'),
+			models.Index(fields=['status'], name='idx_commodity_status'),
+			models.Index(fields=['types'], name='idx_commodity_types'),
+			models.Index(fields=['price'], name='idx_commodity_price'),
+			models.Index(fields=['created_time'], name='idx_commodity_created'),
+			models.Index(fields=['sold'], name='idx_commodity_sold'),
+			# 复合索引：用于商品列表查询（状态+类型+创建时间）
+			models.Index(fields=['status', 'types', 'created_time'], name='idx_commodity_list'),
+		]
 
 	def __str__(self):
 		return self.sku_title

@@ -14,8 +14,11 @@ class OrderInfosViewSet(viewsets.ModelViewSet):
 	def get_queryset(self):
 		"""
 		只返回当前登录用户的订单记录
+		使用select_related优化查询，避免N+1问题
 		"""
-		return OrderInfos.objects.filter(user=self.request.user)
+		return OrderInfos.objects.filter(user=self.request.user).select_related(
+			'address', 'user'
+		)
 
 
 class OrderGoodsViewSet(viewsets.ModelViewSet):
@@ -26,8 +29,11 @@ class OrderGoodsViewSet(viewsets.ModelViewSet):
 	def get_queryset(self):
 		"""
 		只返回当前登录用户的订单商品记录
+		使用select_related优化查询，避免N+1问题
 		"""
-		return OrderGoods.objects.filter(order__user=self.request.user)
+		return OrderGoods.objects.filter(order__user=self.request.user).select_related(
+			'order', 'goods', 'goods__types'
+		)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -40,8 +46,11 @@ class ShoppingCartViewSet(viewsets.ModelViewSet):
 	def get_queryset(self):
 		"""
 		只返回当前登录用户的购物车记录
+		使用select_related优化查询，避免N+1问题
 		"""
-		return ShoppingCart.objects.filter(user=self.request.user)
+		return ShoppingCart.objects.filter(user=self.request.user).select_related(
+			'commodity', 'commodity__types'
+		)
 
 	def perform_create(self, serializer):
 		serializer.save(user=self.request.user)

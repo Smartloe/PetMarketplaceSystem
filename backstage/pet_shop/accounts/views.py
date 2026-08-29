@@ -196,6 +196,13 @@ class AvatarUploadView(APIView):
 		if not file_obj:
 			return Response({'detail': '请上传头像文件'}, status=status.HTTP_400_BAD_REQUEST)
 
+		# Validate the uploaded file
+		try:
+			from .utils.validators import validate_avatar_upload
+			validate_avatar_upload(file_obj)
+		except Exception as e:
+			return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 		profile, _ = UserProfile.objects.get_or_create(username=request.user)
 		profile.avatar = file_obj
 		profile.save(update_fields=['avatar'])
