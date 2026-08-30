@@ -64,7 +64,9 @@ class OrderGoods(models.Model):
 	订单的商品详情
 	"""
 	order = models.ForeignKey(OrderInfos, on_delete=models.CASCADE, verbose_name="订单信息", related_name="goods")
-	goods = models.ForeignKey('commodity.CommodityInfos', on_delete=models.CASCADE, verbose_name="商品")
+	# PROTECT：删除商品不允许连带销毁历史订单明细，否则订单金额与
+	# 明细对不上，审计数据失真。要下架请改 status 而不是删行。
+	goods = models.ForeignKey('commodity.CommodityInfos', on_delete=models.PROTECT, verbose_name="商品")
 	goods_num = models.IntegerField(default=1, verbose_name="商品数量")
 	add_time = models.DateTimeField(auto_now_add=True, verbose_name="添加时间")
 	commented = models.BooleanField(default=False, verbose_name='已评论')
@@ -81,10 +83,12 @@ class OrderGoods(models.Model):
 # 购物车信息表
 class ShoppingCart(models.Model):
 	user = models.ForeignKey('auth.User', on_delete=models.CASCADE, verbose_name='用户')
+	# db_constraint 已恢复（此前为 False）：无 FK 约束时客户端可以塞进
+	# 任意 commodity_id 造出脏行。加购接口同时校验商品存在。
 	commodity = models.ForeignKey(
 		'commodity.CommodityInfos',
 		on_delete=models.SET_NULL,
-		db_constraint=False, null=True,
+		null=True,
 		blank=True, verbose_name='商品'
 	)
 	quantity = models.IntegerField('购买数量')

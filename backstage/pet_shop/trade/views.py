@@ -1,6 +1,7 @@
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
+from commodity.models import CommodityInfos
 from .models import OrderInfos, OrderGoods, ShoppingCart
 from .serializers import OrderInfosSerializer, OrderGoodsSerializer, ShoppingCartSerializer
 from django.views.decorators.csrf import csrf_exempt
@@ -86,6 +87,11 @@ class ShoppingCartViewSet(viewsets.ModelViewSet):
 
 		if not commodity_id:
 			return Response({'detail': '请选择商品'}, status=status.HTTP_400_BAD_REQUEST)
+
+		# 购物车行的 commodity 此前没有 FK 约束，任意 id 都能写进来，
+		# 直到结算才报“已下架”。
+		if not CommodityInfos.objects.filter(id=commodity_id).exists():
+			return Response({'detail': '商品不存在或已下架'}, status=status.HTTP_400_BAD_REQUEST)
 
 		cart, created = ShoppingCart.objects.get_or_create(
 			user=user,

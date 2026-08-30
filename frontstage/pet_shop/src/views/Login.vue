@@ -165,7 +165,9 @@ export default {
             store.commit('setUserName', response.data.username);
             store.commit('setLastLogin', response.data.last_login);
             store.commit('setIsLoggedIn', true);
-            router.push('/commodity');
+            // 路由守卫把未登录访问的目标页放在 ?next= 里，登录后跳回去
+            const next = router.currentRoute.value.query.next;
+            router.push(typeof next === 'string' && next.startsWith('/') ? next : '/commodity');
           }
         })
         .catch((error) => {

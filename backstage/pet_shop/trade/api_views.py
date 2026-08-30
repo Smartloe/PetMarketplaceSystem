@@ -190,10 +190,19 @@ class OrderRefundView(APIView):
 		if order.refund_status == 1:
 			return Response({'detail': '退款申请正在审核中，请勿重复提交'}, status=status.HTTP_400_BAD_REQUEST)
 
-		order.refund_status = 1
-		order.order_status = 4  # 退货中
-		order.refund_reason = f'{refund_type} - {reason}' if refund_type else reason
-		order.save(update_fields=['refund_status', 'order_status', 'refund_reason', 'update_by', 'update_time'])
+		# 条件更新防并发：两个请求同时通过上面的检查时，只有第一个
+		# 能把 refund_status 置 1，第二个 update 命中 0 行。
+		updated = OrderInfos.objects.filter(
+			id=order.id, order_status__gte=2,
+		).exclude(order_status=5).exclude(refund_status=1).update(
+			refund_status=1,
+			order_status=4,  # 退货中
+			refund_reason=f'{refund_type} - {reason}' if refund_type else reason,
+			update_by=request.user.username,
+			update_time=timezone.now(),
+		)
+		if not updated:
+			return Response({'detail': '退款申请正在审核中，请勿重复提交'}, status=status.HTTP_400_BAD_REQUEST)
 
 		return Response({'detail': '退款申请已提交，等待管理员审核'}, status=status.HTTP_200_OK)
 
@@ -219,12 +228,17 @@ class OrderPayView(APIView):
 		except OrderInfos.DoesNotExist:
 			return Response({'detail': '订单不存在'}, status=status.HTTP_404_NOT_FOUND)
 
-		if order.order_status != 0:
+		# 条件更新防并发：并发支付同一订单只有第一个生效
+		updated = OrderInfos.objects.filter(
+			id=order.id, user=request.user, order_status=0,
+		).update(
+			order_status=1,
+			pay_method=pay_method,
+			update_by=request.user.username,
+			update_time=timezone.now(),
+		)
+		if not updated:
 			return Response({'detail': '订单不是待支付状态'}, status=status.HTTP_400_BAD_REQUEST)
-
-		order.order_status = 1
-		order.pay_method = pay_method
-		order.save(update_fields=['order_status', 'pay_method', 'update_by', 'update_time'])
 		return Response({'detail': '支付成功'}, status=status.HTTP_200_OK)
 
 
@@ -241,12 +255,17 @@ class CancelOrderRefundView(APIView):
 		except OrderInfos.DoesNotExist:
 			return Response({'detail': '订单不存在'}, status=status.HTTP_404_NOT_FOUND)
 
-		if order.refund_status != 1:
+		# 条件更新防并发：并发撤销只有第一个生效
+		updated = OrderInfos.objects.filter(
+			id=order.id, user=request.user, refund_status=1,
+		).update(
+			refund_status=0,
+			order_status=2,
+			update_by=request.user.username,
+			update_time=timezone.now(),
+		)
+		if not updated:
 			return Response({'detail': '没有待审核的退款申请'}, status=status.HTTP_400_BAD_REQUEST)
-
-		order.refund_status = 0
-		order.order_status = 2
-		order.save(update_fields=['refund_status', 'order_status', 'update_by', 'update_time'])
 		return Response({'detail': '已撤销退款申请'}, status=status.HTTP_200_OK)
 
 
@@ -264,9 +283,17 @@ class ConfirmReceiptView(APIView):
 		if order.order_status >= 3:
 			return Response({'detail': '订单已确认收货'}, status=status.HTTP_400_BAD_REQUEST)
 
-		order.order_status = 3
-		order.confirmed_time = timezone.now()
-		order.save(update_fields=['order_status', 'confirmed_time', 'update_by', 'update_time'])
+		# 条件更新防并发：重复的确认收货请求只有第一个生效
+		updated = OrderInfos.objects.filter(
+			id=order.id, order_status__gte=2, order_status__lt=3,
+		).update(
+			order_status=3,
+			confirmed_time=timezone.now(),
+			update_by=request.user.username,
+			update_time=timezone.now(),
+		)
+		if not updated:
+			return Response({'detail': '订单已确认收货'}, status=status.HTTP_400_BAD_REQUEST)
 		return Response({'detail': '确认收货成功'}, status=status.HTTP_200_OK)
 
 

@@ -37,7 +37,8 @@ schema_view = get_schema_view(
 		license=openapi.License(name="BSD License"),
 	),
 	public=True,
-	permission_classes=[permissions.AllowAny],
+	# 接口文档会暴露完整的 API 面，不允许匿名访问
+	permission_classes=[permissions.IsAuthenticated],
 )
 urlpatterns = [
 	path('admin/', admin.site.urls),  # 后台管理

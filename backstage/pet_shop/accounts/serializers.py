@@ -7,6 +7,7 @@
 @Description:
 """
 from django.contrib.auth.models import User
+from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
 from .models import *
@@ -33,6 +34,12 @@ class RegisterSerializer(serializers.ModelSerializer):
 		"""
 		if attrs['password'] != attrs['password2']:
 			raise serializers.ValidationError("密码和确认密码不一致")
+		# AUTH_PASSWORD_VALIDATORS 只对 admin 表单等 Django 表单生效，
+		# API 注册必须显式调用，否则 "1234" 也能注册成功。
+		# 传入未保存的 User 实例，密码 vs 用户名/邮箱的相似度校验才会生效。
+		validate_password(attrs['password'], user=User(
+			username=attrs['username'], email=attrs['email'],
+		))
 		attrs.pop('password2')
 		email = attrs['email']
 		if User.objects.filter(email=email).exists():

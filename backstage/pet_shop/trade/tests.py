@@ -4,6 +4,7 @@ Trade app tests: cross-user access isolation, and checkout stock/atomicity.
 from decimal import Decimal
 
 from django.contrib.auth.models import User
+from django.db.models import ProtectedError
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -387,3 +388,48 @@ class ShoppingCartQuantityValidationTests(APITestCase):
                 )
                 self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(ShoppingCart.objects.count(), 0)
+
+
+class CartCommodityIntegrityTests(APITestCase):
+    """购物车行只能指向真实存在的商品（FK 约束已恢复）。"""
+
+    def setUp(self):
+        self.user = User.objects.create_user("nina", "n@example.com", "pw-nina-12345")
+        self.client.force_authenticate(user=self.user)
+
+    def test_nonexistent_commodity_is_refused(self):
+        response = self.client.post(
+            "/api/trade/shopping-carts/",
+            {"commodity": 999999, "quantity": 1}, format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(ShoppingCart.objects.count(), 0)
+
+
+class OrderGoodsProtectTests(APITestCase):
+    """有订单明细引用的商品不允许被删除，历史订单必须保真。"""
+
+    def setUp(self):
+        self.user = User.objects.create_user("oscar", "o@example.com", "pw-oscar-1234")
+        self.address = UserAddress.objects.create(
+            user=self.user, province="P", city="C", county="D",
+            address="ST", signer_name="Oscar", signer_mobile="13900000007",
+        )
+        self.category = CommodityCategories.objects.create(title="保健")
+        self.product = CommodityInfos.objects.create(
+            sku_title="鱼油", main_image="product_photos/f.png",
+            detail_images="product_photos_details/f.png",
+            cost_price=Decimal("12.00"), price=Decimal("36.00"),
+            types=self.category, stock_quantity=8,
+        )
+        order = OrderInfos.objects.create(
+            user=self.user, order_sn="OSCARORDER00000001", address=self.address,
+            total_price=Decimal("36.00"), payable_price=Decimal("36.00"),
+            pay_method=1, order_status=3, created_by="oscar",
+        )
+        OrderGoods.objects.create(order=order, goods=self.product, goods_num=1)
+
+    def test_commodity_with_order_lines_cannot_be_deleted(self):
+        with self.assertRaises(ProtectedError):
+            self.product.delete()
+        self.assertTrue(CommodityInfos.objects.filter(id=self.product.id).exists())

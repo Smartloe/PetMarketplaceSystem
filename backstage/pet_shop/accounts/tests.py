@@ -96,3 +96,26 @@ class JwtLoginTests(APITestCase):
             'username': 'carol', 'password': 'not-the-password', 'code': code,
         })
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class RegisterPasswordPolicyTests(APITestCase):
+    """API 注册必须过 AUTH_PASSWORD_VALIDATORS，弱口令不能入库。"""
+
+    def _register(self, password):
+        return self.client.post("/api/accounts/register/", {
+            "username": "newuser1", "email": "newuser1@example.com",
+            "password": password, "password2": password,
+        }, format="json")
+
+    def test_weak_passwords_are_rejected(self):
+        # 依次命中：最小长度、常见口令、与用户名相似
+        for weak in ("1234", "password", "newuser1234"):
+            with self.subTest(password=weak):
+                response = self._register(weak)
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(User.objects.filter(username="newuser1").exists())
+
+    def test_strong_password_is_accepted(self):
+        response = self._register("horse-battery-staple-9")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(User.objects.filter(username="newuser1").exists())
