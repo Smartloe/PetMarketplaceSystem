@@ -120,9 +120,11 @@ npm run lint               # Run ESLint
 ## Environment Setup
 
 - Backend uses `uv` for Python dependency management, pinned to Python 3.12
-- Frontend uses npm with Vue CLI
+- Frontend uses npm with Vite (`vite.config.js`; migrated from Vue CLI/webpack)
 - Development servers run on 127.0.0.1:8000 (backend) and 8010 (frontend);
-  `vue.config.js` proxies `/api` to `http://127.0.0.1:8000`
+  `vite.config.js` proxies `/api` to `http://127.0.0.1:8000`
+- Frontend env vars use the `VITE_*` prefix (`VITE_API_BASE_URL`), read via
+  `import.meta.env`; the old `VUE_APP_*` names no longer exist
 - Cross-origin requests handled by django-cors-headers against an explicit
   allowlist that must include the frontend origin
 - Admin charts load ECharts from a jsDelivr CDN in `templates/admin/index.html`;

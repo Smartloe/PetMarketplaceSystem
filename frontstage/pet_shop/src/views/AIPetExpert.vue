@@ -160,7 +160,7 @@ import { Promotion, Refresh, Search } from '@element-plus/icons-vue';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 
-const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || '/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 const INITIAL_ASSISTANT_MESSAGE =
   '你好，这里是吉祥宠物商城 AI 顾问。我可以协助梳理主粮选择、换粮节奏、驱虫洗护和用品搭配问题。';
 

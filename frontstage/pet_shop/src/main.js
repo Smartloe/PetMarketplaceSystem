@@ -2,8 +2,8 @@ import {createApp} from 'vue';
 import App from './App.vue';
 import router from './router';
 import store from './store';
-import base from './components/Header.vue';
-import footer from './components/Footer.vue';
+import base from './components/AppHeader.vue';
+import footer from './components/AppFooter.vue';
 
 // Element Plus 改为按需引入（见 vue.config.js 的 Components 插件），
 // 不再全量注册。JS API 组件不经模板渲染，样式需要手动引入：

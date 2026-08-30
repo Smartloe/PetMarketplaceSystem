@@ -11,7 +11,7 @@
 			aria-valuemax="100"
 		></div>
 
-		<Header/>
+		<AppHeader/>
 		<main class="app-main-shell">
 			<router-view v-slot="{ Component, route }">
 				<!-- 显式 duration：不依赖 transitionend 事件。此前 out-in 过渡偶发收不到结束 -->
@@ -22,19 +22,19 @@
 				</transition>
 			</router-view>
 		</main>
-		<Footer/>
+		<AppFooter/>
 	</div>
 </template>
 
 <script>
-import Header from '@/components/Header.vue'
-import Footer from '@/components/Footer.vue'
+import AppHeader from '@/components/AppHeader.vue'
+import AppFooter from '@/components/AppFooter.vue'
 import { useScrollProgress } from '@/composables/motion'
 
 export default {
 	components: {
-		Header,
-		Footer
+		AppHeader,
+		AppFooter
 	},
 	setup() {
 		const { progress } = useScrollProgress()

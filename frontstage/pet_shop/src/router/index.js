@@ -38,7 +38,7 @@ const routes = [
 // 创建路由对象
 const router = createRouter({
     // 设置历史记录模式
-    history: createWebHistory(process.env.BASE_URL),
+    history: createWebHistory(import.meta.env.BASE_URL),
     routes
 })
 
