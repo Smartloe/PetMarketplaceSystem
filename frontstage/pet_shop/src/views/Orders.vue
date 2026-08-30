@@ -210,7 +210,8 @@ import {
 	getUserAddress,
 	getCommodityDetail,
 	deleteOrder,
-	updateOrder,
+	payOrderRequest,
+	cancelOrderRefund,
 	requestOrderRefund,
 	confirmOrder,
 	commentOrderGoods
@@ -286,7 +287,8 @@ export default {
 
 		const mockPay = async (method) => {
 			try {
-				await updateOrder(selectedOrderId.value, {order_status: 1, pay_method: method});
+				// 支付走专用端点并校验订单状态，通用 PUT 改单已被后端关闭
+				await payOrderRequest(selectedOrderId.value, {pay_method: method});
 				ElMessage.success('支付成功');
 				closePayDialog();
 				fetchOrders();
@@ -350,7 +352,7 @@ export default {
 
 		const cancelRefund = async (orderId) => {
 			try {
-				await updateOrder(orderId, {refund_status: 0, order_status: 2});
+				await cancelOrderRefund(orderId);
 				ElMessage.success('已撤销退款申请');
 				fetchOrders();
 			} catch (error) {

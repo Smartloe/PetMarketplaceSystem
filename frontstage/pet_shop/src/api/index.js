@@ -14,6 +14,12 @@ const instance = axios.create({
     withCredentials: true
 });
 
+// 刷新 token 必须用完全独立的实例：既不经过 instance 的拦截器，也
+// 不继承任何全局 axios.defaults——此前遗留模块把全局 baseURL 改写成
+// http://localhost:8010/api/，导致生产环境的刷新请求必然 404，用户
+// access token 一过期就被强制登出。
+const bareAxios = axios.create();
+
 // ---- token 存取 ----
 // 只保存 JWT。此前这里保存的是明文密码并对每个请求做 Basic Auth，
 // 任何一次 XSS 都能拿到可无限复用的真实凭据；JWT 至少是有期限、
@@ -68,8 +74,8 @@ function refreshAccessToken() {
         return Promise.reject(new Error('no refresh token'));
     }
     if (!refreshInFlight) {
-        // 用裸 axios，避免走到本实例的拦截器造成递归
-        refreshInFlight = axios
+        // 用裸实例，避免走到本实例的拦截器造成递归
+        refreshInFlight = bareAxios
             .post(`${API_BASE_URL}/accounts/token/refresh/`, { refresh })
             .then((response) => {
                 const access = response.data.access;
@@ -136,26 +142,21 @@ export const updateCartItem = (id, data) => instance.put(`/trade/shopping-carts/
 // 从购物车中移除商品
 export const removeCartItem = (id) => instance.delete(`/trade/shopping-carts/${id}/`);
 
-// 下单
-export const placeOrder = (data) => instance.post('/trade/orders/', data);
-
 // 获取订单列表
 export const getUserOrders = () => instance.get('/trade/orders/');
 
 // 获取订单详情
 export const getOrderDetail = (id) => instance.get(`/trade/orders/${id}/`);
 
-// 创建订单
-export const createOrder = (data) => instance.post('/trade/orders/', data);
-
-// 更新订单
-export const updateOrder = (id, data) => instance.put(`/trade/orders/${id}/`, data);
-
-// 部分更新订单
-export const partialUpdateOrder = (id, data) => instance.patch(`/trade/orders/${id}/`, data);
-
-// 删除订单
+// 删除订单（后端仅允许取消待支付订单）
 export const deleteOrder = (id) => instance.delete(`/trade/orders/${id}/`);
+
+// 模拟支付。订单状态只能走后端专用端点流转，直接 PUT /trade/orders/
+// 改状态已被关闭（会 405），因为通用写接口曾被用来篡改金额和状态。
+export const payOrderRequest = (id, data) => instance.post(`/trade/orders/${id}/pay/`, data);
+
+// 撤销退款申请（仅“待审核”状态可撤，订单回到发货中）
+export const cancelOrderRefund = (id) => instance.post(`/trade/orders/${id}/refund/cancel/`);
 
 // 获取订单商品列表
 export const getOrderGoods = (orderId) => instance.get(`/trade/order-goods/`, { params: { order: orderId } });

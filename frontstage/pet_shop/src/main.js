@@ -1,9 +1,7 @@
 import {createApp} from 'vue';
-import VueAxios from 'vue-axios';
 import App from './App.vue';
 import router from './router';
 import store from './store';
-import axios from './axios';
 import base from './components/Header.vue';
 import footer from './components/Footer.vue';
 
@@ -49,9 +47,10 @@ app.use(ElementPlus);
 // 注册全局动效指令
 registerMotion(app);
 
-axios.defaults.xsrfCookieName = 'csrftoken';
-axios.defaults.xsrfHeaderName = 'X-CSRFToken';
 // 注册全局组件
+// 注意：不要在这里改全局 axios.defaults —— 业务请求全部走 src/api 的
+// 独立实例，任何全局默认值（尤其 baseURL）都会污染它，历史上曾因此让
+// token 刷新请求在生产环境打到 localhost:8010。
 app.component('base-page', base);
 app.component('footer-page', footer);
 
@@ -60,9 +59,6 @@ app.use(router);
 
 // 使用Vuex状态管理
 app.use(store);
-
-// 使用vue-axios
-app.use(VueAxios, axios);
 
 // 挂载Vue应用实例到DOM
 app.mount('#app');

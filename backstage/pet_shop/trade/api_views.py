@@ -198,6 +198,58 @@ class OrderRefundView(APIView):
 		return Response({'detail': '退款申请已提交，等待管理员审核'}, status=status.HTTP_200_OK)
 
 
+class OrderPayView(APIView):
+	"""
+	模拟支付：把未支付订单标记为已支付并记录支付方式。
+	此前客户端直接 PUT /trade/orders/ 改 order_status（那个通道已因
+	越权篡改风险关闭），支付必须走这个专用端点并校验前置状态。
+	"""
+	permission_classes = [permissions.IsAuthenticated]
+
+	def post(self, request, order_id):
+		try:
+			pay_method = int(request.data.get('pay_method', 1))
+		except (TypeError, ValueError):
+			return Response({'detail': '支付方式无效'}, status=status.HTTP_400_BAD_REQUEST)
+		if pay_method not in VALID_PAY_METHODS:
+			return Response({'detail': '支付方式无效'}, status=status.HTTP_400_BAD_REQUEST)
+
+		try:
+			order = OrderInfos.objects.get(id=order_id, user=request.user)
+		except OrderInfos.DoesNotExist:
+			return Response({'detail': '订单不存在'}, status=status.HTTP_404_NOT_FOUND)
+
+		if order.order_status != 0:
+			return Response({'detail': '订单不是待支付状态'}, status=status.HTTP_400_BAD_REQUEST)
+
+		order.order_status = 1
+		order.pay_method = pay_method
+		order.save(update_fields=['order_status', 'pay_method', 'update_by', 'update_time'])
+		return Response({'detail': '支付成功'}, status=status.HTTP_200_OK)
+
+
+class CancelOrderRefundView(APIView):
+	"""
+	撤销退款申请：只有“待审核”的申请可以由用户自行撤回，
+	订单随之回到发货中状态（与 OrderRefundView 申请时置的状态对应）。
+	"""
+	permission_classes = [permissions.IsAuthenticated]
+
+	def post(self, request, order_id):
+		try:
+			order = OrderInfos.objects.get(id=order_id, user=request.user)
+		except OrderInfos.DoesNotExist:
+			return Response({'detail': '订单不存在'}, status=status.HTTP_404_NOT_FOUND)
+
+		if order.refund_status != 1:
+			return Response({'detail': '没有待审核的退款申请'}, status=status.HTTP_400_BAD_REQUEST)
+
+		order.refund_status = 0
+		order.order_status = 2
+		order.save(update_fields=['refund_status', 'order_status', 'update_by', 'update_time'])
+		return Response({'detail': '已撤销退款申请'}, status=status.HTTP_200_OK)
+
+
 class ConfirmReceiptView(APIView):
 	permission_classes = [permissions.IsAuthenticated]
 

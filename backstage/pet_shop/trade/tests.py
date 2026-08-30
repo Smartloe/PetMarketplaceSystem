@@ -242,3 +242,148 @@ class OrderCommentRatingTests(APITestCase):
         response = self._comment(4)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(UserComment.objects.get().rating, 4)
+
+
+class OrderStateTransitionSecurityTests(APITestCase):
+    """
+    订单金额与状态只能走专用端点流转。此前通用 PUT /trade/orders/
+    全字段可写，客户端可以篡改应付金额、伪造“已签收/已退货”。
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user("ivy", "i@example.com", "pw-ivy-12345")
+        self.client.force_authenticate(user=self.user)
+
+        self.address = UserAddress.objects.create(
+            user=self.user, province="P", city="C", county="D",
+            address="ST", signer_name="Ivy", signer_mobile="13900000006",
+        )
+        self.category = CommodityCategories.objects.create(title="零食")
+        self.product = CommodityInfos.objects.create(
+            sku_title="冻干", main_image="product_photos/z.png",
+            detail_images="product_photos_details/z.png",
+            cost_price=Decimal("8.00"), price=Decimal("30.00"),
+            types=self.category, stock_quantity=10, sold=0,
+        )
+
+    def _order(self, order_status, refund_status=0):
+        return OrderInfos.objects.create(
+            user=self.user, order_sn=f"IVYORDER{order_status}{refund_status}0001",
+            address=self.address,
+            total_price=Decimal("30.00"), payable_price=Decimal("30.00"),
+            pay_method=1, order_status=order_status, refund_status=refund_status,
+            created_by="ivy",
+        )
+
+    def test_order_amount_and_status_cannot_be_patched(self):
+        order = self._order(0)
+        response = self.client.patch(
+            f"/api/trade/orders/{order.id}/",
+            {"total_price": "0.01", "payable_price": "0.01", "order_status": 5},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        order.refresh_from_db()
+        self.assertEqual(order.total_price, Decimal("30.00"))
+        self.assertEqual(order.order_status, 0)
+
+    def test_order_goods_cannot_be_created_directly(self):
+        order = self._order(2)
+        response = self.client.post(
+            "/api/trade/order-goods/",
+            {"order": order.id, "goods": self.product.id, "goods_num": 99},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(OrderGoods.objects.count(), 0)
+
+    def test_only_unpaid_orders_can_be_cancelled(self):
+        unpaid = self._order(0)
+        paid = self._order(1)
+
+        paid_delete = self.client.delete(f"/api/trade/orders/{paid.id}/")
+        self.assertEqual(paid_delete.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(OrderInfos.objects.filter(id=paid.id).exists())
+
+        unpaid_delete = self.client.delete(f"/api/trade/orders/{unpaid.id}/")
+        self.assertEqual(unpaid_delete.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(OrderInfos.objects.filter(id=unpaid.id).exists())
+
+    def test_pay_endpoint_moves_unpaid_order_to_paid(self):
+        order = self._order(0)
+        response = self.client.post(
+            f"/api/trade/orders/{order.id}/pay/", {"pay_method": 2}, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        order.refresh_from_db()
+        self.assertEqual(order.order_status, 1)
+        self.assertEqual(order.pay_method, 2)
+
+    def test_pay_endpoint_rejects_non_pending_orders(self):
+        order = self._order(2)  # 发货中，不是待支付
+        response = self.client.post(
+            f"/api/trade/orders/{order.id}/pay/", {"pay_method": 2}, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        order.refresh_from_db()
+        self.assertEqual(order.order_status, 2)
+
+    def test_pay_endpoint_rejects_bad_pay_methods(self):
+        order = self._order(0)
+        for bad in ("abc", 99):
+            with self.subTest(pay_method=bad):
+                response = self.client.post(
+                    f"/api/trade/orders/{order.id}/pay/", {"pay_method": bad}, format="json"
+                )
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        order.refresh_from_db()
+        self.assertEqual(order.order_status, 0)
+
+    def test_pending_refund_can_be_cancelled_back_to_shipping(self):
+        order = self._order(2, refund_status=1)
+        response = self.client.post(f"/api/trade/orders/{order.id}/refund/cancel/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        order.refresh_from_db()
+        self.assertEqual(order.refund_status, 0)
+        self.assertEqual(order.order_status, 2)
+
+    def test_cancel_refund_requires_pending_review(self):
+        order = self._order(2)  # refund_status 默认 0，没有待审核申请
+        response = self.client.post(f"/api/trade/orders/{order.id}/refund/cancel/")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        order.refresh_from_db()
+        self.assertEqual(order.refund_status, 0)
+        self.assertEqual(order.order_status, 2)
+
+
+class ShoppingCartQuantityValidationTests(APITestCase):
+    """购物车数量必须是正整数，非数字不能变成 500。"""
+
+    def setUp(self):
+        self.user = User.objects.create_user("mary", "m@example.com", "pw-mary-12345")
+        self.client.force_authenticate(user=self.user)
+        self.category = CommodityCategories.objects.create(title="玩具")
+        self.product = CommodityInfos.objects.create(
+            sku_title="猫爬架", main_image="product_photos/w.png",
+            detail_images="product_photos_details/w.png",
+            cost_price=Decimal("40.00"), price=Decimal("88.00"),
+            types=self.category, stock_quantity=10,
+        )
+
+    def test_non_numeric_quantity_is_a_400_not_a_500(self):
+        response = self.client.post(
+            "/api/trade/shopping-carts/",
+            {"commodity": self.product.id, "quantity": "abc"}, format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(ShoppingCart.objects.count(), 0)
+
+    def test_zero_and_negative_quantity_are_refused(self):
+        for bad in (0, -3):
+            with self.subTest(quantity=bad):
+                response = self.client.post(
+                    "/api/trade/shopping-carts/",
+                    {"commodity": self.product.id, "quantity": bad}, format="json",
+                )
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(ShoppingCart.objects.count(), 0)

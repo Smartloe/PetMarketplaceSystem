@@ -53,29 +53,21 @@ class UserAddressViewSet(viewsets.ModelViewSet):
 		return UserAddress.objects.filter(user=self.request.user)
 
 
-class UserCommentViewSet(viewsets.ModelViewSet):
+class UserCommentViewSet(viewsets.ReadOnlyModelViewSet):
 	"""
-	用户评论视图集
+	用户评论视图集（只读）。
+	评论的创建只随 trade 的确认收货评价端点发生——此前这里的通用
+	create 可以绕过“确认收货后才能评价”的校验；未通过审核
+	（is_show=False）的评论对非管理员不可见。
 	"""
-	queryset = UserComment.objects.all()
 	serializer_class = UserCommentSerializer
+	permission_classes = [permissions.AllowAny]
 
-	@csrf_exempt
-	def get_permissions(self):
-		"""
-		实例化并返回此视图所需的权限列表。
-		"""
-		# 对于安全的方法（如读取操作），允许任何用户访问
-		if self.action in ['list', 'retrieve']:
-			permission_classes = [permissions.AllowAny]
-		else:  # 对于写入操作，仅允许已认证的用户访问
-			permission_classes = [permissions.IsAuthenticated]
-		return [permission() for permission in permission_classes]
-
-	@csrf_exempt
-	def perform_create(self, serializer):
-		# 自动设置评论的用户为当前登录用户
-		serializer.save(user=self.request.user)
+	def get_queryset(self):
+		user = self.request.user
+		if user.is_authenticated and user.is_staff:
+			return UserComment.objects.all()
+		return UserComment.objects.filter(is_show=True)
 
 
 class RegionListView(APIView):
