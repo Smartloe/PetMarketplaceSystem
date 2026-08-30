@@ -14,7 +14,10 @@
 		<Header/>
 		<main class="app-main-shell">
 			<router-view v-slot="{ Component, route }">
-				<transition name="page" mode="out-in">
+				<!-- 显式 duration：不依赖 transitionend 事件。此前 out-in 过渡偶发收不到结束 -->
+				<!-- 事件，进场类永远挂在根元素上（opacity:0），后续路由切换被 out-in 队列 -->
+				<!-- 堵死——URL 变了但视图不换。固定时长让 Vue 按计时器收尾，动画照常播放。 -->
+				<transition name="page" mode="out-in" :duration="{ enter: 450, leave: 220 }">
 					<component :is="Component" :key="route.path"/>
 				</transition>
 			</router-view>
