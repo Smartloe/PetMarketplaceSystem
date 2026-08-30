@@ -235,6 +235,7 @@ import {
   updateUserProfile,
   uploadAvatar,
 } from '@/api';
+import { resolveMediaUrl } from '@/utils/format';
 
 const createEmptyProfile = () => ({
   id: '',
@@ -270,12 +271,7 @@ const buildFallbackAvatar = (name = '') => {
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 };
 
-const normalizeAvatarUrl = (avatar = '') => {
-  if (!avatar) return '';
-  if (avatar.startsWith('http') || avatar.startsWith('data:')) return avatar;
-  if (avatar.startsWith('/api')) return avatar;
-  return `/api${avatar.startsWith('/') ? avatar : `/${avatar}`}`;
-};
+const normalizeAvatarUrl = (avatar) => resolveMediaUrl(avatar, { allowDataUri: true });
 
 const parseErrorValue = (value) => {
   if (!value) return '';

@@ -15,7 +15,6 @@
     "element-plus": "^2.7.2",
     "marked": "^17.0.0",
     "vue": "^3.4.26",
-    "vue-axios": "^3.5.2",
     "vue-router": "^4.3.2",
     "vuex": "^4.1.0",
     "vuex-persistedstate": "^4.1.0"

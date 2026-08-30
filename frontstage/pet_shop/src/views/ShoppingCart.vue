@@ -8,7 +8,12 @@
 				</div>
 			</div>
 
-			<div v-if="cartItems.length === 0" class="app-empty-state cart-empty">
+			<div v-if="isLoading" class="app-loading-state cart-state">正在加载购物车…</div>
+			<div v-else-if="hasLoadError" class="app-notice-state cart-state">
+				<p>购物车加载失败，请检查网络后重试。</p>
+				<el-button type="primary" @click="fetchCartItems">重新加载</el-button>
+			</div>
+			<div v-else-if="cartItems.length === 0" class="app-empty-state cart-empty">
 				<p>购物车还是空的，先去挑选喜欢的商品吧。</p>
 			</div>
 			<div v-else class="table-scroll-wrap">
@@ -122,6 +127,7 @@ import {
 	checkoutOrder
 } from '@/api';
 import TableScrollHint from '@/components/TableScrollHint.vue';
+import { resolveMediaUrl as getFullImageUrl } from '@/utils/format';
 
 export default {
 	name: 'ShoppingCart',
@@ -133,6 +139,8 @@ export default {
 		const payDialogVisible = ref(false);
 		const addresses = ref([]);
 		const selectedAddressId = ref(null);
+		const isLoading = ref(false);
+		const hasLoadError = ref(false);
 		const formatAddress = (addr) => {
 			if (!addr) return '';
 			return `${addr.province || ''}${addr.city || ''}${addr.county || ''}${addr.address || ''}（${addr.signer_name || ''} ${addr.signer_mobile || ''}）`;
@@ -169,6 +177,8 @@ export default {
 		};
 
 		const fetchCartItems = () => {
+			isLoading.value = true;
+			hasLoadError.value = false;
 			getCartItems()
 				.then(response => {
 					const items = response.data.results || response.data || [];
@@ -177,9 +187,11 @@ export default {
 				.then(results => {
 					cartItems.value = results;
 					selectedItems.value = [];
+					isLoading.value = false;
 				})
 				.catch(error => {
-					ElMessage.error('获取购物车列表失败');
+					isLoading.value = false;
+					hasLoadError.value = true;
 					console.error(error);
 				});
 		};
@@ -201,11 +213,6 @@ export default {
 				ElMessage.error('移除商品失败');
 				console.error(error);
 			});
-		};
-
-		const getFullImageUrl = (relativeUrl = '') => {
-			if (!relativeUrl) return '';
-			return relativeUrl.startsWith('http') ? relativeUrl : `/api${relativeUrl.startsWith('/') ? relativeUrl : `/${relativeUrl}`}`;
 		};
 
 		const handleSelectionChange = (selection) => {
@@ -301,6 +308,8 @@ export default {
 			cartItems,
 			selectedItems,
 			totalPrice,
+			isLoading,
+			hasLoadError,
 			fetchCartItems,
 			updateQuantity,
 			removeFromCart,

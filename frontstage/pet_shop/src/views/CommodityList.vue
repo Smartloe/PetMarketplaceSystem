@@ -182,6 +182,7 @@ import { useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import { Search } from '@element-plus/icons-vue';
 import { getCommodities, searchCommodities } from '@/api';
+import { resolveMediaUrl } from '@/utils/format';
 import KineticText from '@/components/KineticText.vue';
 
 export default {
@@ -338,14 +339,8 @@ export default {
       router.push({ name: 'CommodityDetail', params: { id: commodityId } });
     };
 
-    const getFullImageUrl = (relativeUrl = '') => {
-      if (!relativeUrl) {
-        return '/img/index/p3.png';
-      }
-      return relativeUrl.startsWith('http')
-        ? relativeUrl
-        : `/api${relativeUrl.startsWith('/') ? relativeUrl : `/${relativeUrl}`}`;
-    };
+    // 商品缺图时展示占位图，避免出现破图
+    const getFullImageUrl = (relativeUrl) => resolveMediaUrl(relativeUrl, { fallback: '/img/index/p3.png' });
 
     const formatPrice = (price) => {
       const numericPrice = Number(price);

@@ -5,9 +5,10 @@ import store from './store';
 import base from './components/Header.vue';
 import footer from './components/Footer.vue';
 
-// 导入Element Plus库及其样式
-import ElementPlus from 'element-plus';
-import 'element-plus/dist/index.css';
+// Element Plus 改为按需引入（见 vue.config.js 的 Components 插件），
+// 不再全量注册。JS API 组件不经模板渲染，样式需要手动引入：
+import 'element-plus/es/components/message/style/css';
+import 'element-plus/es/components/message-box/style/css';
 
 // 导入统一设计系统样式
 import './assets/design-system.css';
@@ -40,9 +41,6 @@ window.ResizeObserver = class ResizeObserver extends _ResizeObserver {
 
 // 创建Vue应用实例
 const app = createApp(App);
-
-// 全局使用Element Plus
-app.use(ElementPlus);
 
 // 注册全局动效指令
 registerMotion(app);

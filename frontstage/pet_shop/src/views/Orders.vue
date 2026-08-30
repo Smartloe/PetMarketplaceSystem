@@ -8,7 +8,12 @@
 				</div>
 			</div>
 
-			<div v-if="orders.length === 0" class="app-empty-state orders-empty">
+			<div v-if="isLoading" class="app-loading-state orders-empty">正在加载订单…</div>
+			<div v-else-if="hasLoadError" class="app-notice-state orders-empty">
+				<p>订单列表加载失败，请检查网络后重试。</p>
+				<el-button type="primary" @click="fetchOrders">重新加载</el-button>
+			</div>
+			<div v-else-if="orders.length === 0" class="app-empty-state orders-empty">
 				<p>你还没有订单记录，去商城挑选心仪宠物用品吧。</p>
 			</div>
 			<div v-else class="table-scroll-wrap">
@@ -217,12 +222,15 @@ import {
 	commentOrderGoods
 } from '@/api';
 import TableScrollHint from '@/components/TableScrollHint.vue';
+import { formatDateTime as formatDate } from '@/utils/format';
 
 export default {
 	name: 'Orders',
 	components: {TableScrollHint},
 	setup() {
 		const orders = ref([]);
+		const isLoading = ref(false);
+		const hasLoadError = ref(false);
 		const currentOrder = ref({});
 		const address = ref('');
 		const orderDetailDialogVisible = ref(false);
@@ -243,10 +251,14 @@ export default {
 			};
 
 		const fetchOrders = () => {
+			isLoading.value = true;
+			hasLoadError.value = false;
 			getUserOrders().then(response => {
 				orders.value = response.data.results;
+				isLoading.value = false;
 			}).catch(error => {
-				ElMessage.error('获取订单列表失败');
+				isLoading.value = false;
+				hasLoadError.value = true;
 				console.error(error);
 			});
 		};
@@ -390,22 +402,13 @@ export default {
 			});
 		};
 
-		const formatDate = (date) => {
-			const options = {
-				year: 'numeric',
-				month: '2-digit',
-				day: '2-digit',
-				hour: '2-digit',
-				minute: '2-digit',
-				second: '2-digit'
-			};
-			return new Date(date).toLocaleDateString('zh-CN', options);
-		};
-
 		onMounted(fetchOrders);
 
 		return {
 			orders,
+			isLoading,
+			hasLoadError,
+			fetchOrders,
 			currentOrder,
 			address,
 			orderDetailDialogVisible,

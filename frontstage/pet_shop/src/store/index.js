@@ -3,7 +3,6 @@ import createPersistedState from "vuex-persistedstate";
 
 const store = createStore({
     state: {
-        lookImgUrl: 'http://127.0.0.1:8000',
         userId: null, // 添加用户 ID 状态
         username: '',
         last_login: '',

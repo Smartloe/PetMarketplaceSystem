@@ -9,7 +9,12 @@
 				<el-button type="primary" @click="openCreateDialog">新增留言</el-button>
 			</div>
 
-			<div v-if="messages.length === 0" class="app-empty-state messages-empty">
+			<div v-if="isLoading" class="app-loading-state messages-empty">正在加载留言…</div>
+			<div v-else-if="hasLoadError" class="app-notice-state messages-empty">
+				<p>留言列表加载失败，请检查网络后重试。</p>
+				<el-button type="primary" @click="fetchMessages">重新加载</el-button>
+			</div>
+			<div v-else-if="messages.length === 0" class="app-empty-state messages-empty">
 				<p>暂时没有留言记录，欢迎告诉我们你的问题或建议。</p>
 				<el-button type="primary" @click="openCreateDialog">立即留言</el-button>
 			</div>
@@ -123,6 +128,7 @@ import {ref, onMounted} from 'vue';
 import {ElMessage} from 'element-plus';
 import {getUserMessages, createUserMessage, updateUserMessage, deleteUserMessage, getUserMessageDetail} from '@/api';
 import TableScrollHint from '@/components/TableScrollHint.vue';
+import { formatDateTime as formatDate } from '@/utils/format';
 
 export default {
 	name: 'Messages',
@@ -141,6 +147,8 @@ export default {
 		const isEditing = ref(false);
 		const dialogVisible = ref(false);
 		const viewDialogVisible = ref(false);
+		const isLoading = ref(false);
+		const hasLoadError = ref(false);
 
 		const messageTypeMap = {
 			1: '留言',
@@ -151,10 +159,14 @@ export default {
 		};
 
 		const fetchMessages = () => {
+			isLoading.value = true;
+			hasLoadError.value = false;
 			getUserMessages().then(response => {
 				messages.value = response.data.results;
+				isLoading.value = false;
 			}).catch(error => {
-				ElMessage.error('获取留言列表失败');
+				isLoading.value = false;
+				hasLoadError.value = true;
 				console.error(error);
 			});
 		};
@@ -248,18 +260,6 @@ export default {
 			isEditing.value = false;
 		};
 
-		const formatDate = (date) => {
-			const options = {
-				year: 'numeric',
-				month: '2-digit',
-				day: '2-digit',
-				hour: '2-digit',
-				minute: '2-digit',
-				second: '2-digit'
-			};
-			return new Date(date).toLocaleDateString('zh-CN', options);
-		};
-
 		onMounted(fetchMessages);
 
 		return {
@@ -268,6 +268,9 @@ export default {
 			isEditing,
 			dialogVisible,
 			viewDialogVisible,
+			isLoading,
+			hasLoadError,
+			fetchMessages,
 			handleFileChange,
 			submitMessage,
 			viewMessage,

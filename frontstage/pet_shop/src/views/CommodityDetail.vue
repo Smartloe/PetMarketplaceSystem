@@ -128,6 +128,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import { ElMessage } from 'element-plus';
 import { addToCart, addToFavorites, getCommodityComments, getCommodityDetail } from '@/api';
+import { resolveMediaUrl as getImageUrl } from '@/utils/format';
 
 export default {
   name: 'CommodityDetail',
@@ -165,13 +166,6 @@ export default {
     const formatDate = (dateString) => {
       const options = { year: 'numeric', month: 'long', day: 'numeric' };
       return new Date(dateString).toLocaleDateString(undefined, options);
-    };
-
-    const getImageUrl = (path = '') => {
-      if (!path) {
-        return '';
-      }
-      return path.startsWith('http') ? path : `/api${path.startsWith('/') ? path : `/${path}`}`;
     };
 
     const normalizeImageList = (images = '') => {

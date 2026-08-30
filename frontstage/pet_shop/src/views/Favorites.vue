@@ -8,7 +8,12 @@
 				</div>
 			</div>
 
-			<div v-if="favorites.length === 0" class="app-empty-state favorites-empty">
+			<div v-if="isLoading" class="app-loading-state favorites-empty">正在加载收藏…</div>
+			<div v-else-if="hasLoadError" class="app-notice-state favorites-empty">
+				<p>收藏列表加载失败，请检查网络后重试。</p>
+				<el-button type="primary" @click="fetchFavorites">重新加载</el-button>
+			</div>
+			<div v-else-if="favorites.length === 0" class="app-empty-state favorites-empty">
 				<p>还没有收藏商品，去商品列表挑选喜欢的宠物好物吧。</p>
 			</div>
 			<div v-else class="table-scroll-wrap">
@@ -86,6 +91,7 @@ import {ref, onMounted} from 'vue';
 import {ElMessage} from 'element-plus';
 import {getUserFavorites, getCommodityDetail, removeFromFavorites} from '@/api';
 import TableScrollHint from '@/components/TableScrollHint.vue';
+import { resolveMediaUrl as getFullImageUrl, formatDateTime as formatDate } from '@/utils/format';
 
 export default {
 	name: 'Favorites',
@@ -94,6 +100,8 @@ export default {
 		const favorites = ref([]);
 		const currentCommodity = ref({});
 		const commodityDetailDialogVisible = ref(false);
+		const isLoading = ref(false);
+		const hasLoadError = ref(false);
 
 		const normalizeFavorite = async (item) => {
 			try {
@@ -118,13 +126,17 @@ export default {
 		};
 
 		const fetchFavorites = () => {
+			isLoading.value = true;
+			hasLoadError.value = false;
 			getUserFavorites().then(response => {
 				const favoriteItems = response.data.results || response.data;
 				return Promise.all((favoriteItems || []).map(normalizeFavorite));
 			}).then(results => {
 				favorites.value = results;
+				isLoading.value = false;
 			}).catch(error => {
-				ElMessage.error('获取收藏列表失败');
+				isLoading.value = false;
+				hasLoadError.value = true;
 				console.error(error);
 			});
 		};
@@ -144,8 +156,6 @@ export default {
 			commodityDetailDialogVisible.value = false;
 		};
 
-		const getFullImageUrl = (relativeUrl = '') => relativeUrl.startsWith('http') ? relativeUrl : `/api${relativeUrl.startsWith('/') ? relativeUrl : `/${relativeUrl}`}`;
-
 		const removeMyFromFavorites = async (favoriteId) => {
 			try {
 				await removeFromFavorites(favoriteId);
@@ -157,18 +167,6 @@ export default {
 			}
 		};
 
-		const formatDate = (date) => {
-			const options = {
-				year: 'numeric',
-				month: '2-digit',
-				day: '2-digit',
-				hour: '2-digit',
-				minute: '2-digit',
-				second: '2-digit'
-			};
-			return new Date(date).toLocaleDateString('zh-CN', options);
-		};
-
 		onMounted(() => {
 			fetchFavorites();
 		});
@@ -177,6 +175,9 @@ export default {
 			favorites,
 			currentCommodity,
 			commodityDetailDialogVisible,
+			isLoading,
+			hasLoadError,
+			fetchFavorites,
 			removeMyFromFavorites,
 			viewCommodityDetail,
 			closeCommodityDetailDialog,
