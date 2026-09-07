@@ -16,20 +16,71 @@
       </div>
     </section>
 
-    <section v-if="isLoggedIn" class="chat-panel shell-surface shell-section">
-      <header class="chat-header">
-        <div class="header-copy">
-          <img src="/img/logo.png" alt="吉祥宠物商城" class="header-logo" />
-          <div>
-            <h2>吉祥宠物顾问</h2>
-            <p>当前会话会保留上下文，便于继续追问。</p>
+    <section v-if="isLoggedIn" class="chat-layout">
+      <!-- 会话历史侧边栏 -->
+      <aside class="session-sidebar shell-surface shell-section" :class="{ open: showSessionSidebar }">
+        <div class="sidebar-header">
+          <h3>历史会话</h3>
+          <el-button
+            class="mobile-close-btn"
+            text
+            @click="showSessionSidebar = false"
+          >
+            ✕
+          </el-button>
+        </div>
+        <div class="session-list">
+          <div v-if="sessionsLoading" class="session-loading">
+            加载中...
+          </div>
+          <div v-else-if="sessions.length === 0" class="session-empty">
+            暂无历史会话
+          </div>
+          <div
+            v-for="session in sessions"
+            :key="session.id"
+            class="session-item"
+            :class="{ active: sessionId === session.id }"
+            @click="loadSession(session.id)"
+          >
+            <div class="session-info">
+              <span class="session-title">{{ session.title }}</span>
+              <span class="session-time">{{ formatTime(session.updated_time) }}</span>
+            </div>
+            <el-button
+              class="session-delete-btn"
+              text
+              size="small"
+              @click.stop="deleteSession(session.id)"
+            >
+              删除
+            </el-button>
           </div>
         </div>
-        <el-button plain :disabled="conversation.length <= 1 || isBusy" @click="resetConversation">
-          <el-icon><Refresh /></el-icon>
-          清空会话
-        </el-button>
-      </header>
+      </aside>
+
+      <!-- 聊天主区域 -->
+      <div class="chat-main shell-surface shell-section">
+        <header class="chat-header">
+          <div class="header-copy">
+            <el-button
+              class="mobile-sidebar-btn"
+              text
+              @click="toggleSessionSidebar"
+            >
+              ☰
+            </el-button>
+            <img src="/img/logo.png" alt="吉祥宠物商城" class="header-logo" />
+            <div>
+              <h2>吉祥宠物顾问</h2>
+              <p>当前会话会保留上下文，便于继续追问。</p>
+            </div>
+          </div>
+          <el-button plain :disabled="conversation.length <= 1 || isBusy" @click="resetConversation">
+            <el-icon><Refresh /></el-icon>
+            新会话
+          </el-button>
+        </header>
 
       <div class="chat-body" ref="chatBody">
         <div
@@ -141,6 +192,7 @@
       <p class="chat-tip">
         AI 建议仅供参考，宠物突发情况请及时联系专业医生。
       </p>
+      </div>
     </section>
 
     <section v-else v-reveal class="guest-panel shell-surface shell-section">
@@ -155,7 +207,13 @@
 </template>
 
 <script>
-import { consultPetAdvisor, getAccessToken } from '@/api';
+import {
+  consultPetAdvisor,
+  deleteConsultSession,
+  getAccessToken,
+  getConsultSessionDetail,
+  getConsultSessions,
+} from '@/api';
 import { Promotion, Refresh, Search } from '@element-plus/icons-vue';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
@@ -163,6 +221,12 @@ import { marked } from 'marked';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 const INITIAL_ASSISTANT_MESSAGE =
   '你好，这里是吉祥宠物商城 AI 顾问。我可以协助梳理主粮选择、换粮节奏、驱虫洗护和用品搭配问题。';
+
+// 与后端 MAX_HISTORY_MESSAGES 保持一致，避免多发无用的历史
+const MAX_HISTORY_MESSAGES = 8;
+
+// SSE 超时检测（毫秒）。超过这个时间没有收到任何数据，认为连接断开。
+const SSE_TIMEOUT_MS = 60000;
 
 // 后端 tool 事件里的工具名 -> 界面提示语
 const TOOL_LABELS = {
@@ -229,6 +293,11 @@ export default {
         '体内和体外驱虫可以同一天用吗？间隔多久合适？',
         '猫砂、尿垫和宠物厕所怎么搭配比较省心？',
       ],
+      // 历史会话列表
+      sessions: [],
+      sessionsLoading: false,
+      // 是否显示会话侧边栏（移动端）
+      showSessionSidebar: false,
     };
   },
   computed: {
@@ -239,7 +308,61 @@ export default {
       return this.loading || this.isStreaming;
     },
   },
+  mounted() {
+    if (this.isLoggedIn) {
+      this.loadSessions();
+    }
+  },
   methods: {
+    // ============ 会话管理 ============
+    async loadSessions() {
+      if (!this.isLoggedIn) return;
+      this.sessionsLoading = true;
+      try {
+        const { data } = await getConsultSessions();
+        this.sessions = data || [];
+      } catch (err) {
+        console.warn('加载会话列表失败:', err);
+      } finally {
+        this.sessionsLoading = false;
+      }
+    },
+    async loadSession(sessionId) {
+      if (this.isBusy) return;
+      this.loading = true;
+      this.errorMessage = '';
+      try {
+        const { data } = await getConsultSessionDetail(sessionId);
+        // 将服务端消息格式转为前端格式
+        this.conversation = (data.messages || []).map((msg) => ({
+          role: msg.role,
+          content: msg.content,
+        }));
+        this.sessionId = sessionId;
+        this.showSessionSidebar = false;
+        this.$nextTick(this.scrollToBottom);
+      } catch (err) {
+        this.errorMessage = '加载会话失败，请重试';
+      } finally {
+        this.loading = false;
+      }
+    },
+    async deleteSession(sessionId) {
+      try {
+        await deleteConsultSession(sessionId);
+        this.sessions = this.sessions.filter((s) => s.id !== sessionId);
+        // 如果删除的是当前会话，重置对话
+        if (this.sessionId === sessionId) {
+          this.resetConversation();
+        }
+        this.$message.success('会话已删除');
+      } catch (err) {
+        this.$message.error('删除失败，请重试');
+      }
+    },
+    toggleSessionSidebar() {
+      this.showSessionSidebar = !this.showSessionSidebar;
+    },
     goLogin() {
       this.$router.push('/accounts/login');
     },
@@ -306,8 +429,9 @@ export default {
       }
 
       this.conversation.push({ role: 'user', content });
-      if (this.conversation.length > 12) {
-        this.conversation = this.conversation.slice(-12);
+      // 加 1 是因为 conversation 包含开场白，而历史消息不包含
+      if (this.conversation.length > MAX_HISTORY_MESSAGES + 1) {
+        this.conversation = this.conversation.slice(-(MAX_HISTORY_MESSAGES + 1));
       }
 
       this.userInput = '';
@@ -377,14 +501,32 @@ export default {
         // 的尾部，只处理已经收到换行的完整帧。
         let buffer = '';
         let streamError = null;
+        let lastDataTime = Date.now();
 
         // eslint-disable-next-line no-constant-condition
         while (true) {
-          const { done, value } = await reader.read();
+          // 添加超时检测：如果长时间没有收到数据，认为连接断开
+          const readPromise = reader.read();
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('SSE_TIMEOUT')), SSE_TIMEOUT_MS);
+          });
+
+          let result;
+          try {
+            result = await Promise.race([readPromise, timeoutPromise]);
+          } catch (timeoutError) {
+            if (timeoutError.message === 'SSE_TIMEOUT') {
+              throw new Error('AI 服务响应超时，请稍后重试');
+            }
+            throw timeoutError;
+          }
+
+          const { done, value } = result;
           if (done) {
             break;
           }
 
+          lastDataTime = Date.now();
           buffer += decoder.decode(value, { stream: true });
 
           // SSE 以空行分隔事件
@@ -436,6 +578,8 @@ export default {
               });
               if (parsed.session_id) {
                 this.sessionId = parsed.session_id;
+                // 刷新会话列表
+                this.loadSessions();
               }
               this.isStreaming = false;
               this.activeTool = '';
@@ -487,6 +631,24 @@ export default {
       const container = this.$refs.chatBody;
       if (container) {
         container.scrollTop = container.scrollHeight;
+      }
+    },
+    formatTime(isoString) {
+      if (!isoString) return '';
+      const date = new Date(isoString);
+      const now = new Date();
+      const diffMs = now - date;
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 0) {
+        // 今天，显示时间
+        return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+      } else if (diffDays === 1) {
+        return '昨天';
+      } else if (diffDays < 7) {
+        return `${diffDays}天前`;
+      } else {
+        return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
       }
     },
   },
@@ -562,10 +724,121 @@ export default {
   line-height: var(--line-height-base);
 }
 
-.chat-panel {
+/* 会话布局：侧边栏 + 聊天主区域 */
+.chat-layout {
+  display: flex;
+  gap: var(--space-4);
+  min-height: 600px;
+}
+
+/* 会话历史侧边栏 */
+.session-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--line-hair);
+}
+
+.sidebar-header h3 {
+  margin: 0;
+  font-size: var(--font-size-base);
+  color: var(--text-strong);
+}
+
+.mobile-close-btn {
+  display: none;
+}
+
+.session-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.session-loading,
+.session-empty {
+  padding: var(--space-4);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.session-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: background-color var(--motion-fast);
+}
+
+.session-item:hover {
+  background: var(--paper-raised);
+}
+
+.session-item.active {
+  background: var(--vermilion-wash);
+  border-left: 2px solid var(--vermilion);
+}
+
+.session-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.session-title {
+  font-size: var(--font-size-sm);
+  color: var(--text-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.session-time {
+  font-size: var(--font-size-2xs);
+  color: var(--text-muted);
+}
+
+.session-delete-btn {
+  opacity: 0;
+  transition: opacity var(--motion-fast);
+  color: var(--text-muted);
+}
+
+.session-item:hover .session-delete-btn {
+  opacity: 1;
+}
+
+.session-delete-btn:hover {
+  color: #b23a2f;
+}
+
+/* 聊天主区域 */
+.chat-main {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+}
+
+.mobile-sidebar-btn {
+  display: none;
 }
 
 .chat-header {
@@ -930,6 +1203,38 @@ export default {
 
   .intro-side {
     max-width: none;
+  }
+
+  /* 移动端会话侧边栏变为抽屉 */
+  .chat-layout {
+    flex-direction: column;
+    min-height: auto;
+  }
+
+  .session-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 280px;
+    z-index: 1000;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    border-radius: 0;
+    padding: var(--space-4);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .session-sidebar.open {
+    transform: translateX(0);
+  }
+
+  .mobile-close-btn {
+    display: inline-flex;
+  }
+
+  .mobile-sidebar-btn {
+    display: inline-flex;
   }
 
   .chat-body {

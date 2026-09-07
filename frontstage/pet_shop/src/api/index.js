@@ -246,6 +246,9 @@ export const uploadAvatar = (formData) => instance.post('/accounts/profiles/uplo
 
 // AI 宠物顾问
 export const consultPetAdvisor = (payload) => instance.post('/ai/consult/', payload);
+export const getConsultSessions = () => instance.get('/ai/sessions/');
+export const getConsultSessionDetail = (sessionId) => instance.get(`/ai/sessions/${sessionId}/`);
+export const deleteConsultSession = (sessionId) => instance.delete(`/ai/sessions/${sessionId}/delete/`);
 
 // 结算下单（伪支付）
 export const checkoutOrder = (payload) => instance.post('/trade/checkout/', payload);

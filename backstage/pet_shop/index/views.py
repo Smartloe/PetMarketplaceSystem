@@ -1,5 +1,7 @@
 import json
 import logging
+import threading
+import time
 
 from django.http import StreamingHttpResponse
 from rest_framework import permissions, status
@@ -15,14 +17,33 @@ MAX_HISTORY_MESSAGES = 8
 # 单条提问的长度上限，避免用超长 prompt 放大上游成本
 MAX_QUESTION_CHARS = 2000
 
-# 宠物相关关键词
+# 宠物相关关键词（扩充口语化表达）
 PET_KEYWORDS = [
+	# 正式称呼
 	'宠物', '狗', '猫', '鸟', '鱼', '兔子', '仓鼠', '龟', '蛇', '蜥蜴',
+	'龙猫', '刺猬', '鹦鹉', '金鱼', '热带鱼', '乌龟', '王八',
+	# 口语化称呼
+	'狗子', '喵主子', '毛孩子', '主子', '崽崽', '崽子', '猫猫', '狗狗',
+	'汪星人', '喵星人', '小可爱', '宝贝', '宝宝', '小家伙',
+	# 常见品种
+	'金毛', '拉布拉多', '泰迪', '比熊', '柯基', '哈士奇', '二哈',
+	'英短', '美短', '布偶', '橘猫', '狸花', '暹罗', '加菲',
+	# 生活场景
 	'喂养', '饲养', '训练', '健康', '疾病', '疫苗', '驱虫', '洗澡', '美容',
+	'绝育', '发情', '配种', '繁殖', '怀孕', '生产', '哺乳',
+	'遛狗', '散步', '磨牙', '拆家', '叫唤', '乱尿', '定点',
+	# 用品相关
 	'食物', '狗粮', '猫粮', '零食', '玩具', '用品', '笼子', '窝', '牵引绳',
 	'宠物店', '宠物医院', '兽医', '品种', '幼犬', '幼猫', '成犬', '成猫',
 	'主粮', '猫砂', '尿垫', '益生菌', '羊奶粉', '项圈', '航空箱',
-	'pet', 'dog', 'cat', 'bird', 'fish', 'rabbit', 'hamster', 'turtle'
+	'罐头', '冻干', '生骨肉', '磨牙棒', '猫抓板', '猫爬架',
+	'自动喂食器', '饮水机', '宠物背包', '推车',
+	# 护理相关
+	'梳毛', '剪指甲', '掏耳朵', '刷牙', '泪痕', '口臭',
+	'皮肤病', '耳螨', '跳蚤', '蜱虫', '弓形虫',
+	# 英文
+	'pet', 'dog', 'cat', 'bird', 'fish', 'rabbit', 'hamster', 'turtle',
+	'puppy', 'kitten', 'puppy', 'breed',
 ]
 
 # 非宠物相关关键词（需要拒绝的）
@@ -132,6 +153,10 @@ def _stream_response(generator):
 	# CORS 头交给 corsheaders 按白名单添加；手写 '*' 与
 	# CORS_ALLOW_CREDENTIALS 组合是非法的，浏览器会拒收。
 	return response
+
+
+# SSE 心跳间隔（秒）。代理/防火墙通常 60s 断开空闲连接，设 20s 留出余量。
+HEARTBEAT_INTERVAL = 20
 
 
 def _persist_turn(user, question, answer, cited_chunk_ids, session_id=None):
@@ -300,15 +325,30 @@ class AIPetConsultView(APIView):
 		异常必须在生成器内部捕获：StreamingHttpResponse 一旦开始迭代，
 		响应头已经发出，这时再抛异常只会让连接中断，前端拿到的是一个
 		没有 error 帧的截断流。
+
+		心跳说明：由于 stream_agent 是阻塞调用，在等待上游响应期间无法
+		发送心跳。这里采用前端超时检测 + 后端尽力心跳的策略：
+		- 每次成功 yield 数据时记录时间
+		- 如果两次数据间隔过长，下次 yield 前先发心跳
+		- 前端通过超时机制检测真正的连接断开
 		"""
 		user = self.request.user
+		last_yield_time = time.time()
 		try:
 			for kind, data in stream_agent(messages, question):
+				# 检查是否需要发送心跳
+				now = time.time()
+				if now - last_yield_time >= HEARTBEAT_INTERVAL:
+					yield ': heartbeat\n\n'
+					last_yield_time = now
+
 				if kind == 'token':
 					yield _sse({'content': data})
+					last_yield_time = time.time()
 				elif kind == 'tool_start':
 					# 前端据此显示"正在查询商品/知识库"
 					yield _sse({'tool': data})
+					last_yield_time = time.time()
 				elif kind == 'final':
 					citations = _build_citations(data.get('cited_chunk_ids'))
 					new_session_id = _persist_turn(
@@ -321,9 +361,102 @@ class AIPetConsultView(APIView):
 						'tools_used': data.get('tools_used', []),
 						'session_id': new_session_id,
 					})
+					last_yield_time = time.time()
 		except RuntimeError as exc:
 			logger.error('Agent 配置错误: %s', exc)
 			yield _sse({'error': 'AI 服务暂未配置，请联系管理员。'})
 		except Exception as exc:
 			logger.exception('Agent 流式执行失败: %s', exc)
 			yield _sse({'error': 'AI 服务暂不可用，请稍后再试。'})
+
+
+class ConsultSessionListView(APIView):
+	"""
+	获取当前用户的 AI 顾问会话列表。
+
+	返回最近的会话，包含会话 ID、标题和最后更新时间，
+	用于在前端展示历史会话列表。
+	"""
+
+	permission_classes = (permissions.IsAuthenticated,)
+	pagination_class = None
+
+	def get(self, request):
+		sessions = (
+			ConsultSession.objects
+			.filter(user=request.user)
+			.order_by('-updated_time')[:20]
+		)
+		data = [
+			{
+				'id': session.pk,
+				'title': session.title or f'会话 {session.pk}',
+				'updated_time': session.updated_time.isoformat(),
+			}
+			for session in sessions
+		]
+		return Response(data, status=status.HTTP_200_OK)
+
+
+class ConsultSessionDetailView(APIView):
+	"""
+	获取特定会话的消息历史。
+
+	返回该会话的所有消息，用于在前端加载并展示历史对话。
+	只允许访问自己的会话。
+	"""
+
+	permission_classes = (permissions.IsAuthenticated,)
+
+	def get(self, request, session_id):
+		session = ConsultSession.objects.filter(
+			pk=session_id, user=request.user,
+		).first()
+		if not session:
+			return Response(
+				{'detail': '会话不存在。'},
+				status=status.HTTP_404_NOT_FOUND,
+			)
+
+		messages = session.messages.order_by('created_time')
+		data = [
+			{
+				'role': msg.role,
+				'content': msg.content,
+				'created_time': msg.created_time.isoformat(),
+			}
+			for msg in messages
+		]
+		return Response(
+			{
+				'id': session.pk,
+				'title': session.title or f'会话 {session.pk}',
+				'messages': data,
+				'created_time': session.created_time.isoformat(),
+				'updated_time': session.updated_time.isoformat(),
+			},
+			status=status.HTTP_200_OK,
+		)
+
+
+class ConsultSessionDeleteView(APIView):
+	"""
+	删除特定会话。
+
+	只允许删除自己的会话。删除后该会话的所有消息也会被级联删除。
+	"""
+
+	permission_classes = (permissions.IsAuthenticated,)
+
+	def delete(self, request, session_id):
+		session = ConsultSession.objects.filter(
+			pk=session_id, user=request.user,
+		).first()
+		if not session:
+			return Response(
+				{'detail': '会话不存在。'},
+				status=status.HTTP_404_NOT_FOUND,
+			)
+
+		session.delete()
+		return Response(status=status.HTTP_204_NO_CONTENT)
