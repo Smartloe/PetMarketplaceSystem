@@ -35,7 +35,7 @@ uv sync --python 3.12
 uv run --python 3.12 python manage.py migrate
 uv run --python 3.12 python manage.py seed_demo_business_data   # demo data for the dashboard
 uv run --python 3.12 python manage.py runserver 127.0.0.1:8000
-uv run --python 3.12 python manage.py test                     # 52 tests
+uv run --python 3.12 python manage.py test                     # 112 tests
 uv run --python 3.12 python manage.py test trade.tests.CheckoutTests  # single class
 ```
 
@@ -64,7 +64,7 @@ All secrets and environment-specific values come from `backstage/pet_shop/.env`,
 - **customer_operation** — addresses, favourites, messages, comments
 - **merchant** — advertisements (read-only viewset)
 - **charts** — analytics; `services.py` builds payloads, `views.py` exposes two `@staff_member_required` JSON endpoints
-- **index** — AI pet consultant
+- **index** — AI pet consultant; `ConsultSessionViewSet` owns session list/detail/delete, scoped in `get_queryset()`. The list is paginated at 20 (`ConsultSessionPagination`, client cannot raise it) and throttled under its own `ai_sessions` scope, deliberately separate from the paid `ai_consult` bucket
 
 Each app owns a `urls.py`, included from `pet_shop/urls.py` under `/api/`.
 
@@ -102,11 +102,11 @@ Admin charts render ECharts loaded from a CDN in the templates (`templates/admin
 
 ## Testing
 
-52 tests. Coverage is uneven by design of history: `charts/` was already well covered, and tests were added for the security fixes.
+112 tests. Coverage is uneven by design of history: `charts/` was already well covered, and tests were added for the security fixes.
 
 - `accounts/tests.py` — JWT login, captcha single-use and non-leakage
 - `trade/tests.py` — cross-user access isolation, checkout stock/atomicity/`order_sn` uniqueness, rating bounds
-- `index/tests.py` — AI endpoint auth, topic-filter whitelist precedence
+- `index/tests.py` — AI endpoint auth, topic-filter whitelist precedence, SSE heartbeat timing, session-endpoint ownership scoping, history-window alignment
 - `charts/tests/` — analytics service, admin views, seed command, smoke test
 
 Still untested: commodity and merchant views, serializers, the refund and confirm-receipt flows.
@@ -119,8 +119,12 @@ Still untested: commodity and merchant views, serializers, the refund and confir
 - **`.gitignore` excludes `media/` but 105 media files are tracked** (they predate the rule). Product images work, but newly added ones are silently ignored.
 - **`order_status` semantics:** checkout sets `2` (发货中) directly, skipping `1` (已支付), because the refund and confirm-receipt flows gate on `order_status >= 2`. Changing it breaks those.
 - **SimpleUI silently disables clickjacking protection.** `simpleui/apps.py` `ready()` pops `XFrameOptionsMiddleware` out of `MIDDLEWARE` unconditionally on Django 3+, with no opt-out, because its admin needs iframes. `X_FRAME_OPTIONS` therefore has no effect and `check --deploy` reports `security.W002`. The header has to be added at the reverse proxy for non-`/admin/` paths.
+- **The SSE heartbeat needs the worker thread.** `stream_agent` blocks inside `graph.stream()` waiting on LongCat, so `_agent_event_stream` runs it in a thread and waits on `queue.get(timeout=HEARTBEAT_INTERVAL)`. Collapsing that back into a direct `for` loop over `stream_agent` silently kills the heartbeat: the check only runs after an item has already been produced, so every heartbeat lands *after* the idle gap it was supposed to fill and proxies still drop the connection. `index/tests.py::HeartbeatTests` asserts the first frame arrives before the agent's first token.
+- **The non-streaming fallback only applies when the stream never started.** In `AIPetExpert.vue`, `nonStreamingFallback` may be called only on a connection-level `fetch` failure or a missing `response.body`. Once reading begins the server is generating and will persist the turn itself, so retrying there bills a second upstream run and writes a second pair of messages. Timeouts abort via `AbortController` and surface as an error instead.
+- **`pymysql` needs the `[rsa]` extra.** MySQL 8+ defaults to `caching_sha2_password`, which PyMySQL cannot handle without `cryptography`; without the extra every connection fails.
 - Indentation is inconsistent: `charts/` uses 4 spaces, every other backend file uses tabs. Match the file you are editing.
 - Model `verbose_name` values are Chinese and drive the SimpleUI admin labels.
+- `this.$message` does not exist — `app.use(ElementPlus)` was removed when Element Plus went to on-demand imports. Use `import { ElMessage } from 'element-plus'`.
 
 ## Conventions
 

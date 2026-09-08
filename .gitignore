@@ -16,6 +16,9 @@ db.sqlite3
 node_modules/
 frontstage/pet_shop/node_modules/
 frontstage/pet_shop/dist/
+# unplugin-vue-components 每次构建都会重写它；项目是纯 JS，这份声明只对
+# 编辑器提示有用，不需要进版本库
+frontstage/pet_shop/components.d.ts
 
 # Database dumps — may contain real user data (password hashes, emails, phones)
 *.sql

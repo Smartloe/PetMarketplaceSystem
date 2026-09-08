@@ -17,6 +17,13 @@
     </section>
 
     <section v-if="isLoggedIn" class="chat-layout">
+      <!-- 移动端抽屉遮罩：点空白处关闭，桌面端不渲染 -->
+      <div
+        v-if="showSessionSidebar"
+        class="sidebar-backdrop"
+        @click="showSessionSidebar = false"
+      ></div>
+
       <!-- 会话历史侧边栏 -->
       <aside class="session-sidebar shell-surface shell-section" :class="{ open: showSessionSidebar }">
         <div class="sidebar-header">
@@ -30,7 +37,8 @@
           </el-button>
         </div>
         <div class="session-list">
-          <div v-if="sessionsLoading" class="session-loading">
+          <!-- 只在列表还空着时占位；追加下一页时不能把已有的会话藏起来 -->
+          <div v-if="sessionsLoading && sessions.length === 0" class="session-loading">
             加载中...
           </div>
           <div v-else-if="sessions.length === 0" class="session-empty">
@@ -41,7 +49,12 @@
             :key="session.id"
             class="session-item"
             :class="{ active: sessionId === session.id }"
+            role="button"
+            tabindex="0"
+            :aria-current="sessionId === session.id ? 'true' : 'false'"
             @click="loadSession(session.id)"
+            @keydown.enter.prevent="loadSession(session.id)"
+            @keydown.space.prevent="loadSession(session.id)"
           >
             <div class="session-info">
               <span class="session-title">{{ session.title }}</span>
@@ -56,6 +69,17 @@
               删除
             </el-button>
           </div>
+
+          <el-button
+            v-if="sessionsHasMore"
+            class="session-more-btn"
+            text
+            size="small"
+            :loading="sessionsLoading"
+            @click="loadSessions({ append: true })"
+          >
+            加载更早的会话
+          </el-button>
         </div>
       </aside>
 
@@ -83,6 +107,9 @@
         </header>
 
       <div class="chat-body" ref="chatBody">
+        <p v-if="historyTruncated" class="history-truncated">
+          仅显示最近的对话，更早的内容未加载。
+        </p>
         <div
           v-for="(message, index) in conversation"
           :key="index"
@@ -122,7 +149,7 @@
               <span>{{ activeTool }}</span>
             </p>
 
-            <div v-if="streamingContent" v-html="renderMarkdown(streamingContent)"></div>
+            <div v-if="streamingContent" v-html="renderStreamingMarkdown(streamingContent)"></div>
             <span
               v-if="streamingContent || !activeTool"
               class="streaming-cursor"
@@ -214,7 +241,9 @@ import {
   getConsultSessionDetail,
   getConsultSessions,
 } from '@/api';
+import { formatRelativeTime } from '@/utils/format';
 import { Promotion, Refresh, Search } from '@element-plus/icons-vue';
+import { ElMessage } from 'element-plus';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 
@@ -222,11 +251,35 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 const INITIAL_ASSISTANT_MESSAGE =
   '你好，这里是吉祥宠物商城 AI 顾问。我可以协助梳理主粮选择、换粮节奏、驱虫洗护和用品搭配问题。';
 
-// 与后端 MAX_HISTORY_MESSAGES 保持一致，避免多发无用的历史
+// 随提问一起发送的历史条数上限，与后端 MAX_HISTORY_MESSAGES 一致。
+// 注意开场白不计入：它只存在于前端，服务端从未见过，发过去只是浪费 token。
 const MAX_HISTORY_MESSAGES = 8;
 
-// SSE 超时检测（毫秒）。超过这个时间没有收到任何数据，认为连接断开。
-const SSE_TIMEOUT_MS = 60000;
+// SSE 空闲超时（毫秒）。后端每 20s 发一次心跳，所以连续 60s 收不到任何
+// 字节意味着连丢了 3 个心跳，可以判定连接已断，而不是上游在慢慢想。
+const SSE_IDLE_TIMEOUT_MS = 60000;
+
+// marked 的 sanitize 选项在 v5 就被移除了（本项目用 v17），配了也不生效，
+// 原始 HTML 会原样透传。这段内容经 v-html 渲染，模型输出又可以被提问
+// 内容影响，所以必须靠 DOMPurify 显式过滤。
+// setOptions 改的是全局状态，只需在模块加载时设一次。
+marked.setOptions({ breaks: true, gfm: true });
+
+const MARKDOWN_SANITIZE_OPTIONS = {
+  // 只放行 markdown 会产出的标签
+  ALLOWED_TAGS: [
+    'p', 'br', 'strong', 'em', 'del', 'code', 'pre', 'blockquote',
+    'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+    'a', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'hr',
+  ],
+  ALLOWED_ATTR: ['href', 'title'],
+  // 外链统一在新窗口打开，且不携带 referrer
+  ADD_ATTR: ['target', 'rel'],
+};
+
+function renderMarkdownToSafeHtml(content) {
+  return DOMPurify.sanitize(marked(content), MARKDOWN_SANITIZE_OPTIONS);
+}
 
 // 后端 tool 事件里的工具名 -> 界面提示语
 const TOOL_LABELS = {
@@ -285,6 +338,8 @@ export default {
         {
           role: 'assistant',
           content: INITIAL_ASSISTANT_MESSAGE,
+          // 本地开场白：不发给服务端，也不计入历史窗口
+          isGreeting: true,
         },
       ],
       suggestedPrompts: [
@@ -296,8 +351,12 @@ export default {
       // 历史会话列表
       sessions: [],
       sessionsLoading: false,
+      sessionsPage: 1,
+      sessionsHasMore: false,
       // 是否显示会话侧边栏（移动端）
       showSessionSidebar: false,
+      // 服务端还有更早的消息未返回
+      historyTruncated: false,
     };
   },
   computed: {
@@ -308,19 +367,40 @@ export default {
       return this.loading || this.isStreaming;
     },
   },
+  created() {
+    // 渲染缓存：模板把 renderMarkdown 当方法调用，而 streamingContent 每来
+    // 一个 token 就变一次，未缓存时每个 token 都会把整段会话重新 marked +
+    // sanitize 一遍。放在 created 而不是 data 里，避免被 Vue 变成响应式。
+    this._markdownCache = new Map();
+    // 当前流式请求的 AbortController，用于超时/离开页面时真正断开连接
+    this._streamController = null;
+    this._idleTimer = null;
+  },
   mounted() {
     if (this.isLoggedIn) {
       this.loadSessions();
     }
   },
+  beforeUnmount() {
+    // 组件卸载后再往 this 上写状态没有意义，而且连接会一直挂着
+    this.abortStreaming();
+  },
   methods: {
     // ============ 会话管理 ============
-    async loadSessions() {
+    /**
+     * 加载会话列表。append=true 时追加下一页，否则从第一页重新拉。
+     * 新会话产生后走重载，让它出现在最前面。
+     */
+    async loadSessions({ append = false } = {}) {
       if (!this.isLoggedIn) return;
+      const page = append ? this.sessionsPage + 1 : 1;
       this.sessionsLoading = true;
       try {
-        const { data } = await getConsultSessions();
-        this.sessions = data || [];
+        const { data } = await getConsultSessions(page);
+        const rows = data?.results || [];
+        this.sessions = append ? [...this.sessions, ...rows] : rows;
+        this.sessionsPage = page;
+        this.sessionsHasMore = Boolean(data?.next);
       } catch (err) {
         console.warn('加载会话列表失败:', err);
       } finally {
@@ -338,6 +418,9 @@ export default {
           role: msg.role,
           content: msg.content,
         }));
+        this.historyTruncated = Boolean(data.truncated);
+        // 上一个会话的渲染结果不会再用到，留着只是占内存
+        this._markdownCache.clear();
         this.sessionId = sessionId;
         this.showSessionSidebar = false;
         this.$nextTick(this.scrollToBottom);
@@ -348,6 +431,13 @@ export default {
       }
     },
     async deleteSession(sessionId) {
+      // 正在回答时不能删：删掉后这一轮仍会在服务端落库，而它引用的
+      // session 已经不存在，_persist_turn 会另建一个新会话，于是刚删掉的
+      // 对话几秒后又出现在列表里。
+      if (this.isBusy) {
+        ElMessage.warning('正在回答中，请等回答结束后再删除');
+        return;
+      }
       try {
         await deleteConsultSession(sessionId);
         this.sessions = this.sessions.filter((s) => s.id !== sessionId);
@@ -355,9 +445,9 @@ export default {
         if (this.sessionId === sessionId) {
           this.resetConversation();
         }
-        this.$message.success('会话已删除');
+        ElMessage.success('会话已删除');
       } catch (err) {
-        this.$message.error('删除失败，请重试');
+        ElMessage.error('删除失败，请重试');
       }
     },
     toggleSessionSidebar() {
@@ -380,29 +470,24 @@ export default {
       if (this.isLoggedIn) {
         return true;
       }
-      this.$message.warning('请先登录后再使用 AI 宠物顾问');
+      ElMessage.warning('请先登录后再使用 AI 宠物顾问');
       this.goLogin();
       return false;
     },
+    // 已定稿的消息：同一段内容只渲染一次
     renderMarkdown(content) {
       if (!content) return '';
-
-      // marked 的 sanitize 选项在 v5 就被移除了（本项目用 v17），配了也不生效，
-      // 原始 HTML 会原样透传。这段内容经 v-html 渲染，模型输出又可以被提问
-      // 内容影响，所以必须显式过滤。
-      marked.setOptions({ breaks: true, gfm: true });
-
-      return DOMPurify.sanitize(marked(content), {
-        // 只放行 markdown 会产出的标签
-        ALLOWED_TAGS: [
-          'p', 'br', 'strong', 'em', 'del', 'code', 'pre', 'blockquote',
-          'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-          'a', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'hr',
-        ],
-        ALLOWED_ATTR: ['href', 'title'],
-        // 外链统一在新窗口打开，且不携带 referrer
-        ADD_ATTR: ['target', 'rel'],
-      });
+      const cached = this._markdownCache.get(content);
+      if (cached !== undefined) {
+        return cached;
+      }
+      const html = renderMarkdownToSafeHtml(content);
+      this._markdownCache.set(content, html);
+      return html;
+    },
+    // 流式中的内容每个 token 都不同，缓存只会堆一堆用不上的前缀
+    renderStreamingMarkdown(content) {
+      return content ? renderMarkdownToSafeHtml(content) : '';
     },
     resetConversation() {
       if (this.isBusy) return;
@@ -410,13 +495,34 @@ export default {
         {
           role: 'assistant',
           content: INITIAL_ASSISTANT_MESSAGE,
+          isGreeting: true,
         },
       ];
       this.errorMessage = '';
       this.streamingContent = '';
       this.activeTool = '';
+      this.historyTruncated = false;
+      this._markdownCache.clear();
       // 开新会话：不再延续服务端那条记录
       this.sessionId = null;
+    },
+    /**
+     * 组装请求体。question 单独传，messages 只放它之前的历史 ——
+     * 这样后端不需要再从历史末尾把提问抠出来，两边的条数上限也就对齐了
+     * （此前前端发 9 条、后端保留 8 条，最老的一条总是被丢掉）。
+     */
+    buildPayload(question, { stream }) {
+      const history = this.conversation
+        .filter((item) => !item.isGreeting)
+        .slice(-MAX_HISTORY_MESSAGES)
+        .map((item) => ({ role: item.role, content: item.content }));
+
+      return {
+        question,
+        messages: history,
+        stream,
+        session_id: this.sessionId,
+      };
     },
     async sendMessage() {
       if (this.isBusy) return;
@@ -428,12 +534,11 @@ export default {
         return;
       }
 
-      this.conversation.push({ role: 'user', content });
-      // 加 1 是因为 conversation 包含开场白，而历史消息不包含
-      if (this.conversation.length > MAX_HISTORY_MESSAGES + 1) {
-        this.conversation = this.conversation.slice(-(MAX_HISTORY_MESSAGES + 1));
-      }
+      // 先按"提问之前"的会话状态组装历史，再把提问推进界面，
+      // 否则这一条会同时出现在 question 和 messages 里
+      const payload = this.buildPayload(content, { stream: true });
 
+      this.conversation.push({ role: 'user', content });
       this.userInput = '';
       this.errorMessage = '';
       this.streamingContent = '';
@@ -441,16 +546,15 @@ export default {
       this.$nextTick(this.scrollToBottom);
 
       try {
-        await this.streamingRequest();
+        await this.streamingRequest(payload);
       } catch (error) {
-        const detail = error?.response?.data?.detail;
         if (error?.response?.status === 401) {
-          this.$message.warning('请先登录后再使用 AI 宠物顾问');
+          ElMessage.warning('请先登录后再使用 AI 宠物顾问');
           this.goLogin();
-          this.loading = false;
           return;
         }
-        this.errorMessage = detail || 'AI 服务暂时不可用，请稍后重试。';
+        const detail = error?.response?.data?.detail;
+        this.errorMessage = detail || error?.userMessage || 'AI 服务暂时不可用，请稍后重试。';
         this.conversation.push({
           role: 'assistant',
           content: '抱歉，当前无法连接 AI 服务，请稍后再试。',
@@ -458,173 +562,209 @@ export default {
       } finally {
         this.loading = false;
         this.isStreaming = false;
+        this.activeTool = '';
         this.$nextTick(this.scrollToBottom);
       }
     },
-    async streamingRequest() {
-      const payload = {
-        messages: this.conversation.map((item) => ({
-          role: item.role,
-          content: item.content,
-        })),
-        stream: true,
-        session_id: this.sessionId,
-      };
-
+    /** 断开当前流式请求并清掉空闲计时器。可重复调用。 */
+    abortStreaming() {
+      if (this._idleTimer) {
+        clearTimeout(this._idleTimer);
+        this._idleTimer = null;
+      }
+      if (this._streamController) {
+        this._streamController.abort();
+        this._streamController = null;
+      }
+    },
+    /**
+     * 重置空闲计时器。每收到一个字节（含后端心跳帧）就重新计时，
+     * 所以它量的是"真的没动静了多久"，而不是整轮请求耗时。
+     */
+    armIdleTimeout(controller) {
+      if (this._idleTimer) {
+        clearTimeout(this._idleTimer);
+      }
+      this._idleTimer = setTimeout(() => {
+        this._idleTimer = null;
+        // abort 会让挂着的 reader.read() 直接 reject，连接也真的关掉；
+        // 此前只是 race 掉一个 Promise，reader 和服务端生成器都还在跑。
+        controller.abort(new DOMException('SSE idle timeout', 'TimeoutError'));
+      }, SSE_IDLE_TIMEOUT_MS);
+    },
+    async streamingRequest(payload) {
       this.loading = false;
       this.isStreaming = true;
       this.streamingContent = '';
 
+      const controller = new AbortController();
+      this._streamController = controller;
+
+      let response;
       try {
-        const response = await fetch(resolveStreamingEndpoint(), {
+        this.armIdleTimeout(controller);
+        response = await fetch(resolveStreamingEndpoint(), {
           method: 'POST',
           headers: createStreamingHeaders(),
           body: JSON.stringify(payload),
           credentials: 'include',
+          signal: controller.signal,
         });
+      } catch (error) {
+        this.abortStreaming();
+        this.isStreaming = false;
+        // 被自己的超时 abort 掉：请求很可能已经到了服务端并开始生成，
+        // 这时重发就是第二次付费调用 + 第二条落库记录，只能报错。
+        if (this.isAbortError(error)) {
+          throw this.idleTimeoutError();
+        }
+        // 真正的连接层失败（DNS、拒绝连接）：请求没到服务端，回退是安全的
+        return this.nonStreamingFallback(payload);
+      }
 
-        if (!response.ok) {
-          const streamingError = new Error(`HTTP error! status: ${response.status}`);
-          streamingError.response = {
-            status: response.status,
-          };
-          throw streamingError;
+      if (!response.ok) {
+        this.abortStreaming();
+        this.isStreaming = false;
+        const streamingError = new Error(`HTTP error! status: ${response.status}`);
+        streamingError.response = { status: response.status };
+        // 服务端明确拒绝（401 / 429 / 503…），重发一次只会再被拒一次
+        throw streamingError;
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        // 环境不支持读流（老浏览器、某些代理），同样还没消费任何内容
+        this.abortStreaming();
+        this.isStreaming = false;
+        return this.nonStreamingFallback(payload);
+      }
+
+      // 从这里往后服务端已经在生成回答了。任何失败都不能再退到非流式：
+      // 那会让同一个问题跑两次付费上游，并在库里落两轮问答。
+      try {
+        return await this.consumeStream(reader, controller);
+      } catch (error) {
+        this.isStreaming = false;
+        this.activeTool = '';
+        throw this.isAbortError(error) ? this.idleTimeoutError() : error;
+      } finally {
+        this.abortStreaming();
+      }
+    },
+    isAbortError(error) {
+      // fetch/reader 被 abort 时抛的是 AbortError；带自定义 reason 时
+      // 抛的是 reason 本身，这里用的是 TimeoutError。
+      return error?.name === 'AbortError' || error?.name === 'TimeoutError';
+    },
+    idleTimeoutError() {
+      const error = new Error('SSE idle timeout');
+      error.userMessage = 'AI 回答超时中断，请重新提问。';
+      return error;
+    },
+    async consumeStream(reader, controller) {
+      const decoder = new TextDecoder();
+      // SSE 帧不保证和 chunk 边界对齐，一帧可能跨两个 chunk。缓冲未完成
+      // 的尾部，只处理已经收到换行的完整帧。
+      let buffer = '';
+      let streamError = null;
+
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) {
+          break;
         }
 
-        const reader = response.body?.getReader();
-        if (!reader) {
-          throw new Error('Streaming response is not readable.');
-        }
+        this.armIdleTimeout(controller);
+        buffer += decoder.decode(value, { stream: true });
 
-        const decoder = new TextDecoder();
-        // SSE 帧不保证和 chunk 边界对齐，一帧可能跨两个 chunk。缓冲未完成
-        // 的尾部，只处理已经收到换行的完整帧。
-        let buffer = '';
-        let streamError = null;
-        let lastDataTime = Date.now();
+        // SSE 以空行分隔事件
+        const frames = buffer.split('\n\n');
+        buffer = frames.pop() ?? '';
 
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
-          // 添加超时检测：如果长时间没有收到数据，认为连接断开
-          const readPromise = reader.read();
-          const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('SSE_TIMEOUT')), SSE_TIMEOUT_MS);
-          });
+        for (const frame of frames) {
+          // 注释帧（后端心跳 ": heartbeat"）没有 data: 行，跳过即可 ——
+          // 它的作用是让上面的 armIdleTimeout 重新计时
+          const line = frame.split('\n').find((item) => item.startsWith('data: '));
+          if (!line) {
+            continue;
+          }
 
-          let result;
+          const raw = line.slice(6).trim();
+          if (!raw) {
+            continue;
+          }
+
+          let parsed;
           try {
-            result = await Promise.race([readPromise, timeoutPromise]);
-          } catch (timeoutError) {
-            if (timeoutError.message === 'SSE_TIMEOUT') {
-              throw new Error('AI 服务响应超时，请稍后重试');
-            }
-            throw timeoutError;
+            parsed = JSON.parse(raw);
+          } catch {
+            // 只跳过解析失败的帧，不要连同下面的业务错误一起吞掉
+            continue;
           }
 
-          const { done, value } = result;
-          if (done) {
+          if (parsed.error) {
+            streamError = new Error(parsed.error);
             break;
           }
 
-          lastDataTime = Date.now();
-          buffer += decoder.decode(value, { stream: true });
-
-          // SSE 以空行分隔事件
-          const frames = buffer.split('\n\n');
-          buffer = frames.pop() ?? '';
-
-          for (const frame of frames) {
-            const line = frame.split('\n').find((item) => item.startsWith('data: '));
-            if (!line) {
-              continue;
-            }
-
-            const raw = line.slice(6).trim();
-            if (!raw) {
-              continue;
-            }
-
-            let parsed;
-            try {
-              parsed = JSON.parse(raw);
-            } catch {
-              // 只跳过解析失败的帧，不要连同下面的业务错误一起吞掉
-              continue;
-            }
-
-            if (parsed.error) {
-              streamError = new Error(parsed.error);
-              break;
-            }
-
-            if (parsed.tool) {
-              this.activeTool = TOOL_LABELS[parsed.tool] || '正在查询资料';
-              continue;
-            }
-
-            if (parsed.content) {
-              this.activeTool = '';
-              this.streamingContent += parsed.content;
-              this.$nextTick(this.scrollToBottom);
-              continue;
-            }
-
-            if (parsed.done) {
-              this.conversation.push({
-                role: 'assistant',
-                content: this.streamingContent,
-                citations: parsed.citations || [],
-                toolsUsed: parsed.tools_used || [],
-              });
-              if (parsed.session_id) {
-                this.sessionId = parsed.session_id;
-                // 刷新会话列表
-                this.loadSessions();
-              }
-              this.isStreaming = false;
-              this.activeTool = '';
-              this.streamingContent = '';
-              return;
-            }
+          if (parsed.tool) {
+            this.activeTool = TOOL_LABELS[parsed.tool] || '正在查询资料';
+            continue;
           }
 
-          if (streamError) {
-            break;
+          if (parsed.content) {
+            this.activeTool = '';
+            this.streamingContent += parsed.content;
+            this.$nextTick(this.scrollToBottom);
+            continue;
+          }
+
+          if (parsed.done) {
+            this.conversation.push({
+              role: 'assistant',
+              content: this.streamingContent,
+              citations: parsed.citations || [],
+              toolsUsed: parsed.tools_used || [],
+            });
+            if (parsed.session_id) {
+              this.sessionId = parsed.session_id;
+              // 回到第一页重新拉，而不是只补一行：列表按 updated_time 排序，
+              // 本轮问答把当前会话顶到最前面，后面每一行都跟着挪位，已加载
+              // 的第 2 页往后就全错位了，合并只会拉出重复行。
+              this.loadSessions();
+            }
+            this.isStreaming = false;
+            this.activeTool = '';
+            this.streamingContent = '';
+            return;
           }
         }
 
         if (streamError) {
-          throw streamError;
+          break;
         }
-      } catch (error) {
-        if (error?.response?.status === 401) {
-          throw error;
-        }
+      }
 
-        this.isStreaming = false;
-
-        this.activeTool = '';
-
-        const fallbackPayload = {
-          messages: this.conversation.map((item) => ({
-            role: item.role,
-            content: item.content,
-          })),
-          stream: false,
-          session_id: this.sessionId,
-        };
-
-        const { data } = await consultPetAdvisor(fallbackPayload);
-        const answer = data?.answer?.trim() || '抱歉，我暂时无法回答这个问题。';
-        this.conversation.push({
-          role: 'assistant',
-          content: answer,
-          citations: data?.citations || [],
-          toolsUsed: data?.tools_used || [],
-        });
-        if (data?.session_id) {
-          this.sessionId = data.session_id;
-        }
+      if (streamError) {
+        throw streamError;
+      }
+    },
+    /**
+     * 非流式兜底。只在流式请求"根本没建立"时调用 —— 一旦开始读流，
+     * 服务端就已经在生成回答并会自行落库，再发一次就是双份账单加双份记录。
+     */
+    async nonStreamingFallback(payload) {
+      const { data } = await consultPetAdvisor({ ...payload, stream: false });
+      const answer = data?.answer?.trim() || '抱歉，我暂时无法回答这个问题。';
+      this.conversation.push({
+        role: 'assistant',
+        content: answer,
+        citations: data?.citations || [],
+        toolsUsed: data?.tools_used || [],
+      });
+      if (data?.session_id) {
+        this.sessionId = data.session_id;
+        this.loadSessions();
       }
     },
     scrollToBottom() {
@@ -633,24 +773,7 @@ export default {
         container.scrollTop = container.scrollHeight;
       }
     },
-    formatTime(isoString) {
-      if (!isoString) return '';
-      const date = new Date(isoString);
-      const now = new Date();
-      const diffMs = now - date;
-      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-      if (diffDays === 0) {
-        // 今天，显示时间
-        return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-      } else if (diffDays === 1) {
-        return '昨天';
-      } else if (diffDays < 7) {
-        return `${diffDays}天前`;
-      } else {
-        return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
-      }
-    },
+    formatTime: formatRelativeTime,
   },
 };
 </script>
@@ -758,6 +881,12 @@ export default {
   display: none;
 }
 
+/* 抽屉遮罩只在移动端出现；桌面端侧边栏本来就常驻，
+   窗口从窄拉宽时不能留下一层黑幕 */
+.sidebar-backdrop {
+  display: none;
+}
+
 .session-list {
   flex: 1;
   overflow-y: auto;
@@ -786,6 +915,11 @@ export default {
 
 .session-item:hover {
   background: var(--paper-raised);
+}
+
+.session-item:focus-visible {
+  outline: 2px solid var(--vermilion);
+  outline-offset: 2px;
 }
 
 .session-item.active {
@@ -820,7 +954,17 @@ export default {
   color: var(--text-muted);
 }
 
-.session-item:hover .session-delete-btn {
+.session-more-btn {
+  align-self: center;
+  margin-top: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--font-size-2xs);
+}
+
+/* 键盘用户同样要能看到删除按钮，光 :hover 会把它藏起来 */
+.session-item:hover .session-delete-btn,
+.session-item:focus-within .session-delete-btn,
+.session-delete-btn:focus-visible {
   opacity: 1;
 }
 
@@ -881,6 +1025,13 @@ export default {
       rgba(27, 25, 22, 0.035) 27px
     ),
     var(--paper-raised);
+}
+
+.history-truncated {
+  margin: 0;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--font-size-2xs);
 }
 
 .chat-bubble {
@@ -1217,7 +1368,9 @@ export default {
     left: 0;
     bottom: 0;
     width: 280px;
-    z-index: 1000;
+    /* 必须高于站点头部的 --z-sticky(1020)：抽屉顶部正好是 ✕ 关闭按钮的
+       位置，被 sticky 头部盖住的话抽屉就没法关了。 */
+    z-index: var(--z-modal);
     transform: translateX(-100%);
     transition: transform 0.3s ease;
     border-radius: 0;
@@ -1227,6 +1380,14 @@ export default {
 
   .session-sidebar.open {
     transform: translateX(0);
+  }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-modal-backdrop);
+    background: rgb(0 0 0 / 45%);
   }
 
   .mobile-close-btn {

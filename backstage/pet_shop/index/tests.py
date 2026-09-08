@@ -8,6 +8,7 @@ bag-of-words vector, so retrieval logic is exercised without network cost.
 
 import hashlib
 import math
+import threading
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
@@ -48,6 +49,36 @@ class TopicFilterTests(APITestCase):
 			with self.subTest(question=question):
 				self.assertTrue(_is_pet_related_question(question))
 
+	def test_generic_nouns_do_not_veto_the_blacklist(self):
+		"""
+		A whitelist hit returns True immediately, so one over-broad keyword
+		disables the blacklist for the whole question. '生产' '散步' '宝宝'
+		'主子' were briefly on the list, and these questions — which do hit
+		the blacklist — reached the paid upstream because of it.
+		"""
+		for question in (
+			'公司的生产系统崩溃了怎么修数据库',   # 曾因 '生产' 放行
+			'帮我写个散步打卡的小程序',            # 曾因 '散步' 放行
+			'给宝宝的编程课推荐哪个软件',          # 曾因 '宝宝' 放行
+		):
+			with self.subTest(question=question):
+				self.assertFalse(_is_pet_related_question(question))
+
+	def test_questions_with_no_signal_either_way_are_allowed(self):
+		"""
+		Deliberate: with no pet keyword and no off-topic keyword there is
+		nothing to act on, so it goes to the model and the SYSTEM_PROMPT
+		decides. The filter only exists to skip obvious waste.
+		"""
+		for question in ('你好', '我家宝宝发烧了要吃什么药', '给女朋友买什么礼物'):
+			with self.subTest(question=question):
+				self.assertTrue(_is_pet_related_question(question))
+
+	def test_keyword_list_has_no_duplicates(self):
+		from index.views import PET_KEYWORDS
+
+		self.assertEqual(len(PET_KEYWORDS), len(set(PET_KEYWORDS)))
+
 
 class MessageSanitisationTests(APITestCase):
 	def test_system_role_is_stripped_from_client_history(self):
@@ -66,6 +97,76 @@ class MessageSanitisationTests(APITestCase):
 	def test_history_is_truncated(self):
 		many = [{'role': 'user', 'content': f'问题{i}'} for i in range(30)]
 		self.assertLessEqual(len(_sanitize_messages(many)), 8)
+
+
+class HistoryWindowTests(APITestCase):
+	"""
+	The client sends `question` separately from `messages`, so the cap on each
+	side means the same thing.
+
+	Previously the client posted the whole conversation with the question as
+	its last entry: it sent 9, the server kept the last 8, then pulled the
+	question back out of that 8 — so the oldest turn was always dropped and
+	the model actually saw 7, not the 8 the comment claimed.
+	"""
+
+	def setUp(self):
+		self.user = User.objects.create_user(username='hw', password='TestPass#2026')
+		self.client.force_login(self.user)
+
+	def _captured_history(self, payload):
+		seen = {}
+
+		def fake_stream(history, question):
+			seen['history'] = history
+			seen['question'] = question
+			yield ('final', {'answer': 'ok', 'tools_used': [], 'cited_chunk_ids': []})
+
+		with patch('index.agent.stream_agent', side_effect=fake_stream):
+			response = self.client.post('/api/ai/consult/', payload, format='json')
+			b''.join(response.streaming_content)
+		return seen
+
+	def test_a_full_window_reaches_the_model_intact(self):
+		from index.views import MAX_HISTORY_MESSAGES
+
+		history = [
+			{'role': 'user' if i % 2 == 0 else 'assistant', 'content': f'第{i}条'}
+			for i in range(MAX_HISTORY_MESSAGES)
+		]
+		seen = self._captured_history({
+			'question': '换粮怎么过渡',
+			'messages': history,
+			'stream': True,
+		})
+
+		self.assertEqual(seen['question'], '换粮怎么过渡')
+		# 一条都不能少 —— 尤其是最老的那条
+		self.assertEqual(len(seen['history']), MAX_HISTORY_MESSAGES)
+		self.assertEqual(seen['history'][0]['content'], '第0条')
+
+	def test_question_is_not_duplicated_into_the_history(self):
+		seen = self._captured_history({
+			'question': '换粮怎么过渡',
+			'messages': [{'role': 'user', 'content': '之前问的'}],
+			'stream': True,
+		})
+
+		self.assertNotIn('换粮怎么过渡', [m['content'] for m in seen['history']])
+
+	def test_legacy_clients_that_only_send_messages_still_work(self):
+		"""The question is still recovered from the tail when it is absent."""
+		seen = self._captured_history({
+			'messages': [
+				{'role': 'user', 'content': '之前问的'},
+				{'role': 'assistant', 'content': '之前答的'},
+				{'role': 'user', 'content': '换粮怎么过渡'},
+			],
+			'stream': True,
+		})
+
+		self.assertEqual(seen['question'], '换粮怎么过渡')
+		self.assertEqual([m['content'] for m in seen['history']], ['之前问的', '之前答的'])
 
 
 class AIConsultAccessTests(APITestCase):
@@ -382,6 +483,299 @@ class StreamingTests(APITestCase):
 		self.assertIsNotNone(session)
 		roles = list(session.messages.values_list('role', flat=True))
 		self.assertEqual(roles, [ConsultMessage.ROLE_USER, ConsultMessage.ROLE_ASSISTANT])
+
+
+class HeartbeatTests(APITestCase):
+	"""
+	The heartbeat has to arrive *during* the idle wait, not after it.
+
+	The first attempt checked the elapsed time inside the event loop body,
+	which only runs once the generator has already produced something — so
+	every heartbeat landed immediately before the frame that had already
+	ended the silence, and a proxy with an idle timeout still dropped the
+	connection mid-answer.
+	"""
+
+	def setUp(self):
+		self.user = User.objects.create_user(username='hb', password='TestPass#2026')
+		self.client.force_login(self.user)
+
+	def test_heartbeat_is_emitted_while_the_agent_is_still_thinking(self):
+		import time as time_module
+
+		idle_seconds = 0.9
+
+		def slow_stream(_history, _question):
+			# 模拟等上游返回：这段时间里一个 token 都没有
+			time_module.sleep(idle_seconds)
+			yield ('token', '好的。')
+			yield ('final', {'answer': '好的。', 'tools_used': [], 'cited_chunk_ids': []})
+
+		with patch('index.views.HEARTBEAT_INTERVAL', 0.1), \
+				patch('index.agent.stream_agent', side_effect=slow_stream):
+			response = self.client.post(
+				'/api/ai/consult/',
+				{'question': '猫粮怎么选', 'stream': True},
+				format='json',
+			)
+			stream = response.streaming_content
+			started = time_module.monotonic()
+			first_frame = next(stream).decode()
+			first_frame_delay = time_module.monotonic() - started
+			rest = b''.join(stream).decode()
+
+		# 第一帧必须在空闲期内就到达，而不是等模型开口之后
+		self.assertTrue(first_frame.startswith(': heartbeat'), first_frame)
+		self.assertLess(first_frame_delay, idle_seconds)
+		# 正文照旧完整送达
+		self.assertIn('好的', rest)
+		self.assertIn('"done": true', rest)
+
+	def test_client_disconnect_stops_the_worker_and_persists_nothing(self):
+		"""
+		Two things must happen when the client goes away mid-answer:
+
+		- the turn is not persisted. This is what made a session deleted
+		  during streaming come back: `_persist_turn` recreated it for the
+		  now-dangling session id.
+		- the worker thread actually stops, rather than running the rest of a
+		  paid upstream call that nobody will read.
+		"""
+		import time as time_module
+
+		from index.models import ConsultSession
+
+		# 不设上限的流：只有 stop_event 能让它停下来。给个大上限纯粹是
+		# 为了测试失败时不要挂死。
+		def endless_stream(_history, _question):
+			for i in range(500):
+				time_module.sleep(0.01)
+				yield ('token', f'第{i}片')
+			yield ('final', {'answer': '答完了', 'tools_used': [], 'cited_chunk_ids': []})
+
+		def worker_alive():
+			return any(t.name == 'ai-consult-stream' for t in threading.enumerate() if t.is_alive())
+
+		with patch('index.agent.stream_agent', side_effect=endless_stream):
+			response = self.client.post(
+				'/api/ai/consult/',
+				{'question': '猫粮怎么选', 'stream': True},
+				format='json',
+			)
+			stream = response.streaming_content
+			self.assertIn('第0片', next(stream).decode())
+			self.assertTrue(worker_alive())
+
+			# 客户端走了。关掉迭代器 —— GeneratorExit 会传进
+			# _agent_event_stream 的 finally，也就是真实服务器上发生的事。
+			#
+			# 这里用 _iterator 而不是 response.close()：测试客户端把响应包了
+			# 一层 closing_iterator_wrapper，它在关闭前会先摘掉
+			# close_old_connections 信号。直接调 response.close() 会绕过这层
+			# 保护，把测试自己的连接关在 atomic 块里，于是后面每条查询都报
+			# TransactionManagementError。
+			response._iterator.close()
+
+			deadline = time_module.monotonic() + 2
+			while worker_alive() and time_module.monotonic() < deadline:
+				time_module.sleep(0.02)
+
+			# 流本身还远没跑完（500 片 × 10ms），线程却已经退出了
+			self.assertFalse(worker_alive(), '断开后工作线程仍在跑，stop_event 没生效')
+
+		self.assertFalse(ConsultSession.objects.filter(user=self.user).exists())
+
+	def test_heartbeat_frames_carry_no_data_line(self):
+		"""
+		A heartbeat is an SSE comment. If it ever grew a `data:` line the
+		frontend would try to JSON.parse it.
+		"""
+		def slow_stream(_history, _question):
+			import time as time_module
+			time_module.sleep(0.3)
+			yield ('final', {'answer': 'ok', 'tools_used': [], 'cited_chunk_ids': []})
+
+		with patch('index.views.HEARTBEAT_INTERVAL', 0.05), \
+				patch('index.agent.stream_agent', side_effect=slow_stream):
+			response = self.client.post(
+				'/api/ai/consult/',
+				{'question': '猫粮怎么选', 'stream': True},
+				format='json',
+			)
+			body = b''.join(response.streaming_content).decode()
+
+		heartbeats = [f for f in body.split('\n\n') if f.startswith(': heartbeat')]
+		self.assertGreater(len(heartbeats), 1)
+		for frame in heartbeats:
+			self.assertNotIn('data:', frame)
+
+
+class ConsultSessionApiTests(APITestCase):
+	"""
+	Ownership scoping for the session endpoints.
+
+	These live in one ViewSet precisely so the `user=request.user` filter is
+	written once. Before, list/detail/delete were three APIViews each with
+	their own copy of the filter — dropping it from any one of them would
+	have been a cross-user leak with nothing failing.
+	"""
+
+	def setUp(self):
+		self.owner = User.objects.create_user(username='owner', password='TestPass#2026')
+		self.other = User.objects.create_user(username='other', password='TestPass#2026')
+		from index.models import ConsultMessage, ConsultSession
+
+		self.session = ConsultSession.objects.create(user=self.owner, title='换粮')
+		ConsultMessage.objects.create(
+			session=self.session, role=ConsultMessage.ROLE_USER, content='换粮怎么过渡',
+		)
+		ConsultMessage.objects.create(
+			session=self.session, role=ConsultMessage.ROLE_ASSISTANT, content='七天过渡法。',
+		)
+
+	def test_sessions_have_their_own_throttle_bucket(self):
+		"""
+		Two silent failure modes are guarded here:
+
+		- no `throttle_scope` at all — `ScopedRateThrottle` then returns True
+		  unconditionally and the endpoints are simply unthrottled;
+		- sharing `ai_consult` — browsing the sidebar would then spend the
+		  user's paid-question quota.
+		"""
+		from django.conf import settings
+
+		from index.views import AIPetConsultView, ConsultSessionViewSet
+
+		consult_scope = AIPetConsultView.throttle_scope
+		session_scope = ConsultSessionViewSet.throttle_scope
+
+		self.assertTrue(session_scope)
+		self.assertNotEqual(session_scope, consult_scope)
+		# 两个 scope 都必须真的配了速率，否则 DRF 在取 rate 时抛
+		rates = settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']
+		self.assertIn(session_scope, rates)
+		self.assertIn(consult_scope, rates)
+
+	def test_anonymous_access_is_denied(self):
+		for method, url in (
+			('get', '/api/ai/sessions/'),
+			('get', f'/api/ai/sessions/{self.session.pk}/'),
+			('delete', f'/api/ai/sessions/{self.session.pk}/'),
+		):
+			with self.subTest(url=url):
+				response = getattr(self.client, method)(url)
+				self.assertIn(
+					response.status_code,
+					(status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN),
+				)
+
+	def test_list_only_returns_own_sessions(self):
+		from index.models import ConsultSession
+
+		ConsultSession.objects.create(user=self.other, title='别人的会话')
+		self.client.force_login(self.owner)
+
+		response = self.client.get('/api/ai/sessions/')
+
+		self.assertEqual(response.status_code, status.HTTP_200_OK)
+		payload = response.json()
+		self.assertEqual(payload['count'], 1)
+		self.assertEqual([row['title'] for row in payload['results']], ['换粮'])
+
+	def test_older_sessions_stay_reachable_through_pagination(self):
+		"""
+		The list used to be a hard `[:20]` with no paging on either side, so
+		session 21 and older could not be retrieved at all.
+		"""
+		from index.models import ConsultSession
+		from index.views import MAX_SESSION_LIST
+
+		# setUp 已经建了 1 个，再补到刚好多出 3 个
+		extra = MAX_SESSION_LIST + 2
+		for i in range(extra):
+			ConsultSession.objects.create(user=self.owner, title=f'会话{i}')
+		total = extra + 1
+
+		self.client.force_login(self.owner)
+
+		first = self.client.get('/api/ai/sessions/').json()
+		self.assertEqual(first['count'], total)
+		self.assertEqual(len(first['results']), MAX_SESSION_LIST)
+		self.assertIsNotNone(first['next'])
+
+		second = self.client.get('/api/ai/sessions/', {'page': 2}).json()
+		self.assertEqual(len(second['results']), total - MAX_SESSION_LIST)
+
+		# 两页合起来正好是全部，且没有重复
+		ids = [row['id'] for row in first['results'] + second['results']]
+		self.assertEqual(len(ids), total)
+		self.assertEqual(len(set(ids)), total)
+
+	def test_page_size_cannot_be_raised_by_the_client(self):
+		from index.models import ConsultSession
+		from index.views import MAX_SESSION_LIST
+
+		for i in range(MAX_SESSION_LIST + 5):
+			ConsultSession.objects.create(user=self.owner, title=f'会话{i}')
+		self.client.force_login(self.owner)
+
+		payload = self.client.get('/api/ai/sessions/', {'page_size': 500}).json()
+
+		self.assertEqual(len(payload['results']), MAX_SESSION_LIST)
+
+	def test_another_user_cannot_read_or_delete_the_session(self):
+		from index.models import ConsultSession
+
+		self.client.force_login(self.other)
+
+		detail = self.client.get(f'/api/ai/sessions/{self.session.pk}/')
+		self.assertEqual(detail.status_code, status.HTTP_404_NOT_FOUND)
+
+		deleted = self.client.delete(f'/api/ai/sessions/{self.session.pk}/')
+		self.assertEqual(deleted.status_code, status.HTTP_404_NOT_FOUND)
+		# 最关键的一条：会话必须还在
+		self.assertTrue(ConsultSession.objects.filter(pk=self.session.pk).exists())
+
+	def test_owner_can_read_and_delete(self):
+		from index.models import ConsultMessage, ConsultSession
+
+		self.client.force_login(self.owner)
+
+		detail = self.client.get(f'/api/ai/sessions/{self.session.pk}/')
+		self.assertEqual(detail.status_code, status.HTTP_200_OK)
+		payload = detail.json()
+		self.assertEqual([m['role'] for m in payload['messages']], ['user', 'assistant'])
+		self.assertFalse(payload['truncated'])
+
+		deleted = self.client.delete(f'/api/ai/sessions/{self.session.pk}/')
+		self.assertEqual(deleted.status_code, status.HTTP_204_NO_CONTENT)
+		self.assertFalse(ConsultSession.objects.filter(pk=self.session.pk).exists())
+		# 消息随会话级联删除
+		self.assertFalse(ConsultMessage.objects.filter(session_id=self.session.pk).exists())
+
+	def test_detail_returns_the_most_recent_messages_and_flags_truncation(self):
+		"""
+		An unbounded detail response let the frontend render a whole session
+		and then silently drop most of it on the first follow-up. It is capped
+		server-side, and the client is told the history was cut.
+		"""
+		from index.models import ConsultMessage
+		from index.views import MAX_SESSION_MESSAGES
+
+		for i in range(MAX_SESSION_MESSAGES + 6):
+			ConsultMessage.objects.create(
+				session=self.session, role=ConsultMessage.ROLE_USER, content=f'第{i}条',
+			)
+
+		self.client.force_login(self.owner)
+		payload = self.client.get(f'/api/ai/sessions/{self.session.pk}/').json()
+
+		self.assertEqual(len(payload['messages']), MAX_SESSION_MESSAGES)
+		self.assertTrue(payload['truncated'])
+		# 保留的是最近的一批，且按时间正序返回
+		self.assertEqual(payload['messages'][-1]['content'], f'第{MAX_SESSION_MESSAGES + 5}条')
+		times = [m['created_time'] for m in payload['messages']]
+		self.assertEqual(times, sorted(times))
 
 
 class ToolBoundaryTests(APITestCase):

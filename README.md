@@ -61,7 +61,7 @@ PetMarketplaceSystem/
 │       │   ├── store/
 │       │   └── views/
 │       ├── package.json
-│       └── vue.config.js
+│       └── vite.config.js
 └── README.md
 ```
 
@@ -144,7 +144,7 @@ npm install
 npm run serve
 ```
 
-前端开发服务器默认端口是 `8010`，并通过 `vue.config.js` 将 `/api` 代理到 `http://127.0.0.1:8000`。
+前端开发服务器默认端口是 `8010`，并通过 `vite.config.js` 将 `/api` 代理到 `http://127.0.0.1:8000`。
 后端的 `CORS_ALLOWED_ORIGINS` / `CSRF_TRUSTED_ORIGINS` 默认值也是 8010 的两个来源，改端口时要同步改。
 
 ### 6. 访问地址
@@ -288,7 +288,7 @@ npm run lint
 
 1. 后端是否运行在 `127.0.0.1:8000`
 2. 前端是否通过 `npm run serve` 启动在 `8010`
-3. `vue.config.js` 中 `/api` 代理是否生效
+3. `vite.config.js` 中 `/api` 代理是否生效
 4. 是否执行过 `migrate`，需要演示数据时是否跑过 `seed_demo_business_data`
 5. `CORS_ALLOWED_ORIGINS` 是否包含前端来源
 

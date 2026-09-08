@@ -33,8 +33,11 @@ dependencies = [
 	# drf-yasg still imports pkg_resources at module load, which ships
 	# with setuptools and is no longer bundled on Python 3.12+.
 	"setuptools>=78,<80",
-	# MySQL driver
-	"pymysql>=1.1,<2",
+	# MySQL driver. The [rsa] extra pulls in cryptography, which PyMySQL needs
+	# for caching_sha2_password — MySQL 8+ makes that the default auth plugin,
+	# so without it every connection fails with
+	# "cryptography is required for sha256_password or caching_sha2_password".
+	"pymysql[rsa]>=1.1,<2",
 	# ImageField handling and captcha image generation
 	"pillow>=11.0,<12",
 	# Outbound HTTP for the LongCat AI endpoint

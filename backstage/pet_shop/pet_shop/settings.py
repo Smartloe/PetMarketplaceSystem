@@ -255,6 +255,9 @@ REST_FRAMEWORK = {
 	],
 	'DEFAULT_THROTTLE_RATES': {
 		'ai_consult': os.environ.get('THROTTLE_AI_CONSULT', '10/min'),
+		# 会话的读/删只打自己的库，成本和提问差一个量级，必须和 ai_consult
+		# 分开：共用一个桶的话，在侧边栏点几下历史就会把提问额度吃掉。
+		'ai_sessions': os.environ.get('THROTTLE_AI_SESSIONS', '60/min'),
 		'captcha': os.environ.get('THROTTLE_CAPTCHA', '30/min'),
 		'login': os.environ.get('THROTTLE_LOGIN', '10/min'),
 	},

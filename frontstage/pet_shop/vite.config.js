@@ -4,8 +4,7 @@ import vue from '@vitejs/plugin-vue'
 import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 
-// 端口与代理保持与原 Vue CLI (vue.config.js) 一致：
-// 开发服务 8010，/api 代理到 Django 8000。
+// 端口与代理沿用迁移前 Vue CLI 的约定：开发服务 8010，/api 代理到 Django 8000。
 export default defineConfig({
   plugins: [
     vue(),

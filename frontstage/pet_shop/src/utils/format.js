@@ -15,6 +15,24 @@ export function resolveMediaUrl(path = '', { fallback = '', allowDataUri = false
 }
 
 /**
+ * 相对时间：今天只显示时分，昨天/一周内显示天数，更早显示月日。
+ * 用于会话、消息一类"越近越需要精确"的列表。空值返回空串。
+ */
+export function formatRelativeTime(value) {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+
+    const diffDays = Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays <= 0) {
+        return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    }
+    if (diffDays === 1) return '昨天';
+    if (diffDays < 7) return `${diffDays}天前`;
+    return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+}
+
+/**
  * zh-CN 的“年月日 时分秒”格式化。空值返回空串，避免出现 Invalid Date。
  */
 export function formatDateTime(value) {

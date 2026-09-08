@@ -5,7 +5,7 @@ import store from './store';
 import base from './components/AppHeader.vue';
 import footer from './components/AppFooter.vue';
 
-// Element Plus 改为按需引入（见 vue.config.js 的 Components 插件），
+// Element Plus 改为按需引入（见 vite.config.js 的 Components 插件），
 // 不再全量注册。JS API 组件不经模板渲染，样式需要手动引入：
 import 'element-plus/es/components/message/style/css';
 import 'element-plus/es/components/message-box/style/css';

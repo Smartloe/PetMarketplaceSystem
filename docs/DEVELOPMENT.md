@@ -45,7 +45,7 @@ npm install
 npm run serve      # 端口 8010
 ```
 
-开发服务器跑在 **8010**，`vue.config.js` 把 `/api` 代理到
+开发服务器跑在 **8010**，`vite.config.js` 把 `/api` 代理到
 `http://127.0.0.1:8000`。后端的 `CORS_ALLOWED_ORIGINS` 与
 `CSRF_TRUSTED_ORIGINS` 默认值也是 8010 的两个来源，改前端端口时这两个都要跟着改。
 
