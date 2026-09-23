@@ -896,6 +896,47 @@ class ConsultSessionApiTests(APITestCase):
 		times = [m['created_time'] for m in payload['messages']]
 		self.assertEqual(times, sorted(times))
 
+	def test_detail_at_exactly_the_cap_is_not_flagged_as_truncated(self):
+		"""
+		`truncated` is derived from fetching one extra row rather than a
+		COUNT(*) over the whole session. The boundary case must still read
+		as "nothing hidden".
+		"""
+		from index.models import ConsultMessage
+		from index.views import MAX_SESSION_MESSAGES
+
+		# setUp 已经放了两条，补到正好等于上限
+		existing = self.session.messages.count()
+		for i in range(MAX_SESSION_MESSAGES - existing):
+			ConsultMessage.objects.create(
+				session=self.session, role=ConsultMessage.ROLE_USER, content=f'第{i}条',
+			)
+
+		self.client.force_login(self.owner)
+		payload = self.client.get(f'/api/ai/sessions/{self.session.pk}/').json()
+
+		self.assertEqual(len(payload['messages']), MAX_SESSION_MESSAGES)
+		self.assertFalse(payload['truncated'])
+
+	def test_detail_does_not_count_the_whole_session(self):
+		from django.db import connection
+		from django.test.utils import CaptureQueriesContext
+
+		from index.models import ConsultMessage
+
+		ConsultMessage.objects.create(
+			session=self.session, role=ConsultMessage.ROLE_USER, content='一条',
+		)
+		self.client.force_login(self.owner)
+
+		with CaptureQueriesContext(connection) as ctx:
+			self.client.get(f'/api/ai/sessions/{self.session.pk}/')
+
+		table = ConsultMessage._meta.db_table
+		message_queries = [q['sql'] for q in ctx.captured_queries if table in q['sql']]
+		self.assertEqual(len(message_queries), 1, message_queries)
+		self.assertNotIn('COUNT(', message_queries[0].upper())
+
 
 class ToolBoundaryTests(APITestCase):
 	"""The agent's tools must stay read-only and must not leak internals."""

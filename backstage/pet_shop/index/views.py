@@ -532,7 +532,12 @@ class ConsultSessionViewSet(mixins.DestroyModelMixin, viewsets.GenericViewSet):
 		session = self.get_object()
 		# 只取最近若干条：长会话全量返回会让前端一次渲染上百条 markdown，
 		# 而它本来就只保留最近几轮用于追问。倒序取再翻回来，避免把整表读进内存。
-		recent = list(session.messages.order_by('-created_time', '-id')[:MAX_SESSION_MESSAGES])
+		# 多取一条只为判断"上面还有没有"，省掉一次对整个会话的 COUNT(*)。
+		recent = list(
+			session.messages.order_by('-created_time', '-id')[:MAX_SESSION_MESSAGES + 1]
+		)
+		truncated = len(recent) > MAX_SESSION_MESSAGES
+		recent = recent[:MAX_SESSION_MESSAGES]
 		recent.reverse()
 		data = [
 			{
@@ -548,7 +553,7 @@ class ConsultSessionViewSet(mixins.DestroyModelMixin, viewsets.GenericViewSet):
 				'title': str(session),
 				'messages': data,
 				# 告诉前端上面还有更早的消息被截断了
-				'truncated': session.messages.count() > len(data),
+				'truncated': truncated,
 				'created_time': session.created_time.isoformat(),
 				'updated_time': session.updated_time.isoformat(),
 			},

@@ -13,33 +13,33 @@
  * 返回，用户正在读的那半段回答直接从界面上消失，也没有任何提示。
  */
 export class StreamInterruptedError extends Error {
-  constructor(partialContent = '') {
-    super('SSE stream ended before a done/error frame');
-    this.name = 'StreamInterruptedError';
-    this.userMessage = '连接在回答完成前中断，请重新提问。';
-    this.partialContent = partialContent;
-  }
+    constructor(partialContent = '') {
+        super('SSE stream ended before a done/error frame');
+        this.name = 'StreamInterruptedError';
+        this.userMessage = '连接在回答完成前中断，请重新提问。';
+        this.partialContent = partialContent;
+    }
 }
 
 /**
  * 把一个 SSE 帧的文本解析成后端的 JSON 载荷；注释帧（心跳）和坏帧返回 null。
  */
 export function parseSseFrame(frame) {
-  // 注释帧（后端心跳 ": heartbeat"）没有 data: 行
-  const line = frame.split('\n').find((item) => item.startsWith('data: '));
-  if (!line) {
-    return null;
-  }
-  const raw = line.slice(6).trim();
-  if (!raw) {
-    return null;
-  }
-  try {
-    return JSON.parse(raw);
-  } catch {
-    // 只跳过解析失败的帧，不要连同后面的业务帧一起吞掉
-    return null;
-  }
+    // 注释帧（后端心跳 ": heartbeat"）没有 data: 行
+    const line = frame.split('\n').find((item) => item.startsWith('data: '));
+    if (!line) {
+        return null;
+    }
+    const raw = line.slice(6).trim();
+    if (!raw) {
+        return null;
+    }
+    try {
+        return JSON.parse(raw);
+    } catch {
+        // 只跳过解析失败的帧，不要连同后面的业务帧一起吞掉
+        return null;
+    }
 }
 
 /**
@@ -53,39 +53,39 @@ export function parseSseFrame(frame) {
  *   - reader 在此之前就 done，抛 StreamInterruptedError
  */
 export async function* readConsultStream(reader, { onActivity } = {}) {
-  const decoder = new TextDecoder();
-  // SSE 帧不保证和 chunk 边界对齐，一帧可能跨两个 chunk。缓冲未完成
-  // 的尾部，只处理已经收到换行的完整帧。
-  let buffer = '';
-  let partialContent = '';
+    const decoder = new TextDecoder();
+    // SSE 帧不保证和 chunk 边界对齐，一帧可能跨两个 chunk。缓冲未完成
+    // 的尾部，只处理已经收到换行的完整帧。
+    let buffer = '';
+    let partialContent = '';
 
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) {
-      throw new StreamInterruptedError(partialContent);
+    for (;;) {
+        const { done, value } = await reader.read();
+        if (done) {
+            throw new StreamInterruptedError(partialContent);
+        }
+
+        onActivity?.();
+        buffer += decoder.decode(value, { stream: true });
+
+        // SSE 以空行分隔事件
+        const frames = buffer.split('\n\n');
+        buffer = frames.pop() ?? '';
+
+        for (const frame of frames) {
+            const parsed = parseSseFrame(frame);
+            if (!parsed) {
+                continue;
+            }
+            if (parsed.content) {
+                partialContent += parsed.content;
+            }
+            yield parsed;
+            if (parsed.done || parsed.error) {
+                return;
+            }
+        }
     }
-
-    onActivity?.();
-    buffer += decoder.decode(value, { stream: true });
-
-    // SSE 以空行分隔事件
-    const frames = buffer.split('\n\n');
-    buffer = frames.pop() ?? '';
-
-    for (const frame of frames) {
-      const parsed = parseSseFrame(frame);
-      if (!parsed) {
-        continue;
-      }
-      if (parsed.content) {
-        partialContent += parsed.content;
-      }
-      yield parsed;
-      if (parsed.done || parsed.error) {
-        return;
-      }
-    }
-  }
 }
 
 /**
@@ -96,17 +96,17 @@ export async function* readConsultStream(reader, { onActivity } = {}) {
  * 这类明确提示到不了用户眼前）> 通用兜底。
  */
 export function resolveConsultErrorMessage(error, fallback = 'AI 服务暂时不可用，请稍后重试。') {
-  return (
-    error?.response?.data?.detail
-    || error?.userMessage
-    || error?.serverMessage
-    || fallback
-  );
+    return (
+        error?.response?.data?.detail
+        || error?.userMessage
+        || error?.serverMessage
+        || fallback
+    );
 }
 
 /** 把服务端 error 帧包成 Error，并把原文挂在 serverMessage 上供上面读取。 */
 export function serverErrorFromFrame(message) {
-  const error = new Error(message);
-  error.serverMessage = message;
-  return error;
+    const error = new Error(message);
+    error.serverMessage = message;
+    return error;
 }

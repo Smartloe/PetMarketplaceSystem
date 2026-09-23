@@ -14,16 +14,28 @@ export function resolveMediaUrl(path = '', { fallback = '', allowDataUri = false
     return `/api${path.startsWith('/') ? path : `/${path}`}`;
 }
 
+/** 本地时区的当天零点，用来按自然日而不是按 24 小时算天数差。 */
+function startOfLocalDay(date) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
 /**
  * 相对时间：今天只显示时分，昨天/一周内显示天数，更早显示月日。
  * 用于会话、消息一类"越近越需要精确"的列表。空值返回空串。
+ *
+ * 天数差按自然日算。此前用 floor((now - date) / 24h)，于是昨晚 23:30 的
+ * 消息在今早 9 点显示成光秃秃的"23:30"，读起来像今晚还没到的时间；
+ * "昨天"要等满 24 小时才出现。
+ *
+ * now 参数只为测试注入，业务代码不要传。
  */
-export function formatRelativeTime(value) {
+export function formatRelativeTime(value, now = new Date()) {
     if (!value) return '';
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return '';
 
-    const diffDays = Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
+    const dayMs = 24 * 60 * 60 * 1000;
+    const diffDays = Math.round((startOfLocalDay(now) - startOfLocalDay(date)) / dayMs);
     if (diffDays <= 0) {
         return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
     }

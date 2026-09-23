@@ -35,7 +35,7 @@ uv sync --python 3.12
 uv run --python 3.12 python manage.py migrate
 uv run --python 3.12 python manage.py seed_demo_business_data   # demo data for the dashboard
 uv run --python 3.12 python manage.py runserver 127.0.0.1:8000
-uv run --python 3.12 python manage.py test                     # 116 tests
+uv run --python 3.12 python manage.py test                     # 118 tests
 uv run --python 3.12 python manage.py test trade.tests.CheckoutTests  # single class
 ```
 
@@ -103,12 +103,13 @@ Admin charts render ECharts loaded from a CDN in the templates (`templates/admin
 
 ## Testing
 
-116 backend tests plus a small vitest suite for the frontend SSE reader. Coverage is uneven by design of history: `charts/` was already well covered, and tests were added for the security fixes.
+118 backend tests plus a small vitest suite for the frontend SSE reader. Coverage is uneven by design of history: `charts/` was already well covered, and tests were added for the security fixes.
 
 - `accounts/tests.py` — JWT login, captcha single-use and non-leakage
 - `trade/tests.py` — cross-user access isolation, checkout stock/atomicity/`order_sn` uniqueness, rating bounds
 - `index/tests.py` — AI endpoint auth, topic-filter whitelist precedence, SSE heartbeat timing, worker/consumer hand-off under a stalled client (`StreamRobustnessTests`), session-endpoint ownership scoping, history-window alignment
 - `frontstage/pet_shop/src/utils/consultStream.test.js` — SSE frame parsing, cross-chunk reassembly, EOF-without-done-frame detection, error-message precedence
+- `frontstage/pet_shop/src/utils/format.test.js` — `formatRelativeTime` calendar-day bucketing (`now` is injectable for tests only), `resolveMediaUrl`
 - `charts/tests/` — analytics service, admin views, seed command, smoke test
 
 Still untested: commodity and merchant views, serializers, the refund and confirm-receipt flows.
@@ -133,5 +134,5 @@ Still untested: commodity and merchant views, serializers, the refund and confir
 ## Conventions
 
 - Python: snake_case, DRF ViewSets for CRUD, a separate `api_views.py` for non-CRUD business actions
-- Frontend: 2-space indent, camelCase, Vue 3 Composition API, Element Plus
+- Frontend: camelCase, Vue 3 Composition API, Element Plus. Indentation is split by file type: `.vue` files use 2 spaces, plain `.js` files (`src/api`, `src/store`, `src/router`, `src/utils`, `main.js`) use 4. ESLint does not enforce either; match the file you are editing
 - Any multi-step write (order creation, stock movement) belongs in `transaction.atomic()` with `select_for_update()` on the contended rows — `CheckoutView` is the worked example

@@ -382,6 +382,8 @@ export default {
     // 当前流式请求的 AbortController，用于超时/离开页面时真正断开连接
     this._streamController = null;
     this._idleTimer = null;
+    // 会话列表请求的递增序号，用来丢弃被重载取代的过期响应
+    this._sessionsRequestId = 0;
   },
   mounted() {
     if (this.isLoggedIn) {
@@ -400,10 +402,21 @@ export default {
      */
     async loadSessions({ append = false } = {}) {
       if (!this.isLoggedIn) return;
+      // 一次只允许一个追加在飞；重载则始终放行，并让之前在飞的请求作废。
+      // 否则"加载更早"还没回来时回答结束触发重载，两个响应谁后到谁生效：
+      // 第 2 页后到会把按旧排序算出的一页拼到新的第 1 页后面，刚被顶到最前
+      // 的会话出现两次；第 1 页后到则 sessionsPage 停在 1 而列表已有 40 行，
+      // 下次追加又拉一遍第 2 页。
+      if (append && this.sessionsLoading) return;
       const page = append ? this.sessionsPage + 1 : 1;
+      const requestId = ++this._sessionsRequestId;
       this.sessionsLoading = true;
       try {
         const { data } = await getConsultSessions(page);
+        if (requestId !== this._sessionsRequestId) {
+          // 已被更新的请求取代（通常是重载），这份结果按旧排序算的，丢掉
+          return;
+        }
         const rows = data?.results || [];
         this.sessions = append ? [...this.sessions, ...rows] : rows;
         this.sessionsPage = page;
@@ -411,7 +424,9 @@ export default {
       } catch (err) {
         console.warn('加载会话列表失败:', err);
       } finally {
-        this.sessionsLoading = false;
+        if (requestId === this._sessionsRequestId) {
+          this.sessionsLoading = false;
+        }
       }
     },
     async loadSession(sessionId) {
