@@ -3,6 +3,7 @@
 		<section class="shopping-cart-panel shell-surface shell-section">
 			<div class="section-header">
 				<div>
+					<span class="text-label section-kicker">账户 · 待结算</span>
 					<h2>购物车</h2>
 					<p>核对商品、调整数量并完成结算。</p>
 				</div>
@@ -13,9 +14,15 @@
 				<p>购物车加载失败，请检查网络后重试。</p>
 				<el-button type="primary" @click="fetchCartItems">重新加载</el-button>
 			</div>
-			<div v-else-if="cartItems.length === 0" class="app-empty-state cart-empty">
-				<p>购物车还是空的，先去挑选喜欢的商品吧。</p>
-			</div>
+			<EmptyState
+				v-else-if="cartItems.length === 0"
+				glyph="车"
+				kicker="购物车"
+				title="车里还是空的"
+				description="从在售目录把要比较的商品先放进来，统一核对规格和总价，再决定下单。"
+				action-label="去在售目录挑选"
+				action-to="/commodity"
+			/>
 			<div v-else class="table-scroll-wrap">
 				<TableScrollHint />
 				<el-table
@@ -85,11 +92,16 @@
 							<el-button link type="primary" @click="goCreateAddress">管理收货地址</el-button>
 						</div>
 					</div>
-					<div v-else class="address-empty">
-						<el-empty description="暂无收货地址">
-							<el-button type="primary" @click="goCreateAddress">去创建地址</el-button>
-						</el-empty>
-					</div>
+					<EmptyState
+						v-else
+						compact
+						glyph="址"
+						kicker="收货地址"
+						title="还没有收货地址"
+						description="先到个人中心添加一个常用地址，回来即可直接结算。"
+						action-label="去添加地址"
+						@action="goCreateAddress"
+					/>
 				</el-form-item>
 				<el-form-item label="支付方式">
 					<div class="pay-methods">
@@ -345,6 +357,12 @@ export default {
 	border-bottom: 1px solid var(--line-ink);
 }
 
+.section-kicker {
+	display: block;
+	margin-bottom: var(--space-2);
+	color: var(--vermilion);
+}
+
 .section-header h2 {
 	font-family: var(--font-family-heading);
 	font-size: clamp(1.5rem, 2.2vw, 1.8rem);
@@ -379,10 +397,6 @@ export default {
 
 .address-actions {
 	margin-top: var(--space-2);
-}
-
-.address-empty {
-	width: 100%;
 }
 
 .table-scroll-wrap {

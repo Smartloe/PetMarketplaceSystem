@@ -142,10 +142,15 @@
         <p>{{ addressLoadError || '地址列表暂未获取，请稍后重试。' }}</p>
         <el-button type="primary" plain @click="fetchUserAddresses">重新获取</el-button>
       </div>
-      <div v-else-if="userAddresses.length === 0" class="app-empty-state">
-        <p>你还没有收货地址，建议先添加一个常用地址，结算会更顺畅。</p>
-        <el-button type="primary" @click="showAddressDialog">添加第一个地址</el-button>
-      </div>
+      <EmptyState
+        v-else-if="userAddresses.length === 0"
+        glyph="址"
+        kicker="收货地址"
+        title="还没有收货地址"
+        description="先存一个常用地址，结算时就不用再填；之后可以随时新增、修改或设为默认。"
+        action-label="添加第一个地址"
+        @action="showAddressDialog"
+      />
       <div v-else class="address-grid">
         <article v-for="address in userAddresses" :key="address.id" class="address-card">
           <header class="address-card-header">

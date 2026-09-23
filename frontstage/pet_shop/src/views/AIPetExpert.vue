@@ -41,9 +41,14 @@
           <div v-if="sessionsLoading && sessions.length === 0" class="session-loading">
             加载中...
           </div>
-          <div v-else-if="sessions.length === 0" class="session-empty">
-            暂无历史会话
-          </div>
+          <EmptyState
+            v-else-if="sessions.length === 0"
+            compact
+            glyph="话"
+            kicker="历史会话"
+            title="还没有会话记录"
+            description="提问一次就会自动存档，之后可以从这里接着追问。"
+          />
           <div
             v-for="session in sessions"
             :key="session.id"
@@ -879,8 +884,7 @@ export default {
   gap: var(--space-2);
 }
 
-.session-loading,
-.session-empty {
+.session-loading {
   padding: var(--space-4);
   text-align: center;
   color: var(--text-muted);

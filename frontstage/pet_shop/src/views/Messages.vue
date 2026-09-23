@@ -3,6 +3,7 @@
 		<section class="messages-panel shell-surface shell-section">
 			<div class="section-header">
 				<div>
+					<span class="text-label section-kicker">账户 · 站内沟通</span>
 					<h2>我的留言</h2>
 					<p>查看留言处理进度，支持新增、编辑和删除未回复内容。</p>
 				</div>
@@ -14,10 +15,15 @@
 				<p>留言列表加载失败，请检查网络后重试。</p>
 				<el-button type="primary" @click="fetchMessages">重新加载</el-button>
 			</div>
-			<div v-else-if="messages.length === 0" class="app-empty-state messages-empty">
-				<p>暂时没有留言记录，欢迎告诉我们你的问题或建议。</p>
-				<el-button type="primary" @click="openCreateDialog">立即留言</el-button>
-			</div>
+			<EmptyState
+				v-else-if="messages.length === 0"
+				glyph="言"
+				kicker="站内留言"
+				title="还没有留过言"
+				description="规格拿不准、售后有疑问，都可以在这里写下来，处理进度会记在同一条记录下。"
+				action-label="写第一条留言"
+				@action="openCreateDialog"
+			/>
 			<div v-else class="table-scroll-wrap">
 				<TableScrollHint />
 				<el-table :data="messages">
@@ -307,6 +313,12 @@ export default {
 	gap: var(--space-4);
 	padding-bottom: var(--space-4);
 	border-bottom: 1px solid var(--line-ink);
+}
+
+.section-kicker {
+	display: block;
+	margin-bottom: var(--space-2);
+	color: var(--vermilion);
 }
 
 .section-header h2 {

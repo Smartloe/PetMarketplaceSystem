@@ -3,6 +3,7 @@
 		<section class="orders-panel shell-surface shell-section">
 			<div class="section-header">
 				<div>
+					<span class="text-label section-kicker">账户 · 交易记录</span>
 					<h2>我的订单</h2>
 					<p>管理付款、收货、退款和评价，快速跟踪当前订单状态。</p>
 				</div>
@@ -13,9 +14,15 @@
 				<p>订单列表加载失败，请检查网络后重试。</p>
 				<el-button type="primary" @click="fetchOrders">重新加载</el-button>
 			</div>
-			<div v-else-if="orders.length === 0" class="app-empty-state orders-empty">
-				<p>你还没有订单记录，去商城挑选心仪宠物用品吧。</p>
-			</div>
+			<EmptyState
+				v-else-if="orders.length === 0"
+				glyph="单"
+				kicker="订单记录"
+				title="还没有一笔订单"
+				description="下单后，付款、发货、收货和评价都会在这里逐条记录，随时可以回来核对。"
+				action-label="去在售目录挑选"
+				action-to="/commodity"
+			/>
 			<div v-else class="table-scroll-wrap">
 				<TableScrollHint />
 				<el-table :data="orders">
@@ -459,6 +466,12 @@ export default {
 	gap: var(--space-4);
 	padding-bottom: var(--space-4);
 	border-bottom: 1px solid var(--line-ink);
+}
+
+.section-kicker {
+	display: block;
+	margin-bottom: var(--space-2);
+	color: var(--vermilion);
 }
 
 .section-header h2 {

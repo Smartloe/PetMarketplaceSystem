@@ -115,11 +115,16 @@
           <p>{{ loadErrorMessage }}</p>
           <el-button type="primary" @click="retryCurrentContext">重新加载</el-button>
         </div>
-        <div v-else-if="!hasAnyCommodities" class="app-empty-state list-state">
-          <h3>当前条件下暂无在售内容</h3>
-          <p>建议切换分类或清空关键词后重试。</p>
-          <el-button type="primary" @click="resetToAllCommodities">返回全部目录</el-button>
-        </div>
+        <EmptyState
+          v-else-if="!hasAnyCommodities"
+          class="list-state"
+          glyph="录"
+          kicker="在售目录"
+          title="当前条件下暂无在售内容"
+          description="这个分类或关键词下还没有上架的商品，换个分类或清空关键词再看看。"
+          action-label="返回全部目录"
+          @action="resetToAllCommodities"
+        />
         <template v-else>
           <div :key="gridRevealKey" v-reveal.stagger class="commodity-grid reveal-stagger-only">
             <article

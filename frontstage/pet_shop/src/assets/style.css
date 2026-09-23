@@ -330,45 +330,84 @@ body::after {
    Shared status blocks
    ========================================================================== */
 
-.app-empty-state,
+/* Loading / notice share the ruled-paper ground of EmptyState.vue so the
+   three states of a list read as the same page in different moments. The
+   empty state itself lives in that component; these two stay as classes
+   because they are one line of copy and an optional button. */
 .app-loading-state,
 .app-notice-state {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   min-height: 220px;
-  padding: var(--space-7) var(--space-5);
+  padding: var(--space-7) var(--space-7) var(--space-7) var(--space-8);
   border-radius: var(--radius-md);
-  border: 1px dashed var(--line-strong);
-  background: rgba(255, 253, 248, 0.5);
-  color: var(--text-muted);
+  border: 1px solid var(--line-hair);
+  --rule-pitch: 1.75rem;
+  background-color: var(--paper-raised);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(var(--rule-pitch) - 1px),
+    rgba(27, 25, 22, 0.09) calc(var(--rule-pitch) - 1px),
+    rgba(27, 25, 22, 0.09) var(--rule-pitch)
+  );
+  background-position: 0 0.9rem;
+  color: var(--text-default);
   font-size: var(--font-size-sm);
-  text-align: center;
+  text-align: left;
+}
+
+.app-loading-state::after,
+.app-notice-state::after {
+  content: "";
+  position: absolute;
+  top: var(--space-5);
+  bottom: var(--space-5);
+  left: 0;
+  width: 2px;
+  background: var(--vermilion);
+  opacity: 0.85;
+}
+
+.app-notice-state::after {
+  background: var(--pine);
+}
+
+/* Mono status label above the copy — "整理中" / "加载失败" — same voice as
+   the field-guide index labels used everywhere else. */
+.app-loading-state::before,
+.app-notice-state::before {
+  display: block;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-2xs);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--vermilion);
 }
 
 .app-loading-state::before {
-  content: "";
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 2px solid rgba(47, 93, 79, 0.2);
-  border-top-color: var(--vermilion);
-  animation: shell-spin 0.85s linear infinite;
+  content: "· · ·  整理中";
+  animation: shell-blink 1.4s steps(1) infinite;
 }
 
-.app-notice-state {
-  border-style: solid;
-  border-color: rgba(47, 93, 79, 0.26);
-  border-left: 3px solid var(--pine);
-  background: var(--pine-wash);
+.app-notice-state::before {
+  content: "!  加载失败";
+  color: var(--pine);
 }
 
-@keyframes shell-spin {
-  to {
-    transform: rotate(360deg);
-  }
+.app-notice-state p {
+  margin: 0;
+  max-width: 34em;
+}
+
+@keyframes shell-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
 }
 
 @media (max-width: 1024px) {
@@ -393,16 +432,15 @@ body::after {
     padding: var(--space-5);
   }
 
-  .app-empty-state,
   .app-loading-state,
   .app-notice-state {
     min-height: 180px;
-    padding: var(--space-6) var(--space-4);
+    padding: var(--space-6) var(--space-5) var(--space-6) var(--space-6);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .app-loading-state::before {
-    animation-duration: 2s;
+    animation: none;
   }
 }

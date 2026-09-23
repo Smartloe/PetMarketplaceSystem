@@ -4,6 +4,7 @@ import router from './router';
 import store from './store';
 import base from './components/AppHeader.vue';
 import footer from './components/AppFooter.vue';
+import EmptyState from './components/EmptyState.vue';
 
 // Element Plus 改为按需引入（见 vite.config.js 的 Components 插件），
 // 不再全量注册。JS API 组件不经模板渲染，样式需要手动引入：
@@ -51,6 +52,7 @@ registerMotion(app);
 // token 刷新请求在生产环境打到 localhost:8010。
 app.component('base-page', base);
 app.component('footer-page', footer);
+app.component('EmptyState', EmptyState);
 
 // 使用路由
 app.use(router);

@@ -3,6 +3,7 @@
 		<section class="favorites-panel shell-surface shell-section">
 			<div class="section-header">
 				<div>
+					<span class="text-label section-kicker">账户 · 备选清单</span>
 					<h2>我的收藏</h2>
 					<p>管理收藏清单，快速查看商品详情并处理不再需要的条目。</p>
 				</div>
@@ -13,9 +14,15 @@
 				<p>收藏列表加载失败，请检查网络后重试。</p>
 				<el-button type="primary" @click="fetchFavorites">重新加载</el-button>
 			</div>
-			<div v-else-if="favorites.length === 0" class="app-empty-state favorites-empty">
-				<p>还没有收藏商品，去商品列表挑选喜欢的宠物好物吧。</p>
-			</div>
+			<EmptyState
+				v-else-if="favorites.length === 0"
+				glyph="藏"
+				kicker="收藏夹"
+				title="还没有收藏任何商品"
+				description="拿不准的先收藏，等看完成分表和评价再回来比较，不用急着加购物车。"
+				action-label="去在售目录看看"
+				action-to="/commodity"
+			/>
 			<div v-else class="table-scroll-wrap">
 				<TableScrollHint />
 				<el-table :data="favorites">
@@ -208,6 +215,12 @@ export default {
 	gap: var(--space-4);
 	padding-bottom: var(--space-4);
 	border-bottom: 1px solid var(--line-ink);
+}
+
+.section-kicker {
+	display: block;
+	margin-bottom: var(--space-2);
+	color: var(--vermilion);
 }
 
 .section-header h2 {
