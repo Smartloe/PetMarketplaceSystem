@@ -35,7 +35,7 @@ uv sync --python 3.12
 uv run --python 3.12 python manage.py migrate
 uv run --python 3.12 python manage.py seed_demo_business_data   # demo data for the dashboard
 uv run --python 3.12 python manage.py runserver 127.0.0.1:8000
-uv run --python 3.12 python manage.py test                     # 112 tests
+uv run --python 3.12 python manage.py test                     # 116 tests
 uv run --python 3.12 python manage.py test trade.tests.CheckoutTests  # single class
 ```
 
@@ -46,6 +46,7 @@ npm install
 npm run serve    # port 8010, proxies /api -> http://127.0.0.1:8000
 npm run build
 npm run lint
+npm test         # vitest, pure JS utils only (src/**/*.test.js)
 ```
 
 ## Configuration
@@ -102,11 +103,12 @@ Admin charts render ECharts loaded from a CDN in the templates (`templates/admin
 
 ## Testing
 
-112 tests. Coverage is uneven by design of history: `charts/` was already well covered, and tests were added for the security fixes.
+116 backend tests plus a small vitest suite for the frontend SSE reader. Coverage is uneven by design of history: `charts/` was already well covered, and tests were added for the security fixes.
 
 - `accounts/tests.py` — JWT login, captcha single-use and non-leakage
 - `trade/tests.py` — cross-user access isolation, checkout stock/atomicity/`order_sn` uniqueness, rating bounds
-- `index/tests.py` — AI endpoint auth, topic-filter whitelist precedence, SSE heartbeat timing, session-endpoint ownership scoping, history-window alignment
+- `index/tests.py` — AI endpoint auth, topic-filter whitelist precedence, SSE heartbeat timing, worker/consumer hand-off under a stalled client (`StreamRobustnessTests`), session-endpoint ownership scoping, history-window alignment
+- `frontstage/pet_shop/src/utils/consultStream.test.js` — SSE frame parsing, cross-chunk reassembly, EOF-without-done-frame detection, error-message precedence
 - `charts/tests/` — analytics service, admin views, seed command, smoke test
 
 Still untested: commodity and merchant views, serializers, the refund and confirm-receipt flows.
@@ -120,6 +122,8 @@ Still untested: commodity and merchant views, serializers, the refund and confir
 - **`order_status` semantics:** checkout sets `2` (发货中) directly, skipping `1` (已支付), because the refund and confirm-receipt flows gate on `order_status >= 2`. Changing it breaks those.
 - **SimpleUI silently disables clickjacking protection.** `simpleui/apps.py` `ready()` pops `XFrameOptionsMiddleware` out of `MIDDLEWARE` unconditionally on Django 3+, with no opt-out, because its admin needs iframes. `X_FRAME_OPTIONS` therefore has no effect and `check --deploy` reports `security.W002`. The header has to be added at the reverse proxy for non-`/admin/` paths.
 - **The SSE heartbeat needs the worker thread.** `stream_agent` blocks inside `graph.stream()` waiting on LongCat, so `_agent_event_stream` runs it in a thread and waits on `queue.get(timeout=HEARTBEAT_INTERVAL)`. Collapsing that back into a direct `for` loop over `stream_agent` silently kills the heartbeat: the check only runs after an item has already been produced, so every heartbeat lands *after* the idle gap it was supposed to fill and proxies still drop the connection. `index/tests.py::HeartbeatTests` asserts the first frame arrives before the agent's first token.
+- **Every worker-to-consumer `put` must go through `_put_until_stopped`.** A client reading slower than the model fills the 64-slot queue for more than a second; a one-shot `put(timeout=1)` then drops the `_STREAM_CLOSED` sentinel or the `('error', exc)` event and the consumer heartbeats forever. `StreamRobustnessTests` stalls the consumer to reproduce this.
+- **`stop_event` cannot interrupt an in-flight upstream read.** The worker only checks it between events. If the client disconnects while `graph.stream()` is waiting for LongCat's first token, that one call runs to completion (or hits `_build_llm`'s 60s timeout) and is billed. Stopping it sooner needs a handle on the upstream HTTP request, which LangGraph does not expose. Once tokens flow the check is per-token and disconnects stop quickly.
 - **The non-streaming fallback only applies when the stream never started.** In `AIPetExpert.vue`, `nonStreamingFallback` may be called only on a connection-level `fetch` failure or a missing `response.body`. Once reading begins the server is generating and will persist the turn itself, so retrying there bills a second upstream run and writes a second pair of messages. Timeouts abort via `AbortController` and surface as an error instead.
 - **`pymysql` needs the `[rsa]` extra.** MySQL 8+ defaults to `caching_sha2_password`, which PyMySQL cannot handle without `cryptography`; without the extra every connection fails.
 - Indentation is inconsistent: `charts/` uses 4 spaces, every other backend file uses tabs. Match the file you are editing.

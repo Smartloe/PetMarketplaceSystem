@@ -5,7 +5,8 @@
   "scripts": {
     "serve": "vite",
     "build": "vite build",
-    "lint": "eslint --ext .js,.vue src"
+    "lint": "eslint --ext .js,.vue src",
+    "test": "vitest run"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
@@ -23,7 +24,8 @@
     "eslint": "^8.57.1",
     "eslint-plugin-vue": "^9.33.0",
     "unplugin-vue-components": "^0.27.0",
-    "vite": "^6.3.0"
+    "vite": "^6.3.0",
+    "vitest": "3.2.7"
   },
   "allowScripts": {
     "esbuild@0.25.12": true

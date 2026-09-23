@@ -122,6 +122,8 @@
             <p class="bubble-label">{{ message.role === 'assistant' ? '顾问回复' : '我的问题' }}</p>
             <div v-if="message.role === 'assistant'" v-html="renderMarkdown(message.content)"></div>
             <p v-else>{{ message.content }}</p>
+            <!-- 流在回答完成前中断时保留下来的半段内容，要让用户知道这不是完整回答 -->
+            <p v-if="message.interrupted" class="bubble-interrupted">（回答未完成，连接已中断）</p>
 
             <!-- 引用来源：让用户能核对回答依据的是哪份店内资料 -->
             <div v-if="message.citations && message.citations.length" class="bubble-citations">
@@ -241,6 +243,11 @@ import {
   getConsultSessionDetail,
   getConsultSessions,
 } from '@/api';
+import {
+  readConsultStream,
+  resolveConsultErrorMessage,
+  serverErrorFromFrame,
+} from '@/utils/consultStream';
 import { formatRelativeTime } from '@/utils/format';
 import { Promotion, Refresh, Search } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
@@ -553,12 +560,16 @@ export default {
           this.goLogin();
           return;
         }
-        const detail = error?.response?.data?.detail;
-        this.errorMessage = detail || error?.userMessage || 'AI 服务暂时不可用，请稍后重试。';
+        this.errorMessage = resolveConsultErrorMessage(error);
+        // 流已经吐出的半段回答保留在对话里，不要用固定文案盖掉 ——
+        // 服务端没落库，这是用户唯一能看到它的机会。
+        const partial = (this.streamingContent || '').trim();
         this.conversation.push({
           role: 'assistant',
-          content: '抱歉，当前无法连接 AI 服务，请稍后再试。',
+          content: partial || '抱歉，当前无法连接 AI 服务，请稍后再试。',
+          interrupted: Boolean(partial),
         });
+        this.streamingContent = '';
       } finally {
         this.loading = false;
         this.isStreaming = false;
@@ -662,91 +673,49 @@ export default {
       return error;
     },
     async consumeStream(reader, controller) {
-      const decoder = new TextDecoder();
-      // SSE 帧不保证和 chunk 边界对齐，一帧可能跨两个 chunk。缓冲未完成
-      // 的尾部，只处理已经收到换行的完整帧。
-      let buffer = '';
-      let streamError = null;
+      // 心跳帧不产出事件，但每来一个字节都会触发 onActivity 重新计时
+      const frames = readConsultStream(reader, {
+        onActivity: () => this.armIdleTimeout(controller),
+      });
 
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) {
-          break;
+      // readConsultStream 在没收到 done/error 就 EOF 时抛 StreamInterruptedError，
+      // 直接让它穿到 sendMessage：那里会把 streamingContent 里的半段回答保留下来
+      for await (const parsed of frames) {
+        if (parsed.error) {
+          throw serverErrorFromFrame(parsed.error);
         }
 
-        this.armIdleTimeout(controller);
-        buffer += decoder.decode(value, { stream: true });
-
-        // SSE 以空行分隔事件
-        const frames = buffer.split('\n\n');
-        buffer = frames.pop() ?? '';
-
-        for (const frame of frames) {
-          // 注释帧（后端心跳 ": heartbeat"）没有 data: 行，跳过即可 ——
-          // 它的作用是让上面的 armIdleTimeout 重新计时
-          const line = frame.split('\n').find((item) => item.startsWith('data: '));
-          if (!line) {
-            continue;
-          }
-
-          const raw = line.slice(6).trim();
-          if (!raw) {
-            continue;
-          }
-
-          let parsed;
-          try {
-            parsed = JSON.parse(raw);
-          } catch {
-            // 只跳过解析失败的帧，不要连同下面的业务错误一起吞掉
-            continue;
-          }
-
-          if (parsed.error) {
-            streamError = new Error(parsed.error);
-            break;
-          }
-
-          if (parsed.tool) {
-            this.activeTool = TOOL_LABELS[parsed.tool] || '正在查询资料';
-            continue;
-          }
-
-          if (parsed.content) {
-            this.activeTool = '';
-            this.streamingContent += parsed.content;
-            this.$nextTick(this.scrollToBottom);
-            continue;
-          }
-
-          if (parsed.done) {
-            this.conversation.push({
-              role: 'assistant',
-              content: this.streamingContent,
-              citations: parsed.citations || [],
-              toolsUsed: parsed.tools_used || [],
-            });
-            if (parsed.session_id) {
-              this.sessionId = parsed.session_id;
-              // 回到第一页重新拉，而不是只补一行：列表按 updated_time 排序，
-              // 本轮问答把当前会话顶到最前面，后面每一行都跟着挪位，已加载
-              // 的第 2 页往后就全错位了，合并只会拉出重复行。
-              this.loadSessions();
-            }
-            this.isStreaming = false;
-            this.activeTool = '';
-            this.streamingContent = '';
-            return;
-          }
+        if (parsed.tool) {
+          this.activeTool = TOOL_LABELS[parsed.tool] || '正在查询资料';
+          continue;
         }
 
-        if (streamError) {
-          break;
+        if (parsed.content) {
+          this.activeTool = '';
+          this.streamingContent += parsed.content;
+          this.$nextTick(this.scrollToBottom);
+          continue;
         }
-      }
 
-      if (streamError) {
-        throw streamError;
+        if (parsed.done) {
+          this.conversation.push({
+            role: 'assistant',
+            content: this.streamingContent,
+            citations: parsed.citations || [],
+            toolsUsed: parsed.tools_used || [],
+          });
+          if (parsed.session_id) {
+            this.sessionId = parsed.session_id;
+            // 回到第一页重新拉，而不是只补一行：列表按 updated_time 排序，
+            // 本轮问答把当前会话顶到最前面，后面每一行都跟着挪位，已加载
+            // 的第 2 页往后就全错位了，合并只会拉出重复行。
+            this.loadSessions();
+          }
+          this.isStreaming = false;
+          this.activeTool = '';
+          this.streamingContent = '';
+          return;
+        }
       }
     },
     /**
@@ -1266,6 +1235,12 @@ export default {
   margin-top: var(--space-3);
   padding-top: var(--space-3);
   border-top: 1px solid var(--line-hair);
+}
+
+.bubble-interrupted {
+  margin: var(--space-2) 0 0;
+  color: var(--ink-faint);
+  font-size: var(--font-size-2xs);
 }
 
 .citations-label {

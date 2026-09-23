@@ -180,6 +180,24 @@ _EVENT_QUEUE_SIZE = 64
 _STREAM_CLOSED = object()
 
 
+def _put_until_stopped(events, item, stop_event):
+	"""
+	往队列里放一个事件，队列满就等，直到放进去或消费端已经离开。
+
+	用带超时的 put 轮询 stop_event：客户端断开后消费端不再取，无超时的 put
+	会让工作线程永久挂在满队列上。反过来，只 put 一次、超时就丢也不行 ——
+	消费端读得慢时队列会满上一秒钟以上，哨兵和 error 事件一旦丢掉，消费端
+	就永远等不到结束信号，只能一直发心跳。
+	"""
+	while not stop_event.is_set():
+		try:
+			events.put(item, timeout=1)
+			return True
+		except queue.Full:
+			continue
+	return False
+
+
 def _pump_agent_events(stream_agent, messages, question, events, stop_event):
 	"""
 	在工作线程里消费 stream_agent，把事件塞进队列。
@@ -190,34 +208,27 @@ def _pump_agent_events(stream_agent, messages, question, events, stop_event):
 
 	异常不往线程外抛（没人 join 得到），统一转成 ('error', 异常) 事件。
 	"""
+	agent_events = None
 	try:
-		for event in stream_agent(messages, question):
+		agent_events = stream_agent(messages, question)
+		for event in agent_events:
 			if stop_event.is_set():
 				break
-			# 用带超时的 put 轮询 stop_event：客户端断开后消费端不再取，
-			# 无超时的 put 会让这个线程永久挂在满队列上。
-			while not stop_event.is_set():
-				try:
-					events.put(event, timeout=1)
-					break
-				except queue.Full:
-					continue
+			_put_until_stopped(events, event, stop_event)
 	except Exception as exc:
 		# 兜住所有异常：线程里抛出去没人接，连接会直接断在半截流上。
 		# 具体分类交给消费端的 _describe_agent_error。
-		try:
-			events.put(('error', exc), timeout=1)
-		except queue.Full:
-			logger.warning('Agent 线程异常且队列已满，丢弃: %s', exc)
+		if not _put_until_stopped(events, ('error', exc), stop_event):
+			logger.warning('Agent 线程异常但客户端已断开，丢弃: %s', exc)
 	finally:
+		# 显式关掉生成器，让 stream_agent 里的 citation_recorder 等上下文
+		# 管理器退出。靠垃圾回收也会关，但时机不确定。
+		if agent_events is not None:
+			agent_events.close()
 		# 工作线程有自己的一套数据库连接（连接是 thread-local 的），
 		# 请求结束时 Django 只会关主线程那套，这里必须自己收尾。
 		connections.close_all()
-		try:
-			events.put(_STREAM_CLOSED, timeout=1)
-		except queue.Full:
-			# 消费端已经走了，没人需要这个哨兵
-			pass
+		_put_until_stopped(events, _STREAM_CLOSED, stop_event)
 
 
 def _persist_turn(user, question, answer, cited_chunk_ids, session_id=None):
@@ -428,31 +439,55 @@ class AIPetConsultView(APIView):
 				if event is _STREAM_CLOSED:
 					break
 
-				kind, data = event
+				# 消费端自己的处理（查引用、落库、序列化）也可能抛，比如数据库
+				# 连接断了。这里不兜住的话异常会穿出生成器，前端拿到的就是一个
+				# 没有 error 帧的截断流。只兜 Exception：GeneratorExit 是客户端
+				# 断开的信号，必须让它穿到 finally。
+				try:
+					frame = self._render_agent_event(event, user, question, session_id)
+				except Exception as exc:
+					logger.exception('SSE 事件处理失败: %s', exc)
+					yield _sse({'error': 'AI 服务暂不可用，请稍后再试。'})
+					break
 
-				if kind == 'token':
-					yield _sse({'content': data})
-				elif kind == 'tool_start':
-					# 前端据此显示"正在查询商品/知识库"
-					yield _sse({'tool': data})
-				elif kind == 'final':
-					citations = _build_citations(data.get('cited_chunk_ids'))
-					new_session_id = _persist_turn(
-						user, question, data['answer'],
-						data.get('cited_chunk_ids'), session_id,
-					)
-					yield _sse({
-						'done': True,
-						'citations': citations,
-						'tools_used': data.get('tools_used', []),
-						'session_id': new_session_id,
-					})
-				elif kind == 'error':
-					yield _sse({'error': _describe_agent_error(data)})
+				if frame is not None:
+					yield frame
 		finally:
-			# 客户端断开时 Django 会关掉生成器，走到这里。通知工作线程收手，
-			# 否则它会把整轮上游调用跑完（照样计费）再自然结束。
+			# 客户端断开时 Django 会关掉生成器，走到这里。通知工作线程收手。
+			#
+			# 注意 stop_event 的作用范围：工作线程只在 stream_agent 每产出一个
+			# 事件之后才检查它。等上游首 token 的那段时间里它卡在阻塞的 HTTP
+			# 读上，看不到这个标志，只能等那次读返回（有 token，或撞上
+			# _build_llm 的 60s 超时）才退出 —— 这一次上游调用照样计费。要做到
+			# 真正的即时取消，得拿到上游 HTTP 请求本身去中断，LangGraph 没有
+			# 暴露这个句柄。开始出 token 之后，检查是逐 token 进行的，此时断开
+			# 能及时止损。
 			stop_event.set()
+
+	def _render_agent_event(self, event, user, question, session_id):
+		"""把工作线程的一个事件翻译成一帧 SSE 文本；不需要输出时返回 None。"""
+		kind, data = event
+
+		if kind == 'token':
+			return _sse({'content': data})
+		if kind == 'tool_start':
+			# 前端据此显示"正在查询商品/知识库"
+			return _sse({'tool': data})
+		if kind == 'final':
+			citations = _build_citations(data.get('cited_chunk_ids'))
+			new_session_id = _persist_turn(
+				user, question, data['answer'],
+				data.get('cited_chunk_ids'), session_id,
+			)
+			return _sse({
+				'done': True,
+				'citations': citations,
+				'tools_used': data.get('tools_used', []),
+				'session_id': new_session_id,
+			})
+		if kind == 'error':
+			return _sse({'error': _describe_agent_error(data)})
+		return None
 
 
 class ConsultSessionPagination(PageNumberPagination):

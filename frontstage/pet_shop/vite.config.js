@@ -32,4 +32,10 @@ export default defineConfig({
     outDir: 'dist',
     assetsDir: 'static',
   },
+  // vitest 复用这份配置（拿到 @ 别名）。测试只覆盖纯 JS 工具模块，
+  // 跑在 node 环境即可，不需要 jsdom。
+  test: {
+    environment: 'node',
+    include: ['src/**/*.test.js'],
+  },
 })

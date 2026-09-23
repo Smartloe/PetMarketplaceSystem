@@ -610,6 +610,125 @@ class HeartbeatTests(APITestCase):
 			self.assertNotIn('data:', frame)
 
 
+class StreamRobustnessTests(APITestCase):
+	"""
+	The worker/consumer hand-off has to survive a slow client and a failing
+	consumer, otherwise the stream either never ends or ends without telling
+	the frontend why.
+	"""
+
+	def setUp(self):
+		self.user = User.objects.create_user(username='rb', password='TestPass#2026')
+		self.client.force_login(self.user)
+
+	def _post_stream(self):
+		return self.client.post(
+			'/api/ai/consult/',
+			{'question': '猫粮怎么选', 'stream': True},
+			format='json',
+		)
+
+	def _collect_with_stalled_consumer(self, agent_stream):
+		"""
+		Run the stream against a consumer that does not read for longer than
+		the worker's 1s put timeout while the queue is already full.
+
+		The queue holds exactly as many events as the agent yields, so the
+		worker fills it instantly and then tries to enqueue the closing
+		sentinel (or the error event) into a full queue. The old
+		`put(timeout=1)` gave up there and the consumer, after draining the
+		buffer, heartbeated forever.
+		"""
+		import time as time_module
+
+		from index import views
+
+		real_get = views.queue.Queue.get
+		stalled = threading.Event()
+
+		def stalling_get(self_queue, *args, **kwargs):
+			if not stalled.is_set():
+				stalled.set()
+				time_module.sleep(1.3)
+			return real_get(self_queue, *args, **kwargs)
+
+		frames = []
+		with patch.object(views, '_EVENT_QUEUE_SIZE', 2), \
+				patch.object(views, 'HEARTBEAT_INTERVAL', 0.2), \
+				patch.object(views.queue.Queue, 'get', stalling_get), \
+				patch('index.agent.stream_agent', side_effect=agent_stream):
+			response = self._post_stream()
+			deadline = time_module.monotonic() + 5
+			for chunk in response.streaming_content:
+				frames.append(chunk.decode())
+				if time_module.monotonic() > deadline:
+					self.fail('流迟迟不结束：结束信号大概率被丢弃了')
+		return ''.join(frames)
+
+	def test_slow_consumer_still_receives_the_end_of_stream(self):
+		def two_events(_history, _question):
+			yield ('token', '好的。')
+			yield ('final', {'answer': '好的。', 'tools_used': [], 'cited_chunk_ids': []})
+
+		body = self._collect_with_stalled_consumer(two_events)
+		self.assertIn('好的', body)
+		self.assertIn('"done": true', body)
+
+	def test_slow_consumer_still_receives_the_error_frame(self):
+		def two_tokens_then_fail(_history, _question):
+			yield ('token', '第0片')
+			yield ('token', '第1片')
+			raise RuntimeError('未配置 LONGCAT_API_KEY。')
+
+		body = self._collect_with_stalled_consumer(two_tokens_then_fail)
+		self.assertIn('第1片', body)
+		self.assertIn('AI 服务暂未配置', body)
+
+	def test_consumer_side_failure_is_reported_as_an_error_frame(self):
+		"""
+		The worker's exceptions were already caught, but the consumer does its
+		own work (citations lookup, persistence) that can fail too. An
+		exception there escaped the generator and truncated the stream with no
+		error frame, so the frontend silently dropped the partial answer.
+		"""
+		def fake_stream(_history, _question):
+			yield ('token', '建议七天过渡。')
+			yield ('final', {'answer': '建议七天过渡。', 'tools_used': [], 'cited_chunk_ids': [1]})
+
+		with patch('index.agent.stream_agent', side_effect=fake_stream), \
+				patch('index.views._build_citations', side_effect=Exception('db gone')):
+			response = self._post_stream()
+			body = b''.join(response.streaming_content).decode()
+
+		self.assertIn('建议七天过渡', body)
+		self.assertIn('"error"', body)
+		self.assertNotIn('"done": true', body)
+
+	def test_worker_closes_the_agent_generator_on_disconnect(self):
+		"""
+		Closing the generator explicitly is what lets stream_agent's context
+		managers (citation_recorder) exit promptly instead of waiting for GC.
+		"""
+		import time as time_module
+
+		closed = threading.Event()
+
+		def endless_stream(_history, _question):
+			try:
+				for i in range(500):
+					time_module.sleep(0.01)
+					yield ('token', f'第{i}片')
+			finally:
+				closed.set()
+
+		with patch('index.agent.stream_agent', side_effect=endless_stream):
+			response = self._post_stream()
+			stream = response.streaming_content
+			self.assertIn('第0片', next(stream).decode())
+			response._iterator.close()
+			self.assertTrue(closed.wait(2), '断开后 stream_agent 生成器没有被关闭')
+
+
 class ConsultSessionApiTests(APITestCase):
 	"""
 	Ownership scoping for the session endpoints.
